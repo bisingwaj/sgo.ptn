@@ -1,0 +1,85 @@
+.btnPrimary,
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 var(--ptn-space-04);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  background: var(--ptn-accent);
+  color: #ffffff;
+  border: 0;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: var(--cds-text-primary);
+  border: 1px solid var(--cds-border-strong);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  thead th {
+    background: var(--cds-layer-accent-01);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16px;
+    color: var(--cds-text-secondary);
+    font-weight: 500;
+    text-align: left;
+    padding: var(--ptn-space-02) var(--ptn-space-03);
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+
+  tbody td {
+    padding: var(--ptn-space-02) var(--ptn-space-03);
+    border-bottom: 1px solid var(--cds-border-subtle);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.input {
+  width: 70px;
+  border: 0;
+  border-bottom: 1px solid var(--cds-border-strong);
+  background: var(--cds-field);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--cds-text-primary);
+  font-family: var(--font-ibm-plex-mono), monospace;
+
+  &:focus {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+.uploadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--cds-layer-accent-01);
+  border: 1px dashed var(--cds-border-strong);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+}

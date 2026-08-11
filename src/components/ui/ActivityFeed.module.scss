@@ -1,0 +1,75 @@
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-02) 0;
+  border-bottom: 1px solid var(--cds-border-subtle);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.icon_success {
+  background: var(--ptn-status-success-surface);
+  color: var(--ptn-status-success);
+}
+
+.icon_warning {
+  background: var(--ptn-status-warning-surface);
+  color: #875b00;
+}
+
+.icon_info {
+  background: var(--ptn-status-info-surface);
+  color: var(--ptn-status-info);
+}
+
+.icon_ai {
+  background: var(--ptn-status-ai-surface);
+  color: var(--ptn-status-ai);
+}
+
+.icon_locked {
+  background: var(--ptn-status-danger-surface);
+  color: var(--ptn-status-danger);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  font-size: 13px;
+  color: var(--cds-text-primary);
+  line-height: 1.4;
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+}
+
+.time {
+  font-size: 10px;
+  color: var(--cds-text-helper);
+  letter-spacing: 0.16px;
+  margin-top: 2px;
+}

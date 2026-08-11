@@ -1,0 +1,122 @@
+.shell {
+  min-height: 100vh;
+  background: var(--cds-background);
+}
+
+.header {
+  padding: var(--ptn-space-04) var(--ptn-space-07);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--cds-text-primary);
+  }
+}
+
+.main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--ptn-space-07) var(--ptn-space-07) var(--ptn-space-08);
+}
+
+.intro {
+  margin-bottom: var(--ptn-space-06);
+  max-width: 720px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+  margin-bottom: var(--ptn-space-02);
+}
+
+.title {
+  font-size: 36px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--ptn-space-03);
+  color: var(--cds-text-primary);
+}
+
+.lede {
+  font-size: 14px;
+  color: var(--cds-text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--ptn-space-04);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  border-left: 4px solid var(--ptn-accent);
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    transform: translateY(-1px);
+  }
+}
+
+.cardIllu {
+  display: grid;
+  place-items: center;
+  height: 160px;
+  background: var(--cds-background);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.cardBody {
+  padding: var(--ptn-space-04);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+  flex: 1;
+}
+
+.cardLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  line-height: 1.3;
+}
+
+.cardDesc {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  flex: 1;
+}
+
+.cardCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ptn-accent);
+  margin-top: var(--ptn-space-02);
+  padding-top: var(--ptn-space-02);
+  border-top: 1px solid var(--cds-border-subtle);
+}

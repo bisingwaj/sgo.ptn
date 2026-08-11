@@ -1,0 +1,576 @@
+/* Messages — layout 3 colonnes inspiration Carbon "inbox + thread + context". */
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px 1fr 280px;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+  height: calc(100vh - 200px);
+  min-height: 560px;
+}
+
+@media (max-width: 1280px) {
+  .layout {
+    grid-template-columns: 280px 1fr;
+  }
+  .ctxCol {
+    display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .listCol {
+    display: none;
+  }
+}
+
+/* ============== Inbox (left) ============== */
+.listCol {
+  background: var(--cds-layer);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.listHead {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.listTabs {
+  display: flex;
+  gap: 0;
+}
+
+.listTab {
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover {
+    color: var(--cds-text-primary);
+  }
+}
+
+.listTabActive {
+  color: var(--cds-text-primary);
+  border-bottom-color: var(--ptn-accent, #0f62fe);
+  font-weight: 500;
+}
+
+.listTabCount {
+  background: var(--cds-layer-accent-01);
+  color: var(--cds-text-helper);
+  font-size: 10px;
+  padding: 1px 5px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+}
+
+.listSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cds-background);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--cds-border-strong);
+  color: var(--cds-text-helper);
+
+  input {
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    flex: 1;
+    outline: none;
+    color: var(--cds-text-primary);
+  }
+}
+
+.listScroll {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.threadItem {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 80ms;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+}
+
+.threadActive {
+  background: var(--ptn-accent-light, #edf5ff);
+  border-left: 2px solid var(--ptn-accent, #0f62fe);
+  padding-left: 14px;
+}
+
+.threadHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.threadWho {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.threadWhen {
+  font-size: 10px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  flex-shrink: 0;
+}
+
+.threadRef {
+  font-size: 10px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.threadPreview {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
+.threadMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.threadUnread {
+  width: 8px;
+  height: 8px;
+  background: var(--ptn-accent, #0f62fe);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.threadTag {
+  display: inline-block;
+  background: var(--cds-layer-accent-01);
+  color: var(--cds-text-helper);
+  font-size: 10px;
+  padding: 1px 6px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+}
+
+.threadTagWarn {
+  background: var(--ptn-status-warning-surface);
+  color: #8e6a00;
+}
+
+.threadTagOk {
+  background: var(--ptn-status-success-surface);
+  color: var(--ptn-status-success);
+}
+
+/* ============== Thread (center) ============== */
+.threadCol {
+  background: var(--cds-layer);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.threadTopbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  flex-shrink: 0;
+}
+
+.threadAvatar {
+  width: 36px;
+  height: 36px;
+  background: var(--ptn-accent-light, #edf5ff);
+  color: var(--ptn-accent, #0f62fe);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  flex-shrink: 0;
+}
+
+.threadInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.threadName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+}
+
+.threadStatus {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.threadDot {
+  width: 6px;
+  height: 6px;
+  background: var(--ptn-status-success);
+  border-radius: 50%;
+}
+
+.threadActions {
+  display: flex;
+  gap: 4px;
+}
+
+.btnIcon {
+  background: transparent;
+  border: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--cds-text-secondary);
+
+  &:hover {
+    background: var(--cds-background);
+    color: var(--cds-text-primary);
+  }
+}
+
+.threadScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.daySep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--cds-text-helper);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  margin: 4px 0;
+}
+
+.daySep::before,
+.daySep::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cds-border-subtle);
+}
+
+.msg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 80%;
+}
+
+.msgMine {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.msgAvatar {
+  width: 28px;
+  height: 28px;
+  background: var(--cds-background);
+  color: var(--cds-text-secondary);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  flex-shrink: 0;
+}
+
+.msgAvatarMine {
+  background: var(--ptn-accent, #0f62fe);
+  color: #fff;
+}
+
+.msgAvatarAi {
+  background: var(--ptn-status-ai-surface);
+  color: var(--ptn-status-ai);
+}
+
+.msgContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.msgContentMine {
+  align-items: flex-end;
+}
+
+.msgHead {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.msgWho {
+  color: var(--cds-text-primary);
+  font-weight: 500;
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+}
+
+.msgRole {
+  background: var(--cds-layer-accent-01);
+  color: var(--cds-text-helper);
+  padding: 1px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.msgBubble {
+  background: var(--cds-layer-accent-01);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--cds-text-primary);
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.msgBubbleMine {
+  background: var(--ptn-accent, #0f62fe);
+  color: #fff;
+}
+
+.msgBubbleAi {
+  background: var(--ptn-status-ai-surface);
+  border-left: 2px solid var(--ptn-status-ai);
+}
+
+.msgAttachments {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.msgAttach {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  font-size: 11px;
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+
+  &:hover {
+    background: var(--cds-background);
+  }
+}
+
+.msgQuote {
+  border-left: 2px solid var(--cds-border-subtle);
+  padding: 4px 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--cds-text-helper);
+  font-style: italic;
+}
+
+/* ============== Composer ============== */
+.composer {
+  border-top: 1px solid var(--cds-border-subtle);
+  padding: 12px 16px;
+  background: var(--cds-layer);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.composerInput {
+  border: 0;
+  background: var(--cds-background);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  max-height: 180px;
+  outline: none;
+  border-bottom: 1px solid var(--cds-border-strong);
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+  line-height: 1.5;
+}
+
+.composerInput:focus {
+  border-bottom-color: var(--ptn-accent, #0f62fe);
+}
+
+.composerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composerLeft {
+  display: flex;
+  gap: 4px;
+}
+
+.composerSpacer {
+  flex: 1;
+}
+
+.btnPrimary {
+  background: var(--ptn-accent, #0f62fe);
+  color: #fff;
+  border: 0;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+
+  &:hover {
+    background: var(--ptn-accent-hover, #0043ce);
+  }
+}
+
+.composerHint {
+  font-size: 10px;
+  color: var(--cds-text-helper);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+}
+
+/* ============== Context rail ============== */
+.ctxCol {
+  background: var(--cds-layer);
+  overflow-y: auto;
+}
+
+.ctxSection {
+  border-bottom: 1px solid var(--cds-border-subtle);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.ctxH {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-primary);
+  padding: 12px 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.ctxBody {
+  padding: 0 16px 12px;
+  font-size: 12px;
+  color: var(--cds-text-primary);
+  line-height: 1.45;
+}
+
+.ctxRow {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+  padding: 6px 0;
+  align-items: baseline;
+}
+
+.ctxK {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+}
+
+.ctxV {
+  font-size: 12px;
+}
+
+.ctxLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ptn-accent, #0f62fe);
+  font-size: 12px;
+  text-decoration: none;
+  padding: 6px 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

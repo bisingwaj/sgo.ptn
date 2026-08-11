@@ -1,0 +1,366 @@
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: stretch;
+  height: calc(100vh - 220px);
+  min-height: 520px;
+  overflow: hidden;
+}
+
+@media (max-width: 1280px) {
+  .layout {
+    grid-template-columns: 1fr 280px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+.calCard {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.calHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.calTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  margin: 0;
+}
+
+.calMonth {
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--cds-text-primary);
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+  letter-spacing: -0.005em;
+}
+
+.calNav {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.btnIcon {
+  background: transparent;
+  border: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--cds-text-secondary);
+
+  &:hover {
+    background: var(--cds-background);
+    color: var(--cds-text-primary);
+  }
+}
+
+.btnSecondary {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+
+  &:hover {
+    background: var(--cds-background);
+  }
+}
+
+.btnPrimary {
+  background: var(--ptn-accent, #0f62fe);
+  color: #fff;
+  border: 0;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+  min-height: 36px;
+
+  &:hover {
+    background: var(--ptn-accent-hover, #0043ce);
+  }
+}
+
+/* Grille du calendrier mensuel */
+.gridHead {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--cds-layer-accent-01);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.gridHead div {
+  padding: 8px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+  font-weight: 500;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  flex: 1;
+  min-height: 0;
+}
+
+.cell {
+  background: var(--cds-layer);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  transition: background 120ms;
+  overflow: hidden;
+  min-height: 0;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+}
+
+.cellOther {
+  background: var(--cds-layer-accent-01);
+}
+
+.cellOther .num {
+  color: var(--cds-text-helper);
+}
+
+.cellToday {
+  background: var(--ptn-accent-light, #edf5ff);
+
+  .num {
+    color: var(--ptn-accent, #0f62fe);
+    font-weight: 500;
+  }
+}
+
+.num {
+  font-size: 12px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  color: var(--cds-text-primary);
+}
+
+.evList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.ev {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-left: 2px solid var(--ptn-accent, #0f62fe);
+  background: var(--ptn-accent-light, #edf5ff);
+  color: var(--cds-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.evWarn {
+  border-left-color: #f1c21b;
+  background: #fcf4d6;
+}
+
+.evErr {
+  border-left-color: #da1e28;
+  background: #fff1f1;
+  color: #750e13;
+}
+
+.evOk {
+  border-left-color: #24a148;
+  background: #defbe6;
+}
+
+.evMore {
+  font-size: 10px;
+  color: var(--cds-text-helper);
+  padding: 0 6px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+}
+
+/* Side panel : agenda */
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.asideCard {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.asideHead {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.asideTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-primary);
+  font-weight: 500;
+  margin: 0;
+}
+
+.asideBadge {
+  background: var(--ptn-accent, #0f62fe);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+}
+
+.asideBody {
+  padding: 4px 16px 12px;
+}
+
+.deadline {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  align-items: center;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.day {
+  width: 40px;
+  text-align: center;
+  border: 1px solid var(--cds-border-subtle);
+  padding: 4px 0;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+}
+
+.dayD {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--cds-text-primary);
+}
+
+.dayM {
+  font-size: 9px;
+  color: var(--cds-text-helper);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.dlUrgent .day {
+  border-color: #da1e28;
+}
+
+.dlUrgent .dayD {
+  color: #da1e28;
+}
+
+.dlMeta {
+  font-size: 12px;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.dlMeta strong {
+  font-weight: 500;
+}
+
+.dlRef {
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  margin-top: 2px;
+}
+
+.countdown {
+  font-size: 11px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  color: var(--cds-text-secondary);
+}
+
+.dlUrgent .countdown {
+  color: #da1e28;
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--cds-border-subtle);
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  background: var(--ptn-accent, #0f62fe);
+}
+
+.legendWarn { background: #f1c21b; }
+.legendErr { background: #da1e28; }
+.legendOk { background: #24a148; }

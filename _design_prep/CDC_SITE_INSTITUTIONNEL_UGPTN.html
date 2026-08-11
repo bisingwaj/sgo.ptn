@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SITE WEB INSTITUTIONNEL DE L'UGPTN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{ --blue:#0f62fe; --blue80:#002d9c; --gray100:#161616; --gray70:#525252; --gray50:#8d8d8d; --gray20:#e0e0e0; --gray10:#f4f4f4; }
+*{ box-sizing:border-box; }
+html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body{ font-family:'IBM Plex Sans','Segoe UI',Helvetica,Arial,sans-serif; color:var(--gray100); line-height:1.55; margin:0; background:#fff; font-size:11pt; }
+.page{ max-width:780px; margin:0 auto; padding:48px 56px; }
+h1{ font-size:30pt; font-weight:600; line-height:1.1; letter-spacing:-.01em; margin:0 0 8px; }
+h2{ font-size:19pt; font-weight:600; margin:34px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--blue); color:var(--gray100); }
+h3{ font-size:13.5pt; font-weight:600; margin:22px 0 6px; color:var(--blue80); }
+h4{ font-size:11.5pt; font-weight:600; margin:16px 0 4px; }
+p{ margin:8px 0; text-align:justify; }
+ul,ol{ margin:8px 0 8px 22px; padding:0; }
+li{ margin:4px 0; }
+strong{ font-weight:600; }
+table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:9.5pt; }
+th{ background:var(--blue); color:#fff; text-align:left; padding:7px 10px; font-weight:600; vertical-align:top; }
+td{ border-bottom:1px solid var(--gray20); padding:6px 10px; vertical-align:top; }
+tr:nth-child(even) td{ background:var(--gray10); }
+blockquote{ border-left:3px solid var(--blue); background:var(--gray10); margin:14px 0; padding:12px 16px; font-style:italic; color:var(--gray70); }
+hr{ border:none; border-top:1px solid var(--gray20); margin:18px 0; }
+.pagebreak{ page-break-after:always; height:0; }
+/* Cover */
+.cover{ display:flex; flex-direction:column; justify-content:center; min-height:88vh; }
+.cover .eyebrow{ font-family:'IBM Plex Mono',monospace; color:var(--blue); font-size:11pt; letter-spacing:.04em; margin-bottom:18px; }
+@media print{
+  .page{ max-width:none; margin:0; padding:0; }
+  h2{ break-after:avoid; }
+  table,blockquote{ break-inside:avoid; }
+  @page{ size:A4; margin:18mm 16mm; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+<h1>SITE WEB INSTITUTIONNEL DE L'UGPTN</h1>
+<h2>Cahier des charges fonctionnel — Fonctionnalités prioritaires (Vague 1)</h2>
+<hr/>
+<p><strong>Projet de Transformation Numérique de la République Démocratique du Congo</strong> <strong>PTN-RDC · P180495</strong></p>
+<p>Unité de Gestion du Projet de Transformation Numérique (UGPTN) Ministère des Postes, Télécommunications et Numérique (MPTN)</p>
+<p><em>Document de cadrage fonctionnel — Kinshasa, 2026</em></p>
+<blockquote>Source de vérité : Manuel d'Exécution du Projet (MEP) du 23 juin 2025. Le présent document définit les fonctionnalités <strong>premières</strong> (essentielles, de premier déploiement) du site web institutionnel public de l'UGPTN. Il distingue le <strong>site institutionnel public</strong> de la <strong>plateforme métier authentifiée</strong> (8 profils), vers laquelle le site sert de porte d'entrée.</blockquote>
+<hr/>
+<h2>Sommaire</h2>
+<ol><li>Objet et périmètre</li><li>Principes directeurs</li><li>Site public et plateforme métier : la frontière</li><li>Méthode de priorisation (MoSCoW)</li><li>Tableau de synthèse des fonctionnalités</li><li>Fiches détaillées — Vague 1 (fonctionnalités premières)</li><li>Fonctionnalités des vagues 2 et 3 (rappel)</li><li>Exigences non fonctionnelles</li><li>Arborescence du site</li><li>Feuille de route de déploiement</li><li>Annexes</li></ol>
+<hr/>
+<div class="pagebreak"></div>
+<h2>1. Objet et périmètre</h2>
+<h3>1.1 Objet</h3>
+<p>Ce document définit les <strong>fonctionnalités prioritaires</strong> que doit porter le <strong>site web institutionnel public</strong> de l'UGPTN, dérivées des obligations et caractéristiques du PTN-RDC : transparence (Cadre Environnemental et Social de la Banque mondiale), redevabilité citoyenne (Mécanisme de Gestion des Plaintes), ouverture des marchés publics, multilinguisme et lisibilité institutionnelle.</p>
+<p>On entend par <strong>fonctionnalités premières</strong> les fonctionnalités de <strong>Vague 1</strong> : celles qui sont soit imposées par la réglementation (divulgation, MGP), soit indispensables à la crédibilité publique de l'Unité dès la mise en ligne.</p>
+<h3>1.2 Périmètre couvert</h3>
+<ul><li>Couche <strong>publique</strong> du site (accessible sans authentification).</li><li><strong>Porte d'entrée</strong> authentifiée vers la plateforme métier (renvoi vers les 8 espaces profilés).</li></ul>
+<h3>1.3 Hors périmètre de ce document</h3>
+<ul><li>Les écrans internes de la plateforme métier (cockpit UGPTN, workflows ANO, fiducie, commissions) — couverts par la spécification de la plateforme.</li><li>Les procédures du MEP elles-mêmes, que le site <strong>applique</strong> sans les modifier.</li></ul>
+<hr/>
+<h2>2. Principes directeurs</h2>
+<table>
+<thead><tr><th>Principe</th><th>Implication pour le site</th></tr></thead>
+<tbody><tr><td><strong>Le MEP est la source de vérité</strong></td><td>Les montants (510 M USD, 385/55/45/25/0), dates, indicateurs et structures sont immuables et repris tels quels</td></tr><tr><td><strong>Transparence par défaut</strong></td><td>Tout document divulgable est publié ; rien de confidentiel n'est exposé</td></tr><tr><td><strong>Redevabilité citoyenne</strong></td><td>Le MGP est accessible, simple, multilingue et traçable</td></tr><tr><td><strong>Confidentialité non négociable</strong></td><td>Le canal MGP-EAS/HS est strictement cloisonné du reste du site</td></tr><tr><td><strong>Sobriété institutionnelle</strong></td><td>Design IBM Carbon v11 / IBM Plex ; pas de drapeau ni de logo bailleur en grand format</td></tr><tr><td><strong>Inclusion</strong></td><td>Multilingue (6 langues), accessible (WCAG), utilisable en faible débit et sur mobile</td></tr></tbody></table>
+<hr/>
+<div class="pagebreak"></div>
+<h2>3. Site public et plateforme métier : la frontière</h2>
+<p>Le site institutionnel et la plateforme métier forment <strong>un seul produit cohérent</strong> mais deux couches distinctes.</p>
+<table>
+<thead><tr><th>Couche</th><th>Public visé</th><th>Authentification</th><th>Exemples de contenus</th></tr></thead>
+<tbody><tr><td><strong>Site institutionnel (public)</strong></td><td>Citoyens, entreprises, partenaires, médias, bailleurs</td><td>Non requise</td><td>Présentation, documents, avis de marchés, MGP, actualités</td></tr><tr><td><strong>Plateforme métier (authentifiée)</strong></td><td>8 profils (UGPTN, MDA, Partenaire, Bailleur, Soumissionnaire, SBP, Auditeur, Gouvernance)</td><td>Requise</td><td>Cockpit, ANO, fiducie, commissions, contrats</td></tr></tbody></table>
+<p>Le site institutionnel <strong>présente</strong> et <strong>donne accès</strong> ; la plateforme <strong>opère</strong>. La passerelle de connexion (F9) est la jonction entre les deux.</p>
+<hr/>
+<h2>4. Méthode de priorisation (MoSCoW)</h2>
+<p>Les fonctionnalités sont classées selon quatre niveaux :</p>
+<ul><li><strong>MUST (Vague 1)</strong> — fonctionnalités premières : réglementaires ou indispensables à la mise en ligne.</li><li><strong>SHOULD (Vague 2)</strong> — fonctionnalités à forte valeur, déployées dans un second temps.</li><li><strong>COULD (Vague 3)</strong> — fonctionnalités d'enrichissement.</li><li><strong>WON'T (pour l'instant)</strong> — explicitement hors champ à ce stade.</li></ul>
+<p><strong>Critères de classement en Vague 1 :</strong></p>
+<ol><li>Obligation réglementaire (Cadre E&amp;S / NES 10 — divulgation ; MGP — indicateur ODP).</li><li>Crédibilité publique minimale de l'Unité.</li><li>Indépendance technique (peut être livré sans dépendre de la plateforme métier complète).</li></ol>
+<hr/>
+<div class="pagebreak"></div>
+<h2>5. Tableau de synthèse des fonctionnalités</h2>
+<table>
+<thead><tr><th>Réf</th><th>Fonctionnalité</th><th>Priorité</th><th>Vague</th><th>Fondement</th></tr></thead>
+<tbody><tr><td><strong>F1</strong></td><td>Vitrine institutionnelle (projet + UGPTN + gouvernance)</td><td>MUST</td><td>1</td><td>Crédibilité, MEP</td></tr><tr><td><strong>F2</strong></td><td>Centre de transparence documentaire</td><td>MUST</td><td>1</td><td>Divulgation NES 10 / ESF</td></tr><tr><td><strong>F3</strong></td><td>MGP — canal général (formulaire + suivi)</td><td>MUST</td><td>1</td><td>Indicateur ODP (100 % ≤ 30 j)</td></tr><tr><td><strong>F4</strong></td><td>MGP-EAS/HS — canal confidentiel</td><td>MUST</td><td>1</td><td>Risque EAS/HS Substantiel</td></tr><tr><td><strong>F5</strong></td><td>Avis de marchés publics</td><td>MUST</td><td>1</td><td>Concurrence ouverte (Règl. BM 2025)</td></tr><tr><td><strong>F6</strong></td><td>Socle multilingue + accessibilité</td><td>MUST</td><td>1</td><td>Inclusion, MEP (6 langues)</td></tr><tr><td><strong>F7</strong></td><td>Actualités &amp; communiqués</td><td>MUST</td><td>1</td><td>Mobilisation des parties prenantes</td></tr><tr><td><strong>F8</strong></td><td>Contact &amp; points focaux provinciaux + carte</td><td>MUST</td><td>1</td><td>Ancrage territorial (26 provinces)</td></tr><tr><td><strong>F9</strong></td><td>Passerelle de connexion (vers la plateforme)</td><td>MUST</td><td>1</td><td>Accès aux 8 espaces métiers</td></tr><tr><td>F10</td><td>Tableau de bord de résultats public</td><td>SHOULD</td><td>2</td><td>Indicateurs ODP / intermédiaires</td></tr><tr><td>F11</td><td>Espace partenaires &amp; consultations PMPP</td><td>SHOULD</td><td>2</td><td>NES 10 / engagement</td></tr><tr><td>F12</td><td>Espace soumissionnaire (marketplace, KYC)</td><td>SHOULD</td><td>2</td><td>Passation, secteur privé</td></tr><tr><td>F13</td><td>Recrutements &amp; avis à consultants</td><td>SHOULD</td><td>2</td><td>Personnel UGPTN, CI/firmes</td></tr><tr><td>F14</td><td>Espace investisseurs / PPP</td><td>SHOULD</td><td>2</td><td>Cible 165 M USD capitaux privés</td></tr><tr><td>F15</td><td>Newsletter &amp; abonnements</td><td>COULD</td><td>3</td><td>Engagement continu</td></tr><tr><td>F16</td><td>Open data / API de résultats</td><td>COULD</td><td>3</td><td>Transparence avancée</td></tr></tbody></table>
+<hr/>
+<div class="pagebreak"></div>
+<h2>6. Fiches détaillées — Vague 1 (fonctionnalités premières)</h2>
+<h3>F1 — Vitrine institutionnelle</h3>
+<p><strong>Objectif.</strong> Présenter le projet PTN-RDC et l'UGPTN au grand public, établir la légitimité et la lisibilité du mandat.</p>
+<p><strong>Contenus.</strong></p>
+<ul><li><strong>Page d'accueil</strong> : accroche sobre, chiffres clés (510 M USD ; IDA 79 % / AFD 21 % ; entrée en vigueur 31 octobre 2025 ; achèvement 31 décembre 2029), accès rapides (Marchés, MGP, Documents, Se connecter).</li><li><strong>Page « Le Projet »</strong> : objectif de développement, approche programmatique IDEA, les 5 composantes et sous-composantes avec enveloppes.</li><li><strong>Page « L'UGPTN »</strong> : mandat (coordination, exécution, supervision technique et fiduciaire), arrêté de création du 15 avril 2025, organigramme des 21 sous-rôles regroupés en 5 pôles.</li><li><strong>Page « Gouvernance »</strong> : COPIL (8 membres, semestriel) et CTP (12 représentants, trimestriel), distinction stratégique / technique.</li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li>Montants et dates immuables, conformes au MEP.</li><li>Pas de drapeau RDC en élément graphique principal, pas de logo bailleur surdimensionné.</li><li>Style Carbon v11 / IBM Plex, chiffres en IBM Plex Mono.</li></ul>
+<p><strong>Fondement.</strong> MEP ; données projet officielles. <strong>Dépendances.</strong> Aucune. <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<h3>F2 — Centre de transparence documentaire</h3>
+<p><strong>Objectif.</strong> Être le dépôt officiel public des documents du projet, en application de l'obligation de divulgation du Cadre Environnemental et Social (NES 10) et de la politique d'accès à l'information de la Banque mondiale.</p>
+<p><strong>Contenus.</strong></p>
+<ul><li>Bibliothèque téléchargeable : MEP, PPSD, <strong>CGES, CPR, PPA, PMPP, PGMO, PEES</strong>, rapports d'audit rendus publics, synthèses des Rapports Financiers Intermédiaires (RFI).</li><li>Filtres : par type de document, par composante, par date, par langue.</li><li>Métadonnées : titre, version, <strong>date de publication horodatée</strong>, langue, taille.</li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li>Seuls les documents divulgables sont publiés ; aucun contenu confidentiel ou nominatif.</li><li>Versionnage explicite (afficher la version en vigueur et l'historique).</li><li>Conformité à la politique d'accès à l'information de la Banque mondiale.</li></ul>
+<p><strong>Fondement.</strong> ESF / NES 10 ; instruments de sauvegarde du projet. <strong>Dépendances.</strong> F6 (multilingue). <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<div class="pagebreak"></div>
+<h3>F3 — MGP : canal général</h3>
+<p><strong>Objectif.</strong> Recueillir, classer, tracer et clôturer les plaintes citoyennes, en garantissant l'indicateur ODP : <strong>100 % des griefs traités en 30 jours ou moins</strong>.</p>
+<p><strong>Contenus.</strong></p>
+<ul><li><strong>Formulaire de dépôt</strong> en ligne avec catégories : technique, fiduciaire, environnementale et sociale, conduite du personnel, autre.</li><li><strong>Les 4 modes de dépôt</strong> clairement présentés : formulaire web, <strong>SMS / numéro vert</strong>, e-mail, <strong>point focal physique</strong> (renvoi vers l'annuaire provincial — voir F8).</li><li><strong>Numéro de référence horodaté</strong> attribué à chaque plainte.</li><li><strong>Suivi de l'état</strong> par le plaignant (saisie du numéro de référence) : Réception → Classification → Instruction → Décision → Clôture.</li><li><strong>SLA de 30 jours affiché publiquement.</strong></li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li>Accusé de réception immédiat.</li><li>Multilingue (FR + langues locales).</li><li>Retour systématique au plaignant à la clôture.</li><li>Aucune donnée du canal EAS/HS ne transite par ce formulaire (voir F4).</li></ul>
+<p><strong>Fondement.</strong> Indicateur ODP ; PMPP / MGP. <strong>Dépendances.</strong> F6, F8. <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<h3>F4 — MGP-EAS/HS : canal confidentiel</h3>
+<p><strong>Objectif.</strong> Offrir un canal de signalement des violences basées sur le genre / exploitation et abus sexuels / harcèlement sexuel, <strong>strictement séparé</strong> du MGP général, centré sur la survivante.</p>
+<p><strong>Contenus.</strong></p>
+<ul><li>Point d'entrée <strong>distinct et discret</strong>, accessible depuis le site mais cloisonné.</li><li>Formulaire minimal, <strong>identité optionnelle</strong>, consentement éclairé pour tout partage.</li><li>Information claire sur les options et les services (médical, psychosocial, juridique).</li><li>Vue publique limitée à des <strong>statistiques agrégées non identifiantes</strong>.</li></ul>
+<p><strong>Règles inviolables.</strong></p>
+<ul><li><strong>Aucune donnée du MGP-EAS/HS visible sur le MGP général ni ailleurs sur le site.</strong></li><li>Accès aux contenus strictement limité au <strong>Spécialiste VBG/EAS</strong> de l'UGPTN et aux prestataires habilités.</li><li><strong>Pas d'intelligence artificielle générative</strong> sur ces contenus.</li><li><strong>Pas d'export, pas de copie, pas d'impression</strong> — visualisation à l'écran uniquement.</li><li>Double piste d'audit (qui consulte, quand, combien de temps).</li><li>Référencement vers les services sous <strong>24 heures</strong> ; notification UGPTN-MPTN sous 24 heures.</li></ul>
+<p><strong>Fondement.</strong> Risque EAS/HS Substantiel ; règles confidentielles du projet. <strong>Dépendances.</strong> F6. <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<div class="pagebreak"></div>
+<h3>F5 — Avis de marchés publics</h3>
+<p><strong>Objectif.</strong> Garantir la concurrence ouverte et la transparence de la passation, conformément aux Règlements de Passation des Marchés de la Banque mondiale (février 2025).</p>
+<p><strong>Contenus.</strong></p>
+<ul><li>Publication des <strong>avis</strong> : avis à manifestation d'intérêt (AMI), appels d'offres (AOI / AON), demandes de cotation, marchés de gré à gré justifiés.</li><li><strong>Calendrier prévisionnel</strong> issu du Plan de Passation des Marchés (PPM, glissant sur 18 mois).</li><li><strong>Résultats d'attribution</strong> publiés (transparence post-attribution).</li><li>Documents téléchargeables (DAO/RFP) le cas échéant.</li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li>Cohérence avec STEP (l'outil de suivi de la Banque mondiale reste la référence des statuts et des seuils).</li><li>Affichage de la méthode (AOI/AON/SFQC/SBQ/etc.) et du type de revue.</li><li>Le dépôt d'offres lui-même relève de l'<strong>espace soumissionnaire authentifié</strong> (Vague 2, F12).</li></ul>
+<p><strong>Fondement.</strong> Règlements BM 2025 ; PPSD ; PPM. <strong>Dépendances.</strong> F9 (renvoi soumissionnaire). <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<h3>F6 — Socle multilingue et accessibilité</h3>
+<p><strong>Objectif.</strong> Rendre le site utilisable par l'ensemble de la population, sur tout terminal et dans des conditions de connectivité contraintes.</p>
+<p><strong>Contenus et exigences.</strong></p>
+<ul><li><strong>6 langues</strong> : Français (par défaut), Anglais, Lingala, Swahili, Tshiluba, Kikongo — sélecteur visible.</li><li><strong>Accessibilité WCAG 2.1 niveau AA</strong> : navigation clavier, contrastes, compatibilité lecteurs d'écran, textes alternatifs.</li><li><strong>Responsive</strong> et <strong>version allégée faible débit</strong> (images optimisées, mode économe).</li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li>Le contenu réglementaire (MGP, sécurité) doit être disponible au minimum en FR + langues locales.</li><li>Pas de dépendance bloquante à des polices ou scripts externes pour les fonctions critiques (MGP).</li></ul>
+<p><strong>Fondement.</strong> MEP (langues) ; standard administration. <strong>Dépendances.</strong> Transverse (sous-tend F1–F9). <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<div class="pagebreak"></div>
+<h3>F7 — Actualités &amp; communiqués</h3>
+<p><strong>Objectif.</strong> Informer en continu les parties prenantes de l'avancement du projet et des décisions publiques.</p>
+<p><strong>Contenus.</strong></p>
+<ul><li>Fil d'actualités, communiqués officiels, comptes rendus publics d'événements (ateliers, missions de supervision, sessions COPIL/CTP dans leur version non confidentielle).</li><li>Agenda des événements et consultations publiques à venir.</li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li>Ton institutionnel, factuel ; pas de contenu nominatif sensible.</li><li>Chaque communiqué horodaté et archivé.</li></ul>
+<p><strong>Fondement.</strong> Mobilisation des parties prenantes (PMPP). <strong>Dépendances.</strong> F6. <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<h3>F8 — Contact &amp; points focaux provinciaux + carte</h3>
+<p><strong>Objectif.</strong> Permettre à tout usager d'identifier le bon interlocuteur, y compris en province, et de localiser l'action du projet.</p>
+<p><strong>Contenus.</strong></p>
+<ul><li>Page contact (UGPTN, adresses, numéro vert MGP, e-mail).</li><li><strong>Annuaire des points focaux provinciaux</strong> et des comités territoriaux/locaux du MGP.</li><li><strong>Carte interactive des 26 provinces</strong>, avec mise en avant des <strong>10 provinces prioritaires CPF</strong> (Kinshasa, Kwilu, Kongo Central, Kasaï, Kasaï Central, Kasaï Oriental, Nord-Kivu, Sud-Kivu, Ituri, Lomami).</li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li>Le numéro vert MGP doit être visible et fonctionnel (lien avec F3).</li><li>La carte doit rester utilisable en faible débit (fallback liste).</li></ul>
+<p><strong>Fondement.</strong> Ancrage territorial ; MGP ; couverture géographique. <strong>Dépendances.</strong> F3, F6. <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<h3>F9 — Passerelle de connexion vers la plateforme</h3>
+<p><strong>Objectif.</strong> Offrir un point d'entrée unique et sécurisé vers les espaces métiers authentifiés.</p>
+<p><strong>Contenus.</strong></p>
+<ul><li>Bouton <strong>« Se connecter »</strong> présent sur tout le site.</li><li>Authentification puis <strong>onboarding</strong> redirigeant chaque profil vers sa page d'accueil : UGPTN → cockpit ; MDA → tableau de bord ; Partenaire → espace partenaire ; Bailleur → portefeuille ; Soumissionnaire → marketplace ; SBP → mon programme ; Auditeur → lecture seule ; Gouvernance → sessions.</li></ul>
+<p><strong>Règles et contraintes.</strong></p>
+<ul><li><strong>RBAC dès l'entrée</strong> : un bailleur ne rédige jamais de TDR ; un auditeur est en lecture seule ; les espaces COPIL et CTP sont cloisonnés ; un bénéficiaire SBP ne voit pas les données d'un autre.</li><li>Aucune donnée métier sensible exposée avant authentification.</li></ul>
+<p><strong>Fondement.</strong> Architecture multi-profils ; règles RBAC. <strong>Dépendances.</strong> Plateforme métier. <strong>Priorité.</strong> MUST.</p>
+<hr/>
+<div class="pagebreak"></div>
+<h2>7. Fonctionnalités des vagues 2 et 3 (rappel)</h2>
+<p>Pour mémoire, hors fonctionnalités premières :</p>
+<p><strong>Vague 2 (SHOULD).</strong></p>
+<ul><li><strong>F10</strong> — Tableau de bord de résultats public interactif (indicateurs ODP et intermédiaires, désagrégation genre).</li><li><strong>F11</strong> — Espace partenaires et consultations PMPP (co-construction, dépôt de commentaires).</li><li><strong>F12</strong> — Espace soumissionnaire authentifié (marketplace, dépôt d'offres, contrats, paiements, KYC).</li><li><strong>F13</strong> — Recrutements et avis à consultants (personnel UGPTN, CI, firmes).</li><li><strong>F14</strong> — Espace investisseurs / PPP (mobilisation des 165 M USD de capitaux privés).</li></ul>
+<p><strong>Vague 3 (COULD).</strong></p>
+<ul><li><strong>F15</strong> — Newsletter et abonnements thématiques.</li><li><strong>F16</strong> — Open data / API de résultats.</li></ul>
+<hr/>
+<h2>8. Exigences non fonctionnelles</h2>
+<table>
+<thead><tr><th>Domaine</th><th>Exigence</th></tr></thead>
+<tbody><tr><td><strong>Sécurité</strong></td><td>HTTPS systématique ; protection des données conforme au PMPP ; compartimentage strict du canal EAS/HS ; pistes d'audit</td></tr><tr><td><strong>Confidentialité</strong></td><td>Cloisonnement absolu MGP général / MGP-EAS/HS ; pas d'IA générative sur EAS/HS ; pas d'export des contenus confidentiels</td></tr><tr><td><strong>Performance</strong></td><td>Temps de chargement maîtrisé ; version allégée faible débit ; haute disponibilité du formulaire MGP et du numéro vert</td></tr><tr><td><strong>Accessibilité</strong></td><td>WCAG 2.1 AA ; navigation clavier ; lecteurs d'écran</td></tr><tr><td><strong>Compatibilité</strong></td><td>Responsive (mobile prioritaire) ; navigateurs courants</td></tr><tr><td><strong>Design</strong></td><td>IBM Carbon v11, IBM Plex, radius 0, échelle d'espacement 8 px, sobriété institutionnelle</td></tr><tr><td><strong>Référencement / recherche</strong></td><td>Moteur de recherche interne ; SEO de base ; FAQ</td></tr><tr><td><strong>Hébergement</strong></td><td>Infrastructure résiliente ; sauvegardes ; plan de continuité</td></tr><tr><td><strong>Conformité</strong></td><td>Politique d'accès à l'information de la Banque mondiale ; alignement MEP</td></tr></tbody></table>
+<hr/>
+<div class="pagebreak"></div>
+<h2>9. Arborescence du site</h2>
+<p>``` Accueil ├── Le Projet │   ├── Objectif &amp; approche IDEA │   ├── Les 5 composantes │   └── Financement (IDA / AFD / capitaux privés) ├── L'UGPTN │   ├── Mandat &amp; arrêté de création │   ├── Organisation (21 sous-rôles / 5 pôles) │   └── Gouvernance (COPIL / CTP) ├── Transparence │   ├── Documents (MEP, PPSD, CGES, CPR, PPA, PMPP, PGMO, PEES) │   ├── Audits publics │   └── Synthèses financières (RFI) ├── Marchés │   ├── Avis (AMI / AOI / AON / cotation) │   ├── Calendrier (PPM) │   └── Attributions ├── Actualités &amp; Événements ├── Plaintes &amp; MGP │   ├── Canal général (formulaire · numéro vert · suivi) │   └── Canal confidentiel EAS/HS  ← cloisonné ├── Provinces (carte · points focaux) ├── Contact └── [Se connecter] → Plateforme (8 espaces authentifiés) ```</p>
+<hr/>
+<h2>10. Feuille de route de déploiement</h2>
+<table>
+<thead><tr><th>Étape</th><th>Période indicative</th><th>Contenu</th></tr></thead>
+<tbody><tr><td><strong>Vague 1 — Fonctionnalités premières</strong></td><td>2026 — 1er semestre</td><td>F1 à F9 : vitrine, transparence, MGP (2 canaux), avis de marchés, multilingue/accessibilité, actualités, contact/carte, passerelle</td></tr><tr><td><strong>Vague 2 — Valeur ajoutée</strong></td><td>2026 — 2nd semestre</td><td>F10 à F14 : résultats publics, partenaires/consultations, soumissionnaire, recrutements, investisseurs</td></tr><tr><td><strong>Vague 3 — Enrichissement</strong></td><td>2027 et au-delà</td><td>F15 à F16 : newsletter, open data/API</td></tr></tbody></table>
+<p><strong>Priorité d'exécution au sein de la Vague 1.</strong> Les briques les plus contraintes réglementairement sont à livrer en premier : <strong>F2 (transparence documentaire)</strong>, <strong>F3 (MGP général)</strong> et <strong>F4 (MGP-EAS/HS)</strong>. Le <strong>socle F6 (multilingue/accessibilité)</strong> est transverse et conditionne les autres.</p>
+<hr/>
+<div class="pagebreak"></div>
+<h2>11. Annexes</h2>
+<h3>Annexe A — Correspondance fonctionnalité / fondement</h3>
+<table>
+<thead><tr><th>Réf</th><th>Fonctionnalité</th><th>Fondement principal</th></tr></thead>
+<tbody><tr><td>F1</td><td>Vitrine institutionnelle</td><td>MEP, données projet</td></tr><tr><td>F2</td><td>Transparence documentaire</td><td>ESF / NES 10 (divulgation)</td></tr><tr><td>F3</td><td>MGP général</td><td>Indicateur ODP (100 % ≤ 30 j)</td></tr><tr><td>F4</td><td>MGP-EAS/HS</td><td>Risque EAS/HS Substantiel</td></tr><tr><td>F5</td><td>Avis de marchés</td><td>Règlements BM février 2025 / PPSD</td></tr><tr><td>F6</td><td>Multilingue &amp; accessibilité</td><td>MEP (6 langues), standard administration</td></tr><tr><td>F7</td><td>Actualités</td><td>PMPP (mobilisation parties prenantes)</td></tr><tr><td>F8</td><td>Contact &amp; provinces</td><td>Couverture 26 provinces, MGP territorial</td></tr><tr><td>F9</td><td>Passerelle de connexion</td><td>Architecture 8 profils, RBAC</td></tr></tbody></table>
+<h3>Annexe B — Glossaire des sigles utilisés</h3>
+<ul><li><strong>AMI</strong> — Avis à Manifestation d'Intérêt</li><li><strong>AOI / AON</strong> — Appel d'Offres International / National</li><li><strong>CGES</strong> — Cadre de Gestion Environnementale et Sociale</li><li><strong>CPF</strong> — Cadre de Partenariat-Pays</li><li><strong>CPR</strong> — Cadre de Politique de Réinstallation</li><li><strong>EAS/HS</strong> — Exploitation et Abus Sexuels / Harcèlement Sexuel</li><li><strong>ESF</strong> — Environmental and Social Framework (Cadre E&amp;S de la Banque mondiale)</li><li><strong>MGP</strong> — Mécanisme de Gestion des Plaintes</li><li><strong>NES</strong> — Normes Environnementales et Sociales</li><li><strong>ODP</strong> — Objectif de Développement du Projet</li><li><strong>PEES</strong> — Plan d'Engagement Environnemental et Social</li><li><strong>PGMO</strong> — Procédures de Gestion de la Main d'Œuvre</li><li><strong>PMPP</strong> — Plan de Mobilisation des Parties Prenantes</li><li><strong>PPA</strong> — Plan en Faveur des Populations Autochtones</li><li><strong>PPM</strong> — Plan de Passation des Marchés</li><li><strong>PPSD</strong> — Stratégie de Passation des Marchés pour le Développement du Projet</li><li><strong>RBAC</strong> — Contrôle d'accès basé sur les rôles</li><li><strong>RFI</strong> — Rapport Financier Intermédiaire</li><li><strong>SBP</strong> — Subvention Basée sur la Performance</li><li><strong>STEP</strong> — Systematic Tracking of Exchanges in Procurement</li><li><strong>UGPTN</strong> — Unité de Gestion du Projet de Transformation Numérique</li><li><strong>VBG</strong> — Violences Basées sur le Genre</li><li><strong>WCAG</strong> — Web Content Accessibility Guidelines</li></ul>
+<hr/>
+<p><em>Document de cadrage fonctionnel établi à partir des données institutionnelles officielles du PTN-RDC et alignées sur le Manuel d'Exécution du Projet du 23 juin 2025.</em></p>
+<p><em>Kinshasa — 2026</em></p>
+</div>
+</body>
+</html>

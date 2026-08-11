@@ -1,0 +1,108 @@
+/* =====================================================
+   PTN-RDC · Tokens Carbon (g10) — design system global
+   ===================================================== */
+:root {
+  --c-white: #ffffff;
+  --c-bg: #f4f4f4;
+  --c-bg-2: #e8e8e8;
+  --c-border: #e0e0e0;
+  --c-border-strong: #8d8d8d;
+
+  --c-text: #161616;
+  --c-text-secondary: #525252;
+  --c-text-helper: #6f6f6f;
+  --c-text-placeholder: #a8a8a8;
+  --c-field: #f4f4f4;
+  --c-field-hover: #e8e8e8;
+
+  --c-blue-60: #0f62fe;
+  --c-blue-70: #0043ce;
+  --c-blue-10: #edf5ff;
+  --c-blue-20: #d0e2ff;
+
+  --c-green-50: #24a148;
+  --c-green-10: #defbe6;
+
+  --c-yellow-30: #f1c21b;
+  --c-yellow-10: #fcf4d6;
+
+  --c-red-60: #da1e28;
+  --c-red-10: #fff1f1;
+
+  --c-purple-60: #8a3ffc;
+  --c-purple-10: #f6f2ff;
+
+  --c-teal-60: #007d79;
+  --c-teal-10: #d9fbfb;
+
+  --c-magenta-60: #d02670;
+  --c-magenta-10: #fff0f7;
+
+  --c-dark: #161616;
+  --c-dark-2: #262626;
+  --c-dark-border: #393939;
+  --c-dark-text: #f4f4f4;
+  --c-dark-text-secondary: #c6c6c6;
+  --c-dark-text-tertiary: #8d8d8d;
+
+  /* Couleurs d'origine (workflow multi-acteurs) */
+  --c-origin-ugp: var(--c-blue-60);
+  --c-origin-partenaire: var(--c-teal-60);
+  --c-origin-bailleur: var(--c-purple-60);
+  --c-origin-sbp: var(--c-magenta-60);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ibm-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--c-text);
+  background: var(--c-white);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono,
+code,
+kbd,
+samp {
+  font-family: var(--font-ibm-mono), "IBM Plex Mono", monospace;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-blue-60);
+  outline-offset: 2px;
+}

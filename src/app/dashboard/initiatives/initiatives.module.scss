@@ -1,0 +1,458 @@
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 var(--ptn-space-04);
+  background: var(--ptn-accent);
+  color: #ffffff;
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--ptn-motion-fast-02);
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 var(--ptn-space-04);
+  background: transparent;
+  color: var(--cds-text-primary);
+  border: 1px solid var(--cds-border-strong);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--ptn-motion-fast-02);
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+}
+
+// ===== Table card =====
+.tableCard {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  flex-wrap: wrap;
+}
+
+.toolTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  margin: 0;
+}
+
+.toolMeta {
+  color: var(--cds-text-helper);
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: var(--cds-border-subtle);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.searchWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--ptn-space-03);
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-field);
+  min-width: 240px;
+  color: var(--cds-text-helper);
+
+  &:focus-within {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+.searchInput {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--cds-text-primary);
+}
+
+// ===== Filter pills =====
+.filterPills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-helper);
+  margin-right: 4px;
+}
+
+.pill {
+  background: transparent;
+  border: 1px solid var(--cds-border-subtle);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  cursor: pointer;
+  transition: all var(--ptn-motion-fast-02);
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    border-color: var(--cds-border-strong);
+  }
+}
+
+.pillActive {
+  background: var(--ptn-accent);
+  color: #ffffff;
+  border-color: var(--ptn-accent);
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+}
+
+// ===== Active chips bar =====
+.chipsBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--ptn-space-02) var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  background: var(--ptn-accent-surface);
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+}
+
+.chipsLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-helper);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--cds-layer);
+  font-size: 11px;
+  color: var(--cds-text-primary);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.chipX {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--cds-text-secondary);
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    color: var(--cds-text-primary);
+  }
+}
+
+.clearAll {
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ptn-accent);
+  cursor: pointer;
+  margin-left: auto;
+  text-decoration: underline;
+}
+
+// ===== Table =====
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--cds-layer-accent-01);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-secondary);
+  font-weight: 500;
+  text-align: left;
+  padding: var(--ptn-space-02) var(--ptn-space-03);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.table tbody td {
+  padding: var(--ptn-space-03);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  vertical-align: top;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row {
+  cursor: pointer;
+  transition: background var(--ptn-motion-fast-02);
+
+  &:hover td {
+    background: var(--cds-layer-hover);
+  }
+}
+
+.titleCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400;
+}
+
+.kebab {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--cds-text-secondary);
+  display: grid;
+  place-items: center;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    color: var(--cds-text-primary);
+  }
+}
+
+// ===== Pagination =====
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-02) var(--ptn-space-04);
+  border-top: 1px solid var(--cds-border-subtle);
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+}
+
+.pagInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagSelect {
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-field);
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--cds-text-primary);
+}
+
+.pagBtn {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid var(--cds-border-subtle);
+  cursor: pointer;
+  font: inherit;
+
+  &:hover:not(:disabled) {
+    background: var(--cds-layer-hover);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// ===== Drawer content =====
+.drawerContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-05);
+}
+
+.drawerDesc {
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.drawerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.kv {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ptn-space-03);
+  background: var(--cds-layer);
+}
+
+.kvLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+}
+
+.kvValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+}
+
+.drawerSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+}
+
+.drawerSectionTitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  font-weight: 500;
+  color: var(--cds-text-secondary);
+  margin: 0;
+  padding-bottom: var(--ptn-space-02);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.drawerEmpty {
+  font-size: 13px;
+  color: var(--cds-text-helper);
+  margin: 0;
+}
+
+.teamList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+}
+
+.teamItem {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+}
+
+.teamAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ptn-accent);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.teamName {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.teamRole {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+}
+
+.docList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.docItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ptn-space-02);
+  padding: var(--ptn-space-03);
+  background: var(--cds-layer);
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+
+    strong {
+      font-size: 12px;
+      color: var(--cds-text-primary);
+    }
+
+    span {
+      font-size: 11px;
+      color: var(--cds-text-helper);
+    }
+  }
+}

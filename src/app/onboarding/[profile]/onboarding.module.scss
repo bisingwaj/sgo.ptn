@@ -1,0 +1,133 @@
+// ============================================================
+// Onboarding — chrome interne et patterns réutilisables
+// ============================================================
+
+.headerIllu {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  background: var(--ptn-accent-surface);
+  flex-shrink: 0;
+}
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-04);
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ptn-space-04);
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sectionTitle {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-secondary);
+  font-weight: 500;
+  margin: 0 0 var(--ptn-space-02);
+  padding-bottom: var(--ptn-space-02);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.tilesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--ptn-space-03);
+}
+
+.rolesGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+// ===== Recap (étape finale) =====
+.recapWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-05);
+}
+
+.recapHero {
+  display: flex;
+  gap: var(--ptn-space-05);
+  align-items: center;
+  padding: var(--ptn-space-05);
+  background: var(--ptn-accent-surface);
+  border-left: 4px solid var(--ptn-accent);
+
+  > div {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 760px) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+.recapEyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--ptn-accent);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.recapTitle {
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.005em;
+  margin: 0 0 var(--ptn-space-02);
+  color: var(--cds-text-primary);
+}
+
+.recapText {
+  font-size: 14px;
+  color: var(--cds-text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.recapGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.recapCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--ptn-space-03);
+  background: var(--cds-layer);
+}
+
+.recapLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+}
+
+.recapValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  line-height: 1.4;
+}

@@ -1,0 +1,400 @@
+// Atomes Wizard
+
+// ===== Field =====
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+  width: 100%;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  letter-spacing: 0.16px;
+}
+
+.required {
+  color: var(--ptn-status-danger);
+  margin-left: 2px;
+}
+
+.inputWrap {
+  display: flex;
+  align-items: center;
+  background: var(--cds-field);
+  border: 0;
+  border-bottom: 1px solid var(--cds-border-strong);
+  transition: background var(--ptn-motion-fast-02);
+
+  &:hover {
+    background: var(--cds-field-hover);
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+.inputWrapError {
+  border-bottom-color: var(--ptn-status-danger);
+}
+
+.helper {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  line-height: 1.5;
+}
+
+.error {
+  font-size: 11px;
+  color: var(--ptn-status-danger);
+  line-height: 1.5;
+}
+
+// ===== Input / Textarea / Select =====
+.input,
+.select {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--cds-text-primary);
+  outline: 0;
+}
+
+.textarea {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--cds-text-primary);
+  outline: 0;
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+// ===== Segmented =====
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--cds-border-strong);
+}
+
+.segment {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--cds-border-strong);
+  padding: 9px 16px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--cds-text-secondary);
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+}
+
+.segmentActive {
+  background: var(--cds-text-primary) !important;
+  color: var(--cds-text-on-color) !important;
+}
+
+// ===== Selectable Tile =====
+.tile {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  padding: var(--ptn-space-04);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+  font: inherit;
+  color: inherit;
+  transition: all var(--ptn-motion-fast-02);
+
+  &:hover:not(:disabled) {
+    background: var(--cds-layer-hover);
+    border-color: var(--cds-border-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.tileSelected {
+  outline: 2px solid var(--ptn-accent);
+  outline-offset: -2px;
+  background: var(--cds-layer) !important;
+  position: relative;
+  z-index: 1;
+}
+
+.tileHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ptn-space-02);
+}
+
+.tileTag {
+  background: var(--ptn-accent-surface);
+  color: var(--ptn-accent);
+  font-size: 11px;
+  padding: 3px 8px;
+  letter-spacing: 0.16px;
+  font-weight: 500;
+}
+
+.tileCheck {
+  color: var(--ptn-accent);
+  display: grid;
+  place-items: center;
+}
+
+.tileTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  line-height: 1.3;
+}
+
+.tileDesc {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  line-height: 1.55;
+  flex: 1;
+}
+
+.tileMetrics {
+  display: flex;
+  gap: var(--ptn-space-02);
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+  margin-top: var(--ptn-space-02);
+  padding-top: var(--ptn-space-02);
+  border-top: 1px solid var(--cds-border-subtle);
+  flex-wrap: wrap;
+}
+
+// ===== CheckRow =====
+.checkRow {
+  display: flex;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+  cursor: pointer;
+  transition: all var(--ptn-motion-fast-02);
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+}
+
+.checkRowChecked {
+  background: var(--ptn-accent-surface) !important;
+  border-color: var(--ptn-accent);
+}
+
+.checkInput {
+  margin-top: 4px;
+  flex-shrink: 0;
+  accent-color: var(--ptn-accent);
+  width: 16px;
+  height: 16px;
+}
+
+.checkBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.checkHead {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+}
+
+.checkTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+}
+
+.checkLevel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  padding: 2px 6px;
+  font-weight: 500;
+}
+
+.level_blue {
+  background: #edf5ff;
+  color: #0043ce;
+}
+.level_green {
+  background: #defbe6;
+  color: #0e6027;
+}
+.level_yellow {
+  background: #fcf4d6;
+  color: #875b00;
+}
+.level_red {
+  background: #fff1f1;
+  color: #a2191f;
+}
+.level_gray {
+  background: #f4f4f4;
+  color: #525252;
+}
+
+.checkDesc {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  line-height: 1.55;
+}
+
+// ===== Signature =====
+.signature {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  padding: var(--ptn-space-04);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-03);
+}
+
+.signatureSigned {
+  background: var(--ptn-status-success-surface);
+  border-color: var(--ptn-status-success);
+}
+
+.signatureHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  flex-wrap: wrap;
+
+  strong {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.signedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ptn-status-success);
+  font-weight: 500;
+  background: rgba(36, 161, 72, 0.1);
+  padding: 3px 8px;
+}
+
+.signatureText {
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+  line-height: 1.55;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: var(--ptn-space-03);
+  background: var(--cds-background);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.signBtn {
+  align-self: flex-start;
+  background: var(--cds-text-primary);
+  color: var(--cds-text-on-color);
+  border: 0;
+  padding: 9px 16px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: #2a2a2a;
+  }
+}
+
+.signedFooter {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+  letter-spacing: 0.16px;
+}
+
+.signedTime {
+  color: var(--cds-text-helper);
+}
+
+// ===== Note =====
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  border-left: 3px solid;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.note_info {
+  background: var(--ptn-status-info-surface);
+  border-color: var(--ptn-status-info);
+  color: var(--cds-text-primary);
+}
+
+.note_warning {
+  background: var(--ptn-status-warning-surface);
+  border-color: var(--ptn-status-warning);
+  color: var(--cds-text-primary);
+}
+
+.note_danger {
+  background: var(--ptn-status-danger-surface);
+  border-color: var(--ptn-status-danger);
+  color: var(--cds-text-primary);
+}
+
+.note_ai {
+  background: var(--ptn-status-ai-surface);
+  border-color: var(--ptn-status-ai);
+  color: var(--cds-text-primary);
+}
+
+.noteTitle {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.noteBody {
+  color: var(--cds-text-secondary);
+}

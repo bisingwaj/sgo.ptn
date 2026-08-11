@@ -1,0 +1,286 @@
+// ============================================================
+// PTN-RDC · Styles globaux
+// Carbon DS v11 + tokens projet + reset minimal
+// ============================================================
+
+@use './tokens';
+
+// Carbon imports — modular pour réduire le bundle
+@use '@carbon/styles/scss/reset';
+@use '@carbon/styles/scss/themes';
+@use '@carbon/styles/scss/theme';
+@use '@carbon/styles/scss/type';
+@use '@carbon/styles/scss/breakpoint';
+@use '@carbon/styles/scss/spacing';
+@use '@carbon/styles/scss/motion';
+@use '@carbon/styles/scss/zone';
+
+// Carbon components — on importe seulement ceux qu'on utilise dès Vague 1
+@use '@carbon/styles/scss/components/button';
+@use '@carbon/styles/scss/components/tag';
+@use '@carbon/styles/scss/components/tile';
+@use '@carbon/styles/scss/components/notification';
+@use '@carbon/styles/scss/components/modal';
+@use '@carbon/styles/scss/components/text-input';
+@use '@carbon/styles/scss/components/dropdown';
+@use '@carbon/styles/scss/components/combo-box';
+@use '@carbon/styles/scss/components/checkbox';
+@use '@carbon/styles/scss/components/radio-button';
+@use '@carbon/styles/scss/components/file-uploader';
+@use '@carbon/styles/scss/components/loading';
+@use '@carbon/styles/scss/components/inline-loading';
+@use '@carbon/styles/scss/components/progress-indicator';
+@use '@carbon/styles/scss/components/data-table';
+@use '@carbon/styles/scss/components/pagination';
+@use '@carbon/styles/scss/components/tabs';
+@use '@carbon/styles/scss/components/breadcrumb';
+@use '@carbon/styles/scss/components/link';
+@use '@carbon/styles/scss/components/list';
+@use '@carbon/styles/scss/components/structured-list';
+@use '@carbon/styles/scss/components/tooltip';
+@use '@carbon/styles/scss/components/popover';
+@use '@carbon/styles/scss/components/select';
+@use '@carbon/styles/scss/components/text-area';
+@use '@carbon/styles/scss/components/toggle';
+@use '@carbon/styles/scss/components/skeleton-styles';
+
+// Reset minimal additionnel
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+  font-family: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code,
+kbd,
+samp,
+.ptn-mono {
+  font-family: var(--font-ibm-plex-mono), 'IBM Plex Mono', 'Fira Code', monospace;
+}
+
+// Focus visible — Carbon-style avec offset + ombre douce
+:focus-visible {
+  outline: 2px solid var(--ptn-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.18);
+}
+
+[data-carbon-theme='g100'] :focus-visible {
+  box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.32);
+}
+
+// Pas d'outline sans focus clavier
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+// Skip to content — apparaît au focus clavier
+.ptn-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 2000;
+  background: var(--ptn-accent);
+  color: #ffffff;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 120ms;
+
+  &:focus,
+  &:focus-visible {
+    transform: translateY(0);
+  }
+}
+
+.ptn-mono {
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+.ptn-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ============================================================
+// Boutons démo (cohérents avec ugp-shared) — utilisés par DemoButton
+// ============================================================
+
+.demoBtnPrimary,
+.demoBtnSecondary,
+.demoBtnGhost {
+  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 0;
+  transition: background 120ms;
+}
+
+.demoBtnPrimary {
+  background: var(--ptn-accent);
+  color: #ffffff;
+
+  &:hover { background: var(--ptn-accent-hover); }
+}
+
+.demoBtnSecondary {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+  font-size: 12px;
+  padding: 6px 12px;
+  min-height: 32px;
+
+  &:hover { background: var(--cds-background); }
+}
+
+.demoBtnGhost {
+  background: transparent;
+  color: var(--cds-text-primary);
+  padding: 6px 10px;
+  min-height: 32px;
+  font-size: 12px;
+
+  &:hover { background: var(--cds-layer-hover); }
+}
+
+// ============================================================
+// Print stylesheets — version imprimable / export PDF "STEP-ready"
+// ============================================================
+
+@media print {
+  // Masquer ce qui n'est pas utile à l'impression
+  [data-confidential='true'],
+  header[role='banner'],
+  aside[aria-label='Navigation principale'],
+  aside[aria-label='Aperçu initiative'],
+  [aria-label='Assistant procédural PTN-RDC'],
+  [aria-label="Suggestions IA"],
+  [role='status'],
+  [role='dialog'],
+  .ptn-skip-link {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #161616 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body {
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+  }
+
+  // Toute zone scrollable doit s'imprimer dans son intégralité
+  main,
+  [tabindex='-1'] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  // Liens : afficher l'URL en exposant
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 9pt;
+    color: #525252;
+    font-family: monospace;
+  }
+
+  a[href^='#']::after,
+  a[href^='mailto:']::after,
+  a[href^='tel:']::after {
+    content: '';
+  }
+
+  // Titres : éviter la coupure
+  h1,
+  h2,
+  h3,
+  h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+    color: #161616 !important;
+  }
+
+  // Tableaux : pas de coupure interne
+  table,
+  tr,
+  td,
+  th {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  // Cartes / sections : éviter la coupure
+  article,
+  section,
+  .card,
+  [class*='Card'],
+  [class*='card_'] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  // Filigrane / en-tête PDF
+  @page {
+    margin: 18mm 15mm 22mm 15mm;
+    size: A4 portrait;
+  }
+
+  // Marqueur en bas de chaque page
+  @page :first {
+    margin-top: 22mm;
+  }
+
+  // Tags / badges : forcer les couleurs (sinon ils sont vides en print)
+  [class*='tag_'],
+  [class*='Tag-module'] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  // Document editor (Tiptap) : nettoyage pour impression
+  [class*='RichEditor'] [class*='diffPanel'] {
+    display: none !important;
+  }
+}

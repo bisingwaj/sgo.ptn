@@ -1,0 +1,302 @@
+/**
+ * Mock data — initiatives MDA pour la Vague 2.
+ * Données plausibles alignées au MEP du 23 juin 2025.
+ */
+
+import type { TagTone } from "@/components/ui/Tag";
+
+export interface Initiative {
+  ref: string;
+  title: string;
+  component: { code: "C1" | "C2" | "C3" | "C4"; tone: TagTone; short: string };
+  ptbaCode: string;
+  status: { label: string; tone: TagTone };
+  /** Étape pipeline 1-6 : Initiative → TDR → Revue UGP → ANO → DAO → Évaluation → Attribution */
+  pipeline: { current: number; total: number; label: string };
+  amount: string;
+  amountUsd: number;
+  lastAction: string;
+  lastActor: string;
+  donor: "BM" | "AFD" | "BM+AFD";
+  riskES: "Faible" | "Modéré" | "Substantiel" | "Élevé";
+  ai: boolean;
+  province?: string;
+  description: string;
+  donors: { ida?: number; afd?: number };
+  team: Array<{ role: string; name: string; org: string }>;
+  documents: Array<{ name: string; type: string; size: string; date: string; status: "draft" | "signed" | "review" }>;
+  timeline: Array<{ stage: string; status: "done" | "current" | "future"; date?: string; actor?: string }>;
+}
+
+export const INITIATIVES: Initiative[] = [
+  {
+    ref: "PTN-2026-019",
+    title: "Plateforme nationale d'identité numérique",
+    component: { code: "C2", tone: "purple", short: "Fondations" },
+    ptbaCode: "A2.3.1",
+    status: { label: "ANO en attente", tone: "yellow" },
+    pipeline: { current: 4, total: 7, label: "ANO BM" },
+    amount: "8,7 M USD",
+    amountUsd: 8_700_000,
+    lastAction: "il y a 2h",
+    lastActor: "J. Mukendi",
+    donor: "BM",
+    riskES: "Substantiel",
+    ai: true,
+    province: "Kinshasa",
+    description:
+      "Mise en place d'une plateforme d'identité numérique inclusive pour la RDC, conforme aux standards ICAO 9303 et ID4D Banque mondiale. AMOA pour accompagner ANIE dans la conception et le déploiement.",
+    donors: { ida: 6.9, afd: 1.8 },
+    team: [
+      { role: "Référent UGP", name: "S. Mbuyi", org: "UGP-PTN" },
+      { role: "Coordinateur métier", name: "J. Mukendi", org: "ANIE" },
+      { role: "Spé E&S", name: "A. Mukasa", org: "UGP-PTN" },
+      { role: "TTL Banque mondiale", name: "L. Walker", org: "BM" },
+    ],
+    documents: [
+      { name: "TDR_Identite_Numerique_v2.pdf", type: "TDR", size: "2.4 Mo", date: "07 mai 2026", status: "review" },
+      { name: "Grille_SFQC_AMOA.xlsx", type: "Annexe", size: "180 Ko", date: "07 mai 2026", status: "draft" },
+      { name: "Note_cadrage_ANIE.pdf", type: "Note", size: "850 Ko", date: "21 avr. 2026", status: "signed" },
+      { name: "Decl_KYC_COI_template.docx", type: "Annexe", size: "120 Ko", date: "21 avr. 2026", status: "signed" },
+    ],
+    timeline: [
+      { stage: "Initiative créée", status: "done", date: "12 avr. 2026", actor: "J. Mukendi · ANIE" },
+      { stage: "TDR rédigé", status: "done", date: "21 avr. 2026", actor: "ANIE + UGP" },
+      { stage: "Revue UGP", status: "done", date: "07 mai 2026", actor: "S. Mbuyi · RPM UGP" },
+      { stage: "ANO Banque mondiale", status: "current", date: "En attente · J−4", actor: "TTL BM" },
+      { stage: "DAO", status: "future" },
+      { stage: "Évaluation des offres", status: "future" },
+      { stage: "Attribution", status: "future" },
+    ],
+  },
+  {
+    ref: "PTN-2026-021",
+    title: "Backbone fibre optique Goma-Bukavu",
+    component: { code: "C1", tone: "blue", short: "Accès" },
+    ptbaCode: "A1.4.2",
+    status: { label: "ANO en revue", tone: "yellow" },
+    pipeline: { current: 4, total: 7, label: "ANO BM" },
+    amount: "12,4 M USD",
+    amountUsd: 12_400_000,
+    lastAction: "hier",
+    lastActor: "M. Lufima",
+    donor: "BM+AFD",
+    riskES: "Substantiel",
+    ai: false,
+    province: "Sud-Kivu",
+    description:
+      "Déploiement de 180 km de fibre optique entre Goma et Bukavu, avec passage par Sake et Kavumu. Tracé sensible : zones partiellement minées, communautés Banyamulenge.",
+    donors: { ida: 9.8, afd: 2.6 },
+    team: [
+      { role: "Coordonnateur UGP", name: "P. Kayembe", org: "UGP-PTN" },
+      { role: "Spé E&S", name: "J. Bisimwa", org: "UGP-PTN" },
+      { role: "Spé VBG/EAS", name: "M. Lufima", org: "UGP-PTN" },
+      { role: "Bureau géotech", name: "Hassan Consult", org: "Externe" },
+      { role: "TTL BM", name: "L. Walker", org: "BM" },
+      { role: "AFD Référent", name: "C. Dubois", org: "AFD" },
+    ],
+    documents: [
+      { name: "TDR_Backbone_Fibre.pdf", type: "TDR", size: "3.8 Mo", date: "21 avr. 2026", status: "signed" },
+      { name: "EIES_initial_v1.pdf", type: "EIES", size: "12 Mo", date: "28 avr. 2026", status: "review" },
+      { name: "PGES_chantier.docx", type: "PGES", size: "1.2 Mo", date: "07 mai 2026", status: "draft" },
+    ],
+    timeline: [
+      { stage: "Initiative créée", status: "done", date: "12 mars 2026", actor: "Min. Numérique" },
+      { stage: "TDR rédigé", status: "done", date: "21 avr. 2026", actor: "UGP" },
+      { stage: "Revue UGP", status: "done", date: "28 avr. 2026", actor: "RPM UGP" },
+      { stage: "ANO Banque mondiale + AFD", status: "current", date: "En attente · J−9", actor: "TTL BM + AFD" },
+      { stage: "DAO", status: "future" },
+      { stage: "Évaluation", status: "future" },
+      { stage: "Attribution", status: "future" },
+    ],
+  },
+  {
+    ref: "PTN-2026-014",
+    title: "Étude PGES Centre de données Tier III",
+    component: { code: "C2", tone: "purple", short: "Fondations" },
+    ptbaCode: "A2.5.1",
+    status: { label: "Revue UGP", tone: "blue" },
+    pipeline: { current: 3, total: 7, label: "REVUE UGP" },
+    amount: "3,2 M USD",
+    amountUsd: 3_200_000,
+    lastAction: "2 jours",
+    lastActor: "ANIE",
+    donor: "AFD",
+    riskES: "Substantiel",
+    ai: false,
+    province: "Kinshasa",
+    description: "Étude PGES + EIES pour le futur centre de données gouvernemental Tier III.",
+    donors: { afd: 3.2 },
+    team: [
+      { role: "Coordinateur métier", name: "K. Mwamba", org: "ANIE" },
+      { role: "Spé E&S", name: "A. Mukasa", org: "UGP-PTN" },
+      { role: "AFD Spécialiste", name: "T. Lefevre", org: "AFD" },
+    ],
+    documents: [],
+    timeline: [
+      { stage: "Initiative créée", status: "done", date: "08 avr. 2026" },
+      { stage: "TDR rédigé", status: "done", date: "22 avr. 2026" },
+      { stage: "Revue UGP", status: "current" },
+      { stage: "ANO AFD", status: "future" },
+      { stage: "DAO", status: "future" },
+      { stage: "Évaluation", status: "future" },
+      { stage: "Attribution", status: "future" },
+    ],
+  },
+  {
+    ref: "PTN-2026-027",
+    title: "Hubs technologiques Lubumbashi & Goma",
+    component: { code: "C3", tone: "teal", short: "Compétences" },
+    ptbaCode: "A3.2.1",
+    status: { label: "Brouillon IA", tone: "purple" },
+    pipeline: { current: 2, total: 7, label: "TDR" },
+    amount: "5,6 M USD",
+    amountUsd: 5_600_000,
+    lastAction: "3 jours",
+    lastActor: "UGP",
+    donor: "BM",
+    riskES: "Modéré",
+    ai: true,
+    province: "Haut-Katanga",
+    description: "Création de 2 hubs technologiques dans le cadre de la composante 3.2 (innovation et entrepreneuriat numérique).",
+    donors: { ida: 5.6 },
+    team: [
+      { role: "Responsable C3", name: "F. Tshisekedi", org: "UGP-PTN" },
+      { role: "EG-SBP", name: "TRANSFORME", org: "UGP TRANSFORME" },
+    ],
+    documents: [],
+    timeline: [
+      { stage: "Initiative créée", status: "done", date: "30 avr. 2026" },
+      { stage: "TDR (brouillon IA)", status: "current", date: "05 mai 2026" },
+      { stage: "Revue UGP", status: "future" },
+      { stage: "ANO BM", status: "future" },
+      { stage: "DAO", status: "future" },
+      { stage: "Évaluation", status: "future" },
+      { stage: "Attribution", status: "future" },
+    ],
+  },
+  {
+    ref: "PTN-2026-009",
+    title: "SOC national cybersécurité",
+    component: { code: "C2", tone: "purple", short: "Fondations" },
+    ptbaCode: "A2.7.2",
+    status: { label: "ANO obtenu", tone: "green" },
+    pipeline: { current: 5, total: 7, label: "DAO" },
+    amount: "14,2 M USD",
+    amountUsd: 14_200_000,
+    lastAction: "5 jours",
+    lastActor: "TTL BM",
+    donor: "BM",
+    riskES: "Modéré",
+    ai: false,
+    province: "Kinshasa",
+    description: "Mise en place du Centre des Opérations de Sécurité (SOC) national, opéré par l'ANCY.",
+    donors: { ida: 14.2 },
+    team: [
+      { role: "Coord. ANCY", name: "M. Kasonga", org: "ANCY" },
+      { role: "Spé technique", name: "P. Diallo", org: "UGP-PTN" },
+      { role: "TTL BM", name: "L. Walker", org: "BM" },
+    ],
+    documents: [
+      { name: "DAO_SOC_v1.pdf", type: "DAO", size: "8.4 Mo", date: "03 mai 2026", status: "review" },
+    ],
+    timeline: [
+      { stage: "Initiative créée", status: "done", date: "10 fév. 2026" },
+      { stage: "TDR rédigé", status: "done", date: "01 mars 2026" },
+      { stage: "Revue UGP", status: "done", date: "15 mars 2026" },
+      { stage: "ANO BM (TDR)", status: "done", date: "29 mars 2026" },
+      { stage: "DAO publié", status: "current", date: "03 mai 2026" },
+      { stage: "Évaluation", status: "future" },
+      { stage: "Attribution", status: "future" },
+    ],
+  },
+  {
+    ref: "PTN-2026-031",
+    title: "Formation EESU 200 enseignants numériques",
+    component: { code: "C3", tone: "teal", short: "Compétences" },
+    ptbaCode: "A3.4.1",
+    status: { label: "Clarifications", tone: "red" },
+    pipeline: { current: 4, total: 7, label: "ANO AFD" },
+    amount: "1,9 M USD",
+    amountUsd: 1_900_000,
+    lastAction: "6 jours",
+    lastActor: "AFD",
+    donor: "AFD",
+    riskES: "Faible",
+    ai: false,
+    province: "Multi-provinces",
+    description: "Formation de 200 enseignants au numérique (cible : 30 % femmes), composante 3.1.",
+    donors: { afd: 1.9 },
+    team: [
+      { role: "Responsable MESU", name: "G. Tshisekedi", org: "MESU" },
+      { role: "EG-SBP", name: "PAAF", org: "UGP PAAF" },
+      { role: "AFD Référent", name: "C. Dubois", org: "AFD" },
+    ],
+    documents: [],
+    timeline: [
+      { stage: "Initiative créée", status: "done", date: "20 jan. 2026" },
+      { stage: "TDR rédigé", status: "done", date: "10 fév. 2026" },
+      { stage: "Revue UGP", status: "done", date: "01 mars 2026" },
+      { stage: "ANO AFD — Clarifications", status: "current", date: "02 mai 2026", actor: "AFD" },
+      { stage: "DAO", status: "future" },
+      { stage: "Évaluation", status: "future" },
+      { stage: "Attribution", status: "future" },
+    ],
+  },
+  {
+    ref: "PTN-2026-005",
+    title: "Modernisation registre des entreprises",
+    component: { code: "C2", tone: "purple", short: "Fondations" },
+    ptbaCode: "A2.2.3",
+    status: { label: "Attribué", tone: "green" },
+    pipeline: { current: 7, total: 7, label: "ATTRIBUTION" },
+    amount: "0,8 M USD",
+    amountUsd: 800_000,
+    lastAction: "1 sem",
+    lastActor: "UGP",
+    donor: "BM",
+    riskES: "Faible",
+    ai: false,
+    description: "Marché attribué — modernisation du registre national des entreprises.",
+    donors: { ida: 0.8 },
+    team: [],
+    documents: [],
+    timeline: [
+      { stage: "Initiative créée", status: "done" },
+      { stage: "TDR", status: "done" },
+      { stage: "Revue UGP", status: "done" },
+      { stage: "ANO BM", status: "done" },
+      { stage: "DAO", status: "done" },
+      { stage: "Évaluation", status: "done" },
+      { stage: "Attribué — Contrat signé", status: "current", date: "01 mai 2026" },
+    ],
+  },
+  {
+    ref: "PTN-2026-033",
+    title: "Atelier ID4Africa Abidjan 2026",
+    component: { code: "C4", tone: "green", short: "Coordination" },
+    ptbaCode: "A4.1.4",
+    status: { label: "Revue UGP", tone: "blue" },
+    pipeline: { current: 3, total: 7, label: "REVUE UGP" },
+    amount: "0,2 M USD",
+    amountUsd: 200_000,
+    lastAction: "10h",
+    lastActor: "KKO",
+    donor: "BM",
+    riskES: "Faible",
+    ai: false,
+    description: "Participation et organisation d'un atelier en marge du sommet ID4Africa Abidjan 2026.",
+    donors: { ida: 0.2 },
+    team: [],
+    documents: [],
+    timeline: [
+      { stage: "Initiative créée", status: "done" },
+      { stage: "TDR", status: "done" },
+      { stage: "Revue UGP", status: "current" },
+      { stage: "ANO BM", status: "future" },
+      { stage: "DAO", status: "future" },
+      { stage: "Évaluation", status: "future" },
+      { stage: "Attribution", status: "future" },
+    ],
+  },
+];

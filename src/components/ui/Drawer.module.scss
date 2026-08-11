@@ -1,0 +1,102 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 22, 22, 0.4);
+  z-index: var(--ptn-z-overlay);
+  animation: backdropFade var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  background: var(--cds-layer);
+  border-left: 1px solid var(--cds-border-subtle);
+  z-index: calc(var(--ptn-z-overlay) + 1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  animation: drawerSlide var(--ptn-motion-moderate-02) var(--ptn-motion-easing-entrance);
+}
+
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drawerSlide {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop, .drawer {
+    animation: none;
+  }
+}
+
+.head {
+  padding: var(--ptn-space-04) var(--ptn-space-05);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ptn-space-03);
+}
+
+.headMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--cds-text-primary);
+  line-height: 1.3;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--cds-text-helper);
+  margin-top: 4px;
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--cds-text-secondary);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    color: var(--cds-text-primary);
+  }
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ptn-space-04) var(--ptn-space-05);
+}
+
+.foot {
+  padding: var(--ptn-space-03) var(--ptn-space-05);
+  border-top: 1px solid var(--cds-border-subtle);
+  display: flex;
+  gap: var(--ptn-space-02);
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .drawer {
+    width: 100vw !important;
+    border-left: 0;
+  }
+}

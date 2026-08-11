@@ -1,0 +1,133 @@
+.wrap {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  border-top: 0;
+  padding: 56px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.wrapStandalone {
+  border-top: 1px solid var(--cds-border-subtle);
+}
+
+.icon {
+  width: 56px;
+  height: 56px;
+  background: var(--ptn-accent-light, #edf5ff);
+  color: var(--ptn-accent);
+  display: grid;
+  place-items: center;
+  margin-bottom: 6px;
+}
+
+.iconAi {
+  background: var(--ptn-status-ai-surface);
+  color: var(--ptn-status-ai);
+}
+
+.iconSuccess {
+  background: var(--ptn-status-success-surface);
+  color: var(--ptn-status-success);
+}
+
+.iconNeutral {
+  background: var(--cds-layer-accent-01);
+  color: var(--cds-text-helper);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+
+.description {
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 520px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btnPrimary {
+  background: var(--ptn-accent);
+  color: #fff;
+  border: 0;
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  min-height: 40px;
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+}
+
+.btnSecondary {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  min-height: 40px;
+
+  &:hover {
+    background: var(--cds-background);
+  }
+}
+
+.tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  text-align: left;
+  max-width: 480px;
+}
+
+.tip {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.tipIco {
+  color: var(--ptn-accent);
+  margin-top: 2px;
+}

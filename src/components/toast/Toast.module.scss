@@ -1,0 +1,129 @@
+.region {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 420px;
+}
+
+@media (max-width: 720px) {
+  .region {
+    top: 56px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+  }
+}
+
+.toast {
+  pointer-events: auto;
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  border-left-width: 3px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 320px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  animation: toastIn 220ms cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.toastExit {
+  animation: toastOut 200ms ease forwards;
+}
+
+@keyframes toastIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toastOut {
+  to { transform: translateX(20px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+  .toastExit { animation: none; opacity: 0; }
+}
+
+.toastSuccess { border-left-color: var(--ptn-status-success, #24a148); }
+.toastInfo { border-left-color: var(--ptn-accent, #0f62fe); }
+.toastWarning { border-left-color: var(--ptn-status-warning, #f1c21b); }
+.toastError { border-left-color: var(--ptn-status-danger, #da1e28); }
+.toastAi { border-left-color: var(--ptn-status-ai, #8a3ffc); }
+
+.icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.iconSuccess { color: var(--ptn-status-success); }
+.iconInfo { color: var(--ptn-accent); }
+.iconWarning { color: #8e6a00; }
+.iconError { color: var(--ptn-status-danger); }
+.iconAi { color: var(--ptn-status-ai); }
+
+.body {
+  min-width: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  line-height: 1.35;
+}
+
+.message {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.action {
+  background: transparent;
+  border: 0;
+  color: var(--ptn-accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.close {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--cds-text-helper);
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--cds-text-primary);
+  }
+}

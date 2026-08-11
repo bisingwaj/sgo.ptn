@@ -1,0 +1,142 @@
+.dt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.dt thead th {
+  background: var(--c-bg);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--c-text-secondary);
+  padding: 8px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.dt tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.sampleRow {
+  display: grid;
+  grid-template-columns: 1fr 12px auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 12px;
+}
+
+.sampleRow:last-child {
+  border-bottom: 0;
+}
+
+.sampleLabel {
+  color: var(--c-text);
+}
+
+.sampleDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.riskHi {
+  background: var(--c-red-60);
+}
+
+.riskMid {
+  background: var(--c-yellow-30);
+}
+
+.riskLow {
+  background: var(--c-green-50);
+}
+
+.sampleN {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.constRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.constRow:last-child {
+  border-bottom: 0;
+}
+
+.constLabel {
+  font-size: 12px;
+}
+
+.pisteRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.pisteRow:last-child {
+  border-bottom: 0;
+}
+
+.hash {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+  background: var(--c-bg);
+  padding: 2px 6px;
+}
+
+.tpmRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--c-border);
+  gap: 12px;
+}
+
+.tpmRow:last-child {
+  border-bottom: 0;
+}
+
+.repRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.repRow:last-child {
+  border-bottom: 0;
+}
+
+.garanties {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.garLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.garLine:last-child {
+  border-bottom: 0;
+}

@@ -1,0 +1,173 @@
+.aoRow {
+  display: flex;
+  gap: 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--c-border);
+  align-items: flex-start;
+}
+
+.aoRow:last-child {
+  border-bottom: 0;
+}
+
+.aoRow:hover {
+  background: var(--c-bg);
+}
+
+.aoLeft {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aoTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text);
+  line-height: 1.3;
+}
+
+.aoTags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.aoRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.aoMontant {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font-ibm-mono), monospace;
+}
+
+.aoDeadline {
+  font-size: 11px;
+  color: var(--c-text-helper);
+}
+
+.subRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--c-border);
+  gap: 12px;
+}
+
+.subRow:last-child {
+  border-bottom: 0;
+}
+
+.subTitle {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.subRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.contRow:last-child {
+  border-bottom: 0;
+}
+
+.contRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.payRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.sbpBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sbpTitle {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sbpList {
+  list-style: none;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--c-text);
+}
+
+.sbpList li {
+  padding-left: 12px;
+  position: relative;
+}
+
+.sbpList li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  background: var(--c-magenta-60);
+}
+
+.notifRow {
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+  align-items: flex-start;
+}
+
+.notifRow:last-child {
+  border-bottom: 0;
+}
+
+.notifRow > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+}
+
+.notifOk {
+  background: var(--c-green-50);
+}
+
+.notifWarn {
+  background: var(--c-yellow-30);
+}
+
+.notifInfo {
+  background: var(--c-blue-60);
+}

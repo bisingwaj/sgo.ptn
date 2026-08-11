@@ -1,0 +1,186 @@
+.wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 24px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--c-white);
+  border: 1px solid var(--c-border);
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--c-text-helper);
+  margin-right: 4px;
+}
+
+.filterChip {
+  background: transparent;
+  border: 1px solid var(--c-border);
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.filterChip:hover {
+  background: var(--c-bg);
+}
+
+.filterActive {
+  background: var(--c-text);
+  color: var(--c-white);
+  border-color: var(--c-text);
+}
+
+/* Gantt */
+.gantt {
+  background: var(--c-white);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+}
+
+.ganttHead {
+  display: grid;
+  grid-template-columns: 320px 60px 60px 80px 110px 1fr;
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-border);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--c-text-secondary);
+}
+
+.ganttHead > div {
+  padding: 10px 12px;
+  border-right: 1px solid var(--c-border);
+}
+
+.ganttHead > div:last-child {
+  border-right: 0;
+}
+
+.ganttTimeline {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 !important;
+}
+
+.ganttQ {
+  padding: 10px 12px;
+  border-right: 1px solid var(--c-border);
+}
+
+.ganttQ:last-child {
+  border-right: 0;
+}
+
+.ganttBody {
+  max-height: 480px;
+  overflow: auto;
+}
+
+.ganttRow {
+  display: grid;
+  grid-template-columns: 320px 60px 60px 80px 110px 1fr;
+  border-bottom: 1px solid var(--c-border);
+  align-items: center;
+  font-size: 12px;
+}
+
+.ganttRow:hover {
+  background: var(--c-bg);
+}
+
+.ganttRow > div {
+  padding: 10px 12px;
+  border-right: 1px solid var(--c-border);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ganttRow > div:last-child {
+  border-right: 0;
+}
+
+.ganttCol1 {
+  flex-direction: row;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  padding: 12px !important;
+}
+
+.gMarche {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.gMeta {
+  font-size: 10px;
+  color: var(--c-text-helper);
+}
+
+.ganttQCell {
+  border-right: 1px solid var(--c-border);
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.ganttQCell:last-child {
+  border-right: 0;
+}
+
+.ganttBar {
+  height: 18px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: white;
+  font-weight: 500;
+  min-width: 24px;
+}
+
+.ganttDone {
+  background: var(--c-green-50);
+}
+
+.ganttActive {
+  background: var(--c-blue-60);
+}

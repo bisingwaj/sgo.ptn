@@ -1,0 +1,215 @@
+/* Scoring card — cas d'usage IA #7 (matching offres ↔ critères). */
+
+.card {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  border-left: 2px solid var(--ptn-status-ai);
+}
+
+.head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-primary);
+  font-weight: 500;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  background: var(--ptn-status-ai);
+  color: #fff;
+  font-size: 9px;
+  padding: 1px 6px;
+  font-family: var(--font-ibm-plex-sans);
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.body {
+  padding: 14px 16px;
+}
+
+.intro {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.criteriaList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+  margin-bottom: 14px;
+}
+
+.criterion {
+  background: var(--cds-layer);
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr 80px auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.critLabel {
+  font-size: 12px;
+  color: var(--cds-text-primary);
+}
+
+.critWeight {
+  font-size: 11px;
+  font-family: var(--font-ibm-plex-mono);
+  color: var(--cds-text-helper);
+  text-align: right;
+}
+
+.critScore {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 140px;
+}
+
+.critBar {
+  flex: 1;
+  height: 4px;
+  background: var(--cds-border-subtle);
+  overflow: hidden;
+}
+
+.critBar i {
+  display: block;
+  height: 100%;
+  background: var(--ptn-accent);
+}
+
+.critBarHigh i { background: var(--ptn-status-success); }
+.critBarLow i { background: var(--ptn-status-warning); }
+
+.critPct {
+  font-size: 11px;
+  font-family: var(--font-ibm-plex-mono);
+  color: var(--cds-text-primary);
+  font-weight: 500;
+  min-width: 36px;
+  text-align: right;
+}
+
+.totalRow {
+  background: var(--cds-layer-accent-01);
+  padding: 12px 12px;
+  display: grid;
+  grid-template-columns: 1fr 80px 140px;
+  gap: 12px;
+  align-items: center;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.offers {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+  margin-bottom: 12px;
+}
+
+.offerRow {
+  background: var(--cds-layer);
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.offerRank {
+  width: 22px;
+  height: 22px;
+  background: var(--cds-layer-accent-01);
+  color: var(--cds-text-helper);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.offerRankTop {
+  background: var(--ptn-status-success);
+  color: #fff;
+}
+
+.offerName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.offerSub {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono);
+  margin-top: 2px;
+}
+
+.offerPrice {
+  font-size: 12px;
+  font-family: var(--font-ibm-plex-mono);
+  color: var(--cds-text-primary);
+  text-align: right;
+}
+
+.offerScore {
+  font-size: 14px;
+  font-family: var(--font-ibm-plex-mono);
+  font-weight: 500;
+  text-align: right;
+  width: 56px;
+}
+
+.offerScoreTop { color: var(--ptn-status-success); }
+
+.justification {
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+  line-height: 1.5;
+  padding: 10px 12px;
+  background: var(--ptn-status-ai-surface);
+  border-left: 2px solid var(--ptn-status-ai);
+  font-style: italic;
+}
+
+.foot {
+  padding: 8px 16px;
+  border-top: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer-accent-01);
+  font-size: 10px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}

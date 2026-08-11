@@ -1,0 +1,42 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compact .label {
+  display: none;
+}
+
+.bars {
+  display: flex;
+  gap: 2px;
+}
+
+.bar {
+  flex: 1;
+  height: 4px;
+  min-width: 8px;
+}
+
+.bar_done {
+  background: var(--ptn-status-success);
+}
+
+.bar_current {
+  background: var(--ptn-accent);
+}
+
+.bar_future {
+  background: var(--cds-border-subtle);
+}
+
+.label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

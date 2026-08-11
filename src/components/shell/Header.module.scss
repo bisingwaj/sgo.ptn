@@ -1,0 +1,281 @@
+.header {
+  height: 48px;
+  background: #161616;
+  color: #f4f4f4;
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 var(--ptn-space-04);
+  gap: var(--ptn-space-03);
+  flex-shrink: 0;
+  border-bottom: 1px solid #393939;
+  position: relative;
+  z-index: 50;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  text-decoration: none;
+  color: #f4f4f4;
+  flex-shrink: 0;
+  padding: 0 8px 0 0;
+}
+
+.brandLogo {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #f4f4f4;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.brandName {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.brandPipe {
+  color: #6f6f6f;
+  font-weight: 300;
+}
+
+.brandTag {
+  color: #c6c6c6;
+  font-size: 13px;
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  margin-left: var(--ptn-space-04);
+  color: #c6c6c6;
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.crumbItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  white-space: nowrap;
+
+  a {
+    color: #c6c6c6;
+    text-decoration: none;
+    &:hover {
+      color: #f4f4f4;
+      text-decoration: underline;
+    }
+  }
+}
+
+.crumbSep {
+  color: #525252;
+}
+
+.crumbCurrent {
+  color: #f4f4f4;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.searchWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #393939;
+  padding: 0 8px;
+  height: 32px;
+  color: #c6c6c6;
+  width: clamp(180px, 26vw, 320px);
+  flex-shrink: 1;
+
+  &:focus-within {
+    border-bottom-color: var(--ptn-accent);
+  }
+}
+
+.search {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: #f4f4f4;
+  font: inherit;
+  font-size: 13px;
+  outline: 0;
+
+  &::placeholder {
+    color: #6f6f6f;
+  }
+}
+
+.kbd {
+  font-size: 10px;
+  font-family: var(--font-ibm-plex-mono), monospace;
+  color: #6f6f6f;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 5px;
+  border-radius: 2px;
+}
+
+.iconBtn {
+  width: 36px;
+  height: 48px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: #f4f4f4;
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex-shrink: 0;
+
+  &:hover {
+    background: #262626;
+  }
+}
+
+.iconBadge {
+  position: absolute;
+  top: 12px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ptn-accent);
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: #393939;
+  margin: 0 4px;
+}
+
+.profileBlock {
+  position: relative;
+}
+
+.profileBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: #f4f4f4;
+  height: 48px;
+  padding: 0 var(--ptn-space-03);
+  font: inherit;
+
+  &:hover {
+    background: #262626;
+  }
+}
+
+.profileDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.profileMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.profileLabel {
+  color: #f4f4f4;
+  font-weight: 500;
+}
+
+.profileMicro {
+  color: #6f6f6f;
+  font-size: 10px;
+}
+
+.profileMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
+  border: 1px solid var(--cds-border-subtle);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  min-width: 280px;
+  z-index: 100;
+}
+
+.profileMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  width: 100%;
+  padding: var(--ptn-space-02) var(--ptn-space-03);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--cds-text-primary);
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  small {
+    font-size: 11px;
+    color: var(--cds-text-helper);
+  }
+}
+
+.profileMenuItemActive {
+  background: var(--ptn-accent-surface);
+
+  strong {
+    color: var(--ptn-accent);
+  }
+}
+
+@media (max-width: 1100px) {
+  .brandTag,
+  .brandPipe,
+  .crumb {
+    display: none;
+  }
+  .searchWrap {
+    width: 160px;
+  }
+  .profileMicro {
+    display: none;
+  }
+}

@@ -1,0 +1,161 @@
+// ============================================================
+// PTN-RDC · Design Tokens
+// Fondés sur IBM Carbon Design System v11
+// Thèmes : g10 (clair, défaut) + g100 (sombre)
+// + extensions profil-aware (8 profils)
+// ============================================================
+
+@use '@carbon/styles/scss/themes' as *;
+@use '@carbon/styles/scss/theme' as *;
+
+// ----- Profile accent palette (8 profiles) -----
+// Variables CSS pures (overridées par <ProfileTheme>)
+:root {
+  // Profile : default = UGP (Blue 60)
+  --ptn-accent: #0f62fe;
+  --ptn-accent-hover: #0043ce;
+  --ptn-accent-active: #002d9c;
+  --ptn-accent-surface: #edf5ff;
+  --ptn-accent-on: #ffffff;
+
+  // Status (universal, never overridden by profile)
+  --ptn-status-success: #24a148;
+  --ptn-status-success-surface: #defbe6;
+  --ptn-status-success-text: #0e6027;
+  --ptn-status-warning: #f1c21b;
+  --ptn-status-warning-surface: #fcf4d6;
+  --ptn-status-warning-text: #8e6a00;
+  --ptn-status-danger: #da1e28;
+  --ptn-status-danger-surface: #fff1f1;
+  --ptn-status-danger-text: #750e13;
+  --ptn-status-info: #0f62fe;
+  --ptn-status-info-surface: #edf5ff;
+  --ptn-status-info-text: #0043ce;
+  --ptn-status-ai: #8a3ffc;
+  --ptn-status-ai-surface: #f6f2ff;
+  --ptn-status-ai-text: #6929c4;
+
+  // Spacing scale (8px base)
+  --ptn-space-01: 4px;
+  --ptn-space-02: 8px;
+  --ptn-space-03: 12px;
+  --ptn-space-04: 16px;
+  --ptn-space-05: 24px;
+  --ptn-space-06: 32px;
+  --ptn-space-07: 48px;
+  --ptn-space-08: 64px;
+  --ptn-space-09: 96px;
+  --ptn-space-10: 160px;
+
+  // Layout
+  --ptn-shell-header-h: 48px;
+  --ptn-shell-sidenav-w: 224px;
+  --ptn-shell-sidepanel-w: 320px;
+  --ptn-shell-sidenav-collapsed-w: 56px;
+
+  // Motion (Carbon Productive)
+  --ptn-motion-fast-01: 70ms;
+  --ptn-motion-fast-02: 110ms;
+  --ptn-motion-moderate-01: 150ms;
+  --ptn-motion-moderate-02: 240ms;
+  --ptn-motion-slow-01: 400ms;
+  --ptn-motion-slow-02: 700ms;
+  --ptn-motion-easing-productive: cubic-bezier(0.2, 0, 0.38, 0.9);
+  --ptn-motion-easing-expressive: cubic-bezier(0.4, 0.14, 0.3, 1);
+  --ptn-motion-easing-entrance: cubic-bezier(0, 0, 0.38, 0.9);
+  --ptn-motion-easing-exit: cubic-bezier(0.2, 0, 1, 0.9);
+
+  // Z-index scale
+  --ptn-z-base: 0;
+  --ptn-z-floating: 100;
+  --ptn-z-overlay: 800;
+  --ptn-z-modal: 900;
+  --ptn-z-tooltip: 1000;
+
+  // Reduced motion
+  @media (prefers-reduced-motion: reduce) {
+    --ptn-motion-fast-01: 0ms;
+    --ptn-motion-fast-02: 0ms;
+    --ptn-motion-moderate-01: 0ms;
+    --ptn-motion-moderate-02: 0ms;
+    --ptn-motion-slow-01: 0ms;
+    --ptn-motion-slow-02: 0ms;
+  }
+}
+
+// ----- Theme application : g10 (clair, default) -----
+:root,
+[data-carbon-theme='g10'] {
+  @include theme($g10);
+}
+
+// ----- Theme application : g100 (sombre) -----
+[data-carbon-theme='g100'] {
+  @include theme($g100);
+
+  // Profile accent surfaces s'adaptent au thème sombre
+  --ptn-accent-surface: rgba(15, 98, 254, 0.16);
+  --ptn-status-success-surface: rgba(36, 161, 72, 0.16);
+  --ptn-status-warning-surface: rgba(241, 194, 27, 0.16);
+  --ptn-status-danger-surface: rgba(218, 30, 40, 0.16);
+  --ptn-status-info-surface: rgba(15, 98, 254, 0.16);
+  --ptn-status-ai-surface: rgba(138, 63, 252, 0.16);
+
+  // Texte status — versions claires pour contraste sur surface sombre
+  --ptn-status-success-text: #6fdc8c;
+  --ptn-status-warning-text: #f1c21b;
+  --ptn-status-danger-text: #ff8389;
+  --ptn-status-info-text: #78a9ff;
+  --ptn-status-ai-text: #be95ff;
+}
+
+// ----- Profile-specific themes (overrides --ptn-accent*) -----
+// Appliqué via <ProfileTheme profile="..."> qui set data-profile sur <html>
+[data-profile='ugp'] {
+  --ptn-accent: #0f62fe;
+  --ptn-accent-hover: #0043ce;
+  --ptn-accent-active: #002d9c;
+  --ptn-accent-surface: #edf5ff;
+}
+[data-profile='mda'] {
+  --ptn-accent: #1192e8;
+  --ptn-accent-hover: #0072c3;
+  --ptn-accent-active: #00539a;
+  --ptn-accent-surface: #e5f6ff;
+}
+[data-profile='partenaire'] {
+  --ptn-accent: #007d79;
+  --ptn-accent-hover: #005d5d;
+  --ptn-accent-active: #004144;
+  --ptn-accent-surface: #d9fbfb;
+}
+[data-profile='bailleur'] {
+  --ptn-accent: #8a3ffc;
+  --ptn-accent-hover: #6929c4;
+  --ptn-accent-active: #491d8b;
+  --ptn-accent-surface: #f6f2ff;
+}
+[data-profile='soumissionnaire'] {
+  --ptn-accent: #198038;
+  --ptn-accent-hover: #0e6027;
+  --ptn-accent-active: #044317;
+  --ptn-accent-surface: #defbe6;
+}
+[data-profile='sbp'] {
+  --ptn-accent: #d02670;
+  --ptn-accent-hover: #9f1853;
+  --ptn-accent-active: #740937;
+  --ptn-accent-surface: #fff0f7;
+}
+[data-profile='auditeur'] {
+  --ptn-accent: #525252;
+  --ptn-accent-hover: #393939;
+  --ptn-accent-active: #262626;
+  --ptn-accent-surface: #f4f4f4;
+}
+[data-profile='gouvernance'] {
+  --ptn-accent: #0043ce;
+  --ptn-accent-hover: #002d9c;
+  --ptn-accent-active: #001141;
+  --ptn-accent-surface: #d0e2ff;
+}

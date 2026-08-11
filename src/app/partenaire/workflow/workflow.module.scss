@@ -1,0 +1,433 @@
+/* Workflow — vue compacte multi-propositions, no scroll page-level. */
+
+.layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+  height: calc(100vh - 240px);
+  min-height: 480px;
+  overflow: hidden;
+}
+
+@media (max-width: 1080px) {
+  .layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+/* ============== List column ============== */
+.listCol {
+  background: var(--cds-layer);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.listHead {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  flex-shrink: 0;
+}
+
+.listH {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.listCount {
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 11px;
+  color: var(--cds-text-helper);
+}
+
+.listSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cds-background);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--cds-border-strong);
+  color: var(--cds-text-helper);
+
+  input {
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    flex: 1;
+    outline: none;
+    color: var(--cds-text-primary);
+    font-family: inherit;
+  }
+}
+
+.listScroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.itemBtn {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  padding: 14px 16px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: inherit;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.itemActive {
+  background: var(--ptn-accent-light, #edf5ff);
+  border-left: 2px solid var(--ptn-accent);
+  padding-left: 14px;
+}
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.itemRef {
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  font-weight: 500;
+}
+
+.itemBudget {
+  margin-left: auto;
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+}
+
+.itemTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* mini stepper preview */
+.miniSteps {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+}
+
+.miniSeg {
+  height: 3px;
+  background: var(--cds-border-subtle);
+}
+
+.miniSegDone {
+  background: var(--ptn-accent);
+}
+
+.miniSegCurrent {
+  background: var(--ptn-accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .miniSegCurrent { animation: none; }
+}
+
+.miniMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--cds-text-helper);
+}
+
+.miniLabel {
+  font-family: var(--font-ibm-plex-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.statusTag {
+  font-size: 10px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.statusBlue {
+  background: var(--ptn-accent-light, #edf5ff);
+  color: var(--ptn-accent);
+}
+.statusYellow {
+  background: var(--ptn-status-warning-surface);
+  color: var(--ptn-status-warning-text);
+}
+.statusGreen {
+  background: var(--ptn-status-success-surface);
+  color: var(--ptn-status-success-text);
+}
+.statusGray {
+  background: var(--cds-layer-accent-01);
+  color: var(--cds-text-helper);
+}
+
+/* ============== Detail column ============== */
+.detailCol {
+  background: var(--cds-layer);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detailHead {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detailMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.detailEyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+  margin-bottom: 4px;
+}
+
+.detailTitle {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.detailSubtitle {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  font-family: var(--font-ibm-plex-mono);
+}
+
+.btnPrimary {
+  background: var(--ptn-accent);
+  color: #fff;
+  border: 0;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+/* ============== Pipeline timeline ============== */
+.timeline {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 20px 32px;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  position: relative;
+  padding-bottom: 18px;
+}
+
+.stage:last-child { padding-bottom: 0; }
+
+.stage:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: 0;
+  width: 2px;
+  background: var(--cds-border-subtle);
+}
+
+.stageDone:not(:last-child)::before { background: var(--ptn-accent); }
+
+.dot {
+  width: 32px;
+  height: 32px;
+  background: var(--cds-layer);
+  border: 2px solid var(--cds-border-subtle);
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 1;
+  color: var(--cds-text-helper);
+}
+
+.dotDone {
+  background: var(--ptn-accent);
+  border-color: var(--ptn-accent);
+  color: #fff;
+}
+
+.dotCurrent {
+  border-color: var(--ptn-accent);
+  color: var(--ptn-accent);
+  background: var(--cds-layer);
+  box-shadow: 0 0 0 4px var(--ptn-accent-light);
+}
+
+.dotWarn {
+  border-color: var(--ptn-status-warning);
+  color: var(--ptn-status-warning-text);
+  background: var(--ptn-status-warning-surface);
+}
+
+.body {
+  padding-top: 4px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.num {
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  font-weight: 500;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+}
+
+.actorTag {
+  font-size: 10px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  font-family: var(--font-ibm-plex-mono);
+}
+
+.actorPart {
+  background: #d9fbfb;
+  color: #007d79;
+}
+
+.actorUgp {
+  background: var(--ptn-accent-light);
+  color: var(--ptn-accent);
+}
+
+.actorBailleur {
+  background: var(--ptn-status-ai-surface);
+  color: var(--ptn-status-ai-text);
+}
+
+.date {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono);
+  margin-left: auto;
+}
+
+.description {
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+.actor {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  margin-top: 6px;
+  font-family: var(--font-ibm-plex-mono);
+}
+
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--cds-text-helper);
+  font-size: 13px;
+}
+
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  flex-shrink: 0;
+}
+
+.kpi {
+  background: var(--cds-layer);
+  padding: 12px 16px;
+}
+
+.kpiK {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+  margin-bottom: 4px;
+}
+
+.kpiV {
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  line-height: 1.05;
+}
+
+.kpiVOk { color: var(--ptn-status-success); }
+.kpiVWarn { color: var(--ptn-status-warning-text); }

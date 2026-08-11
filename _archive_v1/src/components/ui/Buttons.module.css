@@ -1,0 +1,86 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  border-radius: 2px;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.s_sm {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.s_md {
+  min-height: 40px;
+  padding: 9px 16px;
+}
+
+.s_lg {
+  min-height: 48px;
+  padding: 14px 16px;
+}
+
+.v_primary {
+  background: var(--c-blue-60);
+  color: white;
+}
+
+.v_primary:hover:not(:disabled) {
+  background: var(--c-blue-70);
+}
+
+.v_secondary {
+  background: var(--c-white);
+  border: 1px solid var(--c-text);
+  color: var(--c-text);
+}
+
+.v_secondary:hover:not(:disabled) {
+  background: var(--c-bg);
+}
+
+.v_ghost {
+  background: transparent;
+  color: var(--c-text);
+}
+
+.v_ghost:hover:not(:disabled) {
+  background: var(--c-bg);
+}
+
+.v_danger {
+  background: var(--c-red-60);
+  color: white;
+}
+
+.v_danger:hover:not(:disabled) {
+  background: #b81921;
+}
+
+.ico {
+  display: grid;
+  place-items: center;
+}
+
+.lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

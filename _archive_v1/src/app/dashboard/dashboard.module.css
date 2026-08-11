@@ -1,0 +1,438 @@
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.sl {
+  display: block;
+  width: 100%;
+  height: 26px;
+  margin-top: 4px;
+}
+
+/* Tableau */
+.tableCard {
+  background: var(--c-white);
+  border: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tbar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tbarTitle {
+  font-size: 13px;
+  font-weight: 500;
+  margin-right: 12px;
+}
+
+.tbarSep {
+  width: 1px;
+  height: 18px;
+  background: var(--c-border);
+  margin: 0 4px;
+}
+
+.tbarSpacer {
+  flex: 1;
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--c-border);
+  background: var(--c-white);
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+}
+
+.filter:hover {
+  background: var(--c-bg);
+}
+
+.filter span.mono {
+  color: var(--c-blue-60);
+  font-weight: 500;
+}
+
+.tsearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--c-border);
+  padding: 4px 10px;
+  flex: 0 1 240px;
+  min-width: 140px;
+}
+
+.tsearch input {
+  border: 0;
+  outline: 0;
+  font-size: 12px;
+  background: transparent;
+  width: 100%;
+}
+
+.chipsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border);
+  flex-wrap: wrap;
+}
+
+.chipsLabel {
+  font-size: 11px;
+  color: var(--c-text-helper);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.chip {
+  background: var(--c-blue-10);
+  color: var(--c-blue-70);
+  font-size: 11px;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chipX {
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  margin-left: 2px;
+}
+
+.chipsClear {
+  background: transparent;
+  border: 0;
+  color: var(--c-blue-60);
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.tableScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.dt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.dt thead th {
+  position: sticky;
+  top: 0;
+  background: var(--c-bg);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--c-text-secondary);
+  font-weight: 500;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.dt tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--c-border);
+  vertical-align: top;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row:hover td {
+  background: var(--c-bg);
+  cursor: pointer;
+}
+
+.cellTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+
+.faint {
+  color: var(--c-text-helper);
+  font-size: 12px;
+}
+
+.kebab {
+  background: transparent;
+  border: 0;
+  font-size: 16px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* Mini-stepper */
+.stepper {
+  display: flex;
+  gap: 2px;
+}
+
+.stepper span {
+  flex: 1;
+  height: 4px;
+}
+
+.stepDone {
+  background: var(--c-blue-60);
+}
+
+.stepCurrent {
+  background: var(--c-blue-60);
+  box-shadow: inset 0 -2px 0 var(--c-blue-70);
+}
+
+.stepIdle {
+  background: var(--c-bg-2);
+}
+
+.stepLabel {
+  font-size: 10px;
+  color: var(--c-text-helper);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pag {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--c-border);
+  font-size: 12px;
+  color: var(--c-text-secondary);
+}
+
+.pagSep {
+  width: 1px;
+  height: 12px;
+  background: var(--c-border);
+}
+
+.pagBtn {
+  background: transparent;
+  border: 1px solid var(--c-border);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* Side panel feed */
+.feedItem {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.feedItem:last-child {
+  border-bottom: 0;
+}
+
+.feedIco {
+  width: 28px;
+  height: 28px;
+  background: var(--c-bg);
+  display: grid;
+  place-items: center;
+  color: var(--c-text-secondary);
+}
+
+.feed_ai {
+  background: var(--c-purple-10) !important;
+  color: var(--c-purple-60) !important;
+}
+
+.feed_ok {
+  background: var(--c-green-10) !important;
+  color: var(--c-green-50) !important;
+}
+
+.feed_warn {
+  background: var(--c-yellow-10) !important;
+  color: #875b00 !important;
+}
+
+.feedTxt {
+  font-size: 12px;
+  color: var(--c-text);
+  line-height: 1.4;
+}
+
+.who {
+  font-weight: 500;
+}
+
+.feedWhen {
+  font-size: 11px;
+  color: var(--c-text-helper);
+  margin-top: 2px;
+}
+
+/* Deadlines */
+.dl {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+  align-items: center;
+}
+
+.dl:last-child {
+  border-bottom: 0;
+}
+
+.dlDay {
+  width: 36px;
+  text-align: center;
+  border: 1px solid var(--c-border);
+  padding: 2px 0;
+  font-family: var(--font-ibm-mono), monospace;
+}
+
+.dlD {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--c-text);
+}
+
+.dlM {
+  font-size: 9px;
+  color: var(--c-text-helper);
+  text-transform: uppercase;
+}
+
+.dlUrgent .dlDay {
+  border-color: var(--c-red-60);
+}
+
+.dlUrgent .dlD {
+  color: var(--c-red-60);
+}
+
+.dlMeta {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.dlCount {
+  font-size: 11px;
+  font-family: var(--font-ibm-mono), monospace;
+  color: var(--c-text-secondary);
+}
+
+.dlUrgent .dlCount {
+  color: var(--c-red-60);
+}
+
+/* Docs */
+.doc {
+  display: grid;
+  grid-template-columns: 28px 1fr 12px;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  text-align: left;
+}
+
+.doc:last-child {
+  border-bottom: 0;
+}
+
+.docIco {
+  width: 28px;
+  height: 28px;
+  background: var(--c-bg);
+  display: grid;
+  place-items: center;
+  color: var(--c-text-secondary);
+}
+
+.docMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.docName {
+  font-size: 12px;
+  color: var(--c-text);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.doc:hover .docName {
+  color: var(--c-blue-60);
+}
+
+.docSub {
+  font-size: 11px;
+  color: var(--c-text-helper);
+}

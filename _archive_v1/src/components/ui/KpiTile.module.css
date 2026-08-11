@@ -1,0 +1,109 @@
+.strip {
+  display: grid;
+  gap: 1px;
+  background: var(--c-border);
+  border: 1px solid var(--c-border);
+}
+
+.kpi {
+  background: var(--c-white);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.kpi:hover {
+  background: #fafafa;
+}
+
+.k {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ico {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--c-text-secondary);
+}
+
+.v {
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--c-text);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unit {
+  font-size: 13px;
+  color: var(--c-text-helper);
+  font-weight: 400;
+}
+
+.delta {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.d_up {
+  color: var(--c-green-50);
+}
+
+.d_down {
+  color: var(--c-red-60);
+}
+
+.d_neutral {
+  color: var(--c-text-helper);
+}
+
+.extra {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.extra :global(.pbar) {
+  height: 4px;
+  background: var(--c-bg-2);
+  width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.extra :global(.pbar i) {
+  display: block;
+  height: 100%;
+  background: var(--c-blue-60);
+  font-style: normal;
+}
+
+.extra :global(.pbar-meta) {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--c-text-helper);
+  margin-top: 4px;
+  font-family: var(--font-ibm-mono), monospace;
+}

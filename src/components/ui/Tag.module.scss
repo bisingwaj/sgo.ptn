@@ -1,0 +1,87 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  letter-spacing: 0.16px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.size_sm {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.size_md {
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.tone_blue {
+  background: #edf5ff;
+  color: #0043ce;
+}
+
+.tone_cyan {
+  background: #e5f6ff;
+  color: #00539a;
+}
+
+.tone_teal {
+  background: #d9fbfb;
+  color: #005d5d;
+}
+
+.tone_green {
+  background: #defbe6;
+  color: #0e6027;
+}
+
+.tone_yellow {
+  background: #fcf4d6;
+  color: #875b00;
+}
+
+.tone_red {
+  background: #fff1f1;
+  color: #a2191f;
+}
+
+.tone_purple {
+  background: #f6f2ff;
+  color: #6929c4;
+}
+
+.tone_magenta {
+  background: #fff0f7;
+  color: #9f1853;
+}
+
+.tone_gray {
+  background: #e0e0e0;
+  color: #525252;
+}
+
+.tone_outline {
+  background: transparent;
+  color: var(--cds-text-secondary);
+  border: 1px solid var(--cds-border-strong);
+}
+
+[data-carbon-theme="g100"] {
+  .tone_blue { background: rgba(15, 98, 254, 0.16); color: #4589ff; }
+  .tone_cyan { background: rgba(17, 146, 232, 0.16); color: #33b1ff; }
+  .tone_teal { background: rgba(0, 125, 121, 0.16); color: #08bdba; }
+  .tone_green { background: rgba(36, 161, 72, 0.16); color: #42be65; }
+  .tone_yellow { background: rgba(241, 194, 27, 0.16); color: #f1c21b; }
+  .tone_red { background: rgba(218, 30, 40, 0.16); color: #fa4d56; }
+  .tone_purple { background: rgba(138, 63, 252, 0.16); color: #be95ff; }
+  .tone_magenta { background: rgba(208, 38, 112, 0.16); color: #ff7eb6; }
+  .tone_gray { background: #393939; color: #c6c6c6; }
+}

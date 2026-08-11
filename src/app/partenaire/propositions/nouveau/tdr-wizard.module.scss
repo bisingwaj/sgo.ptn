@@ -1,0 +1,397 @@
+/* TDR Wizard — couches additionnelles par-dessus le Wizard générique.
+   Aligné Claude Design : grille 1px, IBM Plex Mono pour refs, KPI tiles. */
+
+/* ============== Step layout shared ============== */
+.stepGrid {
+  display: grid;
+  gap: var(--ptn-space-04);
+}
+
+.row2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.row3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 960px) {
+  .row2,
+  .row3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============== Type-of-activity tiles ============== */
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 1080px) {
+  .tileGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .tileGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============== AI suggestion banner ============== */
+.aiBanner {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--ptn-status-ai-surface, #f6f2ff);
+  border-left: 2px solid var(--ptn-status-ai, #8a3ffc);
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+
+.aiIco {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--cds-layer);
+  display: grid;
+  place-items: center;
+  color: var(--ptn-status-ai, #8a3ffc);
+}
+
+.aiBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.aiTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.aiBadge {
+  background: var(--ptn-status-ai, #8a3ffc);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+}
+
+.aiText {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  line-height: 1.45;
+}
+
+.aiMeta {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  flex-wrap: wrap;
+}
+
+.aiActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.aiBtn {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover {
+    background: var(--cds-background);
+  }
+}
+
+.aiBtnPrimary {
+  background: var(--ptn-status-ai, #8a3ffc);
+  color: #fff;
+  border: 0;
+
+  &:hover {
+    background: #6929c4;
+  }
+}
+
+/* ============== MEP_LOCK banner ============== */
+.mepLock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  background: var(--cds-layer-accent-01);
+  padding: 6px 10px;
+  margin-top: 6px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.mepLockIco {
+  color: var(--ptn-status-warning, #f1c21b);
+}
+
+/* ============== AI section marker on textarea ============== */
+.aiSection {
+  position: relative;
+}
+
+.aiSection::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ptn-status-ai, #8a3ffc);
+  opacity: 0.6;
+}
+
+.aiSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ptn-status-ai, #8a3ffc);
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  padding-left: 12px;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+/* ============== Validation rules — coherence MEP/PTBA ============== */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.rule {
+  background: var(--cds-layer);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.ruleIco {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.ruleIcoOk { color: var(--ptn-status-success, #24a148); }
+.ruleIcoWarn { color: var(--ptn-status-warning, #f1c21b); }
+.ruleIcoErr { color: var(--ptn-status-danger, #da1e28); }
+
+.ruleTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+}
+
+.ruleSub {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  margin-top: 2px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+}
+
+.ruleStatus {
+  font-size: 11px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.ruleStatusOk { color: var(--ptn-status-success, #24a148); }
+.ruleStatusWarn { color: var(--ptn-status-warning, #f1c21b); }
+.ruleStatusErr { color: var(--ptn-status-danger, #da1e28); }
+
+/* ============== Recap (last step) ============== */
+.recap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.recapRow {
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--cds-layer);
+  align-items: baseline;
+}
+
+.recapK {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.recapV {
+  font-size: 13px;
+  color: var(--cds-text-primary);
+}
+
+.recapEdit {
+  background: transparent;
+  border: 0;
+  color: var(--ptn-accent, #0f62fe);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* ============== Budget table ============== */
+.budgetTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.budgetTable thead th {
+  text-align: left;
+  background: var(--cds-layer-accent-01);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.budgetTable thead th.right {
+  text-align: right;
+}
+
+.budgetTable tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  font-size: 13px;
+  background: var(--cds-layer);
+}
+
+.budgetTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.budgetTable tfoot td {
+  padding: 10px 12px;
+  font-size: 13px;
+  background: var(--cds-layer-accent-01);
+  font-weight: 500;
+  border-top: 1px solid var(--cds-border-subtle);
+}
+
+.budgetTable .num {
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.budgetInput {
+  background: var(--cds-background);
+  border: 0;
+  border-bottom: 1px solid var(--cds-border-strong);
+  font: inherit;
+  font-size: 13px;
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  text-align: right;
+  width: 100%;
+  padding: 4px 8px;
+  outline: none;
+
+  &:focus {
+    border-bottom-color: var(--ptn-accent, #0f62fe);
+  }
+}
+
+/* ============== Section title ============== */
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  margin: 16px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionTitle:first-child {
+  margin-top: 0;
+}
+
+.sectionDivider {
+  height: 1px;
+  background: var(--cds-border-subtle);
+  margin: 16px 0;
+}
+
+/* ============== Indicator strip ============== */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+  margin-bottom: 16px;
+}
+
+.kpi {
+  background: var(--cds-layer);
+  padding: 12px 16px;
+}
+
+.kpiK {
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  margin-bottom: 4px;
+}
+
+.kpiV {
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--cds-text-primary);
+}

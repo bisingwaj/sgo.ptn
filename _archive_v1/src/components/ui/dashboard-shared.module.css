@@ -1,0 +1,157 @@
+/* Patterns partagés pour les dashboards */
+
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.card {
+  background: var(--c-white);
+  border: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cardHead {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  font-weight: 500;
+  color: var(--c-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardSubtle {
+  font-size: 11px;
+  color: var(--c-text-helper);
+}
+
+.cardBody {
+  padding: 12px 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.bar {
+  height: 6px;
+  background: var(--c-bg-2);
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  font-style: normal;
+}
+
+.row {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.split2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.split3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.alertItem {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.alertItem:last-child {
+  border-bottom: 0;
+}
+
+.alertIco {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+
+.alertCrit {
+  background: var(--c-red-10);
+  color: var(--c-red-60);
+}
+
+.alertWarn {
+  background: var(--c-yellow-10);
+  color: #875b00;
+}
+
+.alertInfo {
+  background: var(--c-blue-10);
+  color: var(--c-blue-70);
+}
+
+.alertEs {
+  background: var(--c-green-10);
+  color: #0e6027;
+}
+
+.alertConfid {
+  background: var(--c-magenta-10);
+  color: #9f1853;
+}
+
+.alertTitle {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.alertSub {
+  font-size: 11px;
+  color: var(--c-text-helper);
+  margin-top: 2px;
+}

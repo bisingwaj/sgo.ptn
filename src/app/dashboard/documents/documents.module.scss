@@ -1,0 +1,218 @@
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 var(--ptn-space-04);
+  background: var(--ptn-accent);
+  color: #ffffff;
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--ptn-motion-fast-02);
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+}
+
+.card {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  flex-wrap: wrap;
+}
+
+.toolTitle {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: var(--cds-border-subtle);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.filterPills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16px;
+  color: var(--cds-text-helper);
+  margin-right: 4px;
+}
+
+.pill {
+  background: transparent;
+  border: 1px solid var(--cds-border-subtle);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  cursor: pointer;
+}
+
+.pillActive {
+  background: var(--ptn-accent);
+  color: #ffffff;
+  border-color: var(--ptn-accent);
+}
+
+.searchWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--ptn-space-03);
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-field);
+  min-width: 240px;
+  color: var(--cds-text-helper);
+
+  &:focus-within {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+.searchInput {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--cds-text-primary);
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  thead th {
+    background: var(--cds-layer-accent-01);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16px;
+    color: var(--cds-text-secondary);
+    font-weight: 500;
+    text-align: left;
+    padding: var(--ptn-space-02) var(--ptn-space-03);
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+
+  tbody td {
+    padding: var(--ptn-space-02) var(--ptn-space-03);
+    border-bottom: 1px solid var(--cds-border-subtle);
+    vertical-align: middle;
+  }
+
+  tbody tr:hover td {
+    background: var(--cds-layer-hover);
+  }
+}
+
+.fileIcon {
+  width: 32px;
+  height: 32px;
+  background: var(--cds-layer-accent-01);
+  color: var(--cds-text-secondary);
+  display: grid;
+  place-items: center;
+}
+
+.fileName {
+  font-size: 13px;
+  color: var(--cds-text-primary);
+  display: block;
+}
+
+.fileSize {
+  font-size: 11px;
+  color: var(--cds-text-helper);
+}
+
+.initiativeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  > span:first-child {
+    font-size: 11px;
+    color: var(--cds-text-helper);
+  }
+}
+
+.initTitle {
+  font-size: 12px;
+  color: var(--cds-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.dlBtn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--cds-border-subtle);
+  cursor: pointer;
+  color: var(--cds-text-secondary);
+  display: grid;
+  place-items: center;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    color: var(--cds-text-primary);
+  }
+}
+
+.emptyRow {
+  text-align: center;
+  padding: var(--ptn-space-05);
+  color: var(--cds-text-helper);
+  font-size: 13px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-accent-01);
+  border-top: 1px solid var(--cds-border-subtle);
+
+  a {
+    color: var(--ptn-accent);
+  }
+}

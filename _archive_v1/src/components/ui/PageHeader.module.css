@@ -1,0 +1,36 @@
+.ph {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.left h1 {
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--c-text-helper);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions :global(.dot) {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-green-50);
+}

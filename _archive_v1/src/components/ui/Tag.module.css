@@ -1,0 +1,61 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  letter-spacing: 0.16px;
+  white-space: nowrap;
+}
+
+.s_sm {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+.s_md {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.ico {
+  display: grid;
+  place-items: center;
+}
+
+.t_blue {
+  background: var(--c-blue-10);
+  color: var(--c-blue-70);
+}
+.t_green {
+  background: var(--c-green-10);
+  color: #0e6027;
+}
+.t_yellow {
+  background: var(--c-yellow-10);
+  color: #875b00;
+}
+.t_red {
+  background: var(--c-red-10);
+  color: #a2191f;
+}
+.t_purple {
+  background: var(--c-purple-10);
+  color: #6929c4;
+}
+.t_teal {
+  background: var(--c-teal-10);
+  color: #005d5d;
+}
+.t_magenta {
+  background: var(--c-magenta-10);
+  color: #9f1853;
+}
+.t_gray {
+  background: var(--c-bg-2);
+  color: var(--c-text-secondary);
+}
+.t_outline {
+  background: transparent;
+  color: var(--c-text-secondary);
+  border: 1px solid var(--c-border);
+}

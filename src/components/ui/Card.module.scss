@@ -1,0 +1,50 @@
+.card {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  display: flex;
+  flex-direction: column;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.headLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+}
+
+.title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  font-weight: 500;
+  color: var(--cds-text-primary);
+  margin: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--cds-text-helper);
+}
+
+.action {
+  font-size: 12px;
+}
+
+.body {
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  flex: 1;
+}
+
+.bodyNoPad {
+  padding: 0;
+}
