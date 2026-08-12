@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { ReferentielModule } from './referentiel/referentiel.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { TdrReferentielModule } from './tdr-referentiel/tdr-referentiel.module';
+import { PtbaModule } from './ptba/ptba.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 
@@ -21,6 +22,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
     ReferentielModule,
     AccountsModule,
     TdrReferentielModule,
+    PtbaModule,
   ],
   controllers: [AppController],
   providers: [

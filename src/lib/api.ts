@@ -485,3 +485,137 @@ export const accountsApi = {
       { reason },
     ),
 };
+
+// ============================================================
+// Référentiel TDR et PTBA
+// ============================================================
+
+export type TemplateStatusApi = "BROUILLON" | "PUBLIE" | "ARCHIVE";
+export type LibraryKind = "clauses" | "indicateurs" | "risques";
+
+export interface TdrTypeApi {
+  code: string;
+  slug: string;
+  name: string;
+  family: number;
+  familyLabel: string;
+  defaultMethodCode: string | null;
+  defaultMethod: { code: string; label: string } | null;
+  allowedOrigins: string[];
+  stepCount: number;
+  requiresPges: boolean;
+  isActive: boolean;
+}
+
+export interface ThresholdApi {
+  id: string;
+  category: string;
+  minUsd: string | null;
+  maxUsd: string | null;
+  reviewType: "PRIOR" | "POST";
+  note: string | null;
+}
+
+export interface MethodApi {
+  code: string;
+  label: string;
+  category: string;
+  description: string | null;
+  isException: boolean;
+  isActive: boolean;
+  thresholds: ThresholdApi[];
+}
+
+interface TemplateBase {
+  id: string;
+  familyKey: string;
+  version: number;
+  tdrTypeCode: string | null;
+  label: string;
+  status: TemplateStatusApi;
+  effectiveFrom: string | null;
+  supersededAt: string | null;
+  createdAt: string;
+}
+
+export interface ClauseApi extends TemplateBase {
+  category: "REG" | "TECH" | "CONF" | "SAFE" | "GOV";
+  text: string;
+}
+export interface IndicatorApi extends TemplateBase {
+  measure: string;
+  target: string;
+}
+export interface RiskApi extends TemplateBase {
+  description: string;
+  mitigation: string;
+  level: "FAIBLE" | "MODERE" | "SUBSTANTIEL" | "ELEVE";
+}
+export type LibraryEntry = ClauseApi | IndicatorApi | RiskApi;
+
+export interface PtbaYearApi {
+  id: string;
+  year: number;
+  label: string;
+  status: "BROUILLON" | "VALIDE" | "CLOS";
+  validatedAt: string | null;
+  _count?: { activities: number };
+}
+
+export interface PtbaActivityApi {
+  id: string;
+  code: string;
+  title: string;
+  componentCode: string;
+  subComponent: string | null;
+  envelopeUsd: string;
+  idaUsd: string | null;
+  afdUsd: string | null;
+  provinceCode: string | null;
+  component?: { code: string; shortLabel: string };
+  province?: { code: string; label: string } | null;
+}
+
+export const tdrReferentielApi = {
+  types: () => api.get<TdrTypeApi[]>("/referentiel-tdr/types"),
+  methods: () => api.get<MethodApi[]>("/referentiel-tdr/methodes"),
+  resolveMethod: (categorie: string, montantUsd: number) =>
+    api.get<{
+      method: { code: string; label: string };
+      reviewType: "PRIOR" | "POST";
+      note: string | null;
+      threshold: { minUsd: number | null; maxUsd: number | null };
+    } | null>(`/referentiel-tdr/methode-applicable?categorie=${categorie}&montantUsd=${montantUsd}`),
+
+  library: (kind: LibraryKind, params: { type?: string; status?: TemplateStatusApi } = {}) => {
+    const q = new URLSearchParams();
+    if (params.type) q.set("type", params.type);
+    if (params.status) q.set("status", params.status);
+    const suffix = q.toString();
+    return api.get<LibraryEntry[]>(`/referentiel-tdr/bibliotheque/${kind}${suffix ? `?${suffix}` : ""}`);
+  },
+  history: (kind: LibraryKind, familyKey: string) =>
+    api.get<LibraryEntry[]>(
+      `/referentiel-tdr/bibliotheque/${kind}/historique/${encodeURIComponent(familyKey)}`,
+    ),
+  draftClause: (payload: Record<string, unknown>, familyKey?: string) =>
+    api.post<ClauseApi>(
+      `/referentiel-tdr/bibliotheque/clauses${familyKey ? `?familyKey=${encodeURIComponent(familyKey)}` : ""}`,
+      payload,
+    ),
+  publish: (kind: LibraryKind, id: string) =>
+    api.post<LibraryEntry>(`/referentiel-tdr/bibliotheque/${kind}/${id}/publier`),
+  archive: (kind: LibraryKind, id: string) =>
+    api.post<{ id: string; status: string }>(`/referentiel-tdr/bibliotheque/${kind}/${id}/archiver`),
+};
+
+export const ptbaApi = {
+  years: () => api.get<PtbaYearApi[]>("/ptba/exercices"),
+  activities: (year: number) =>
+    api.get<{ year: PtbaYearApi; activities: PtbaActivityApi[]; totalUsd: number }>(
+      `/ptba/exercices/${year}/activites`,
+    ),
+  createActivity: (year: number, payload: Record<string, unknown>) =>
+    api.post<PtbaActivityApi>(`/ptba/exercices/${year}/activites`, payload),
+  deactivate: (id: string) => api.post<{ id: string }>(`/ptba/activites/${id}/retirer`),
+};

@@ -205,11 +205,24 @@ export function SideNav() {
   // portent — le sous-rôle UGP « IT » (MEP § 6.1, poste n°18). En mode
   // démonstration, aucune session n'est ouverte : elle reste masquée.
   const groups = [...navFor(profile)];
+
+  // Chaque entrée n'apparaît qu'avec la permission correspondante. Les
+  // comptes relèvent du sous-rôle IT ; le référentiel de passation relève
+  // du RPM et des spécialistes — ce ne sont pas les mêmes personnes, et le
+  // groupe reste invisible pour qui ne détient ni l'un ni l'autre.
+  const adminItems: NavItem[] = [];
   if (can("admin:users")) {
-    groups.push({
-      title: "Administration",
-      items: [{ label: "Comptes", href: "/admin/comptes", icon: <UserMultiple size={16} /> }],
+    adminItems.push({ label: "Comptes", href: "/admin/comptes", icon: <UserMultiple size={16} /> });
+  }
+  if (can("referentiel:passation") || can("referentiel:clauses")) {
+    adminItems.push({
+      label: "Référentiel",
+      href: "/admin/referentiel",
+      icon: <Catalog size={16} />,
     });
+  }
+  if (adminItems.length > 0) {
+    groups.push({ title: "Administration", items: adminItems });
   }
 
   // Pour le profil partenaire, le label/nom viennent du contexte organisation.
