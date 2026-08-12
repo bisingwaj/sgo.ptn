@@ -239,7 +239,16 @@ export class AuthService {
     replacesTokenId?: string,
   ): Promise<AuthTokens> {
     const accessExpiration = this.config.get<string>('JWT_ACCESS_EXPIRATION') ?? '15m';
-    const refreshExpiration = this.config.get<string>('JWT_REFRESH_EXPIRATION') ?? '7d';
+
+    // La durée du jeton de rafraîchissement EST le délai d'inactivité :
+    // il n'est renouvelé qu'à l'occasion d'une action de la personne, donc
+    // une session sans activité s'éteint d'elle-même. L'application est
+    // ainsi côté serveur — un minuteur seulement côté navigateur pourrait
+    // être contourné en gardant le jeton.
+    const refreshExpiration =
+      this.config.get<string>('SESSION_IDLE_TIMEOUT') ??
+      this.config.get<string>('JWT_REFRESH_EXPIRATION') ??
+      '30m';
 
     const accessPayload: AccessTokenPayload = { sub: userId, email, aid: assignmentId };
     const accessToken = await this.jwt.signAsync(accessPayload, {

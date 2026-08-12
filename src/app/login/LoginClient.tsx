@@ -153,15 +153,14 @@ export function LoginClient() {
   const [pwdVisible, setPwdVisible] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [expired, setExpired] = useState(false);
+  const [ended, setEnded] = useState<"expiree" | "inactivite" | null>(null);
 
   // Lu depuis window plutôt que via useSearchParams : cela éviterait de
   // basculer la page de connexion en rendu dynamique pour un simple
   // message d'information.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("session") === "expiree") {
-      setExpired(true);
-    }
+    const reason = new URLSearchParams(window.location.search).get("session");
+    if (reason === "expiree" || reason === "inactivite") setEnded(reason);
   }, []);
 
   /**
@@ -412,15 +411,18 @@ export function LoginClient() {
             </div>
           </div>
 
-          {/* ----- Session expirée ----- */}
-          {expired && !err && (
+          {/* ----- Fin de session ----- */}
+          {ended && !err && (
             <div className={styles.errBox} role="status" data-tone="info">
               <Locked size={16} aria-hidden />
               <div>
-                <strong>Session terminée</strong>
+                <strong>
+                  {ended === "inactivite" ? "Déconnexion par inactivité" : "Session terminée"}
+                </strong>
                 <p>
-                  Votre session a expiré ou votre habilitation a été modifiée. Reconnectez-vous
-                  pour poursuivre.
+                  {ended === "inactivite"
+                    ? "Votre session a été close après 30 minutes sans activité, afin de protéger vos habilitations sur un poste laissé sans surveillance."
+                    : "Votre session a expiré ou votre habilitation a été modifiée. Reconnectez-vous pour poursuivre."}
                 </p>
               </div>
             </div>

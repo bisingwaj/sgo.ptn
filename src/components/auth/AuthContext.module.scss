@@ -1,0 +1,96 @@
+/**
+ * Avertissement de déconnexion par inactivité.
+ * IBM Carbon v11 · radius 0 · élévation modale.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ptn-z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ptn-space-05);
+  background: rgba(22, 22, 22, 0.7);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-05);
+  background: var(--cds-layer, #fff);
+  border-top: 3px solid var(--ptn-status-warning);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
+
+  h2 {
+    font-size: 24px;
+    font-weight: 300;
+    letter-spacing: -0.005em;
+    line-height: 1.15;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--cds-text-secondary, #525252);
+  }
+}
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.rationale {
+  font-size: 12px !important;
+  color: var(--cds-text-helper, #6f6f6f) !important;
+  padding-top: var(--ptn-space-02);
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ptn-space-02);
+  margin-top: var(--ptn-space-02);
+}
+
+.ghost,
+.primary {
+  padding: 11px var(--ptn-space-04);
+  font-family: inherit;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: background var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+.ghost {
+  background: transparent;
+  color: var(--cds-text-secondary, #525252);
+
+  &:hover {
+    background: var(--cds-layer-hover, #e8e8e8);
+    color: var(--cds-text-primary, #161616);
+  }
+}
+
+.primary {
+  background: var(--ptn-accent);
+  color: var(--ptn-accent-on);
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+}
