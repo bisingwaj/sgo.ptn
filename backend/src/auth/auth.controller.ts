@@ -30,7 +30,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Connexion par adresse électronique et mot de passe' })
   login(@Body() dto: LoginDto, @Req() req: Request) {
-    return this.auth.login(dto.email, dto.password, contextOf(req));
+    return this.auth.login(dto.email, dto.password, contextOf(req), dto.family);
   }
 
   @Public()

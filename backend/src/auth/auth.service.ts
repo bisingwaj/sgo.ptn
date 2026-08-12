@@ -11,6 +11,8 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { UserContextService } from './user-context.service';
+import { familyLabel, familyOfProfile, profilesOfFamily } from '../referentiel/families';
+import type { ProfileFamily } from '../../generated/prisma/enums';
 import type {
   AccessTokenPayload,
   AuthenticatedUser,
@@ -54,7 +56,12 @@ export class AuthService {
   // Connexion
   // ==========================================================
 
-  async login(email: string, password: string, ctx: RequestContext): Promise<LoginResult> {
+  async login(
+    email: string,
+    password: string,
+    ctx: RequestContext,
+    family?: ProfileFamily,
+  ): Promise<LoginResult> {
     const normalized = email.trim().toLowerCase();
 
     const user = await this.prisma.user.findUnique({
@@ -118,7 +125,7 @@ export class AuthService {
       );
     }
 
-    const assignment = await this.resolvePrimaryAssignment(user.id);
+    const assignment = await this.resolvePrimaryAssignment(user.id, family);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -173,7 +180,15 @@ export class AuthService {
     });
   }
 
-  private async resolvePrimaryAssignment(userId: string) {
+  /**
+   * Choisit l'habilitation à activer.
+   *
+   * La famille sélectionnée à la connexion n'est pas décorative : elle
+   * détermine sous quelle casquette la personne entre. Une même personne
+   * peut être cadre UGP et membre du CTP, ou partenaire et membre de
+   * gouvernance — la famille lève l'ambiguïté.
+   */
+  private async resolvePrimaryAssignment(userId: string, family?: ProfileFamily) {
     const now = new Date();
     const assignments = await this.prisma.assignment.findMany({
       where: {
@@ -190,7 +205,23 @@ export class AuthService {
         'Aucune habilitation active n’est associée à ce compte. Contactez l’administrateur.',
       );
     }
-    return assignments[0];
+
+    if (!family) return assignments[0];
+
+    const eligible = profilesOfFamily(family);
+    const match = assignments.find((a) => eligible.includes(a.profile));
+    if (match) return match;
+
+    // Le mot de passe a déjà été vérifié : nommer les familles réellement
+    // détenues aide la personne sans rien révéler à un tiers.
+    const held = [...new Set(assignments.map((a) => familyOfProfile(a.profile)))]
+      .filter((f): f is ProfileFamily => Boolean(f))
+      .map((f) => `« ${familyLabel(f)} »`)
+      .join(', ');
+
+    throw new ForbiddenException(
+      `Ce compte ne détient aucune habilitation dans la famille « ${familyLabel(family)} ». Il relève de ${held}.`,
+    );
   }
 
   async listAssignments(userId: string): Promise<LoginResult['availableAssignments']> {

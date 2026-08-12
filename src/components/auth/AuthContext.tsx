@@ -27,6 +27,7 @@ import {
   setRefreshToken,
   setSessionExpiredHandler,
   type AssignmentSummary,
+  type FamilyKey,
   type LoginResponse,
   type ProfileKeyApi,
   type SessionUser,
@@ -79,7 +80,7 @@ interface AuthContextValue {
   assignments: AssignmentSummary[];
   /** true tant que la session initiale n'a pas été résolue */
   loading: boolean;
-  login: (email: string, password: string) => Promise<LoginResponse>;
+  login: (email: string, password: string, family?: FamilyKey) => Promise<LoginResponse>;
   logout: (reason?: "inactivite") => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
   switchAssignment: (assignmentId: string) => Promise<void>;
@@ -142,8 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applySession]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      const result = await authApi.login(email, password);
+    async (email: string, password: string, family?: FamilyKey) => {
+      const result = await authApi.login(email, password, family);
       setAccessToken(result.accessToken);
       setRefreshToken(result.refreshToken);
       applySession(result);

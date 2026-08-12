@@ -2,41 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { ProfileKey } from '../../generated/prisma/enums';
 
-/**
- * Les 4 familles du sélecteur de connexion et de création de compte,
- * et les profils qu'elles regroupent.
- */
-export const FAMILIES: Array<{
-  key: 'UGP_GOUV' | 'BAILLEURS' | 'BENEFICIAIRES' | 'CONTROLE';
-  label: string;
-  hint: string;
-  profiles: ProfileKey[];
-}> = [
-  {
-    key: 'UGP_GOUV',
-    label: 'UGP / Gouvernement',
-    hint: 'MPTN, UGP, MDA bénéficiaires, gouvernance COPIL/CTP',
-    profiles: ['UGP', 'MDA', 'GOUVERNANCE'],
-  },
-  {
-    key: 'BAILLEURS',
-    label: 'Bailleurs',
-    hint: 'Banque mondiale (IDA), Agence Française de Développement',
-    profiles: ['BAILLEUR'],
-  },
-  {
-    key: 'BENEFICIAIRES',
-    label: 'Bénéficiaires & Soumissionnaires',
-    hint: 'Partenaires institutionnels, entreprises, EESU, hubs, startups',
-    profiles: ['PARTENAIRE', 'SOUMISSIONNAIRE', 'SBP'],
-  },
-  {
-    key: 'CONTROLE',
-    label: 'Contrôle & Vérification',
-    hint: 'Audit externe, TPM, Cour des Comptes, IGF, ACE',
-    profiles: ['AUDITEUR'],
-  },
-];
+// Les familles vivent dans `families.ts` : l'authentification s'en sert
+// aussi pour choisir l'habilitation à activer à la connexion.
+export { FAMILIES } from './families';
+import { FAMILIES } from './families';
 
 /**
  * `restrictions` : ce que le profil ne peut pas faire, énoncé

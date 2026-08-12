@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/components/profile/ProfileContext";
 import { useAuth, toProfileKey } from "@/components/auth/AuthContext";
-import { ApiError } from "@/lib/api";
+import { ApiError, type FamilyKey } from "@/lib/api";
 import { PROFILES, type ProfileKey } from "@/lib/profiles";
 import { PROJECT } from "@/lib/project-data";
 import { Illustration } from "@/components/illustrations/Illustration";
@@ -43,6 +43,8 @@ import styles from "./login.module.scss";
 
 interface FamilyDef {
   key: "ugp-gov" | "bailleurs" | "beneficiaires" | "controle";
+  /** Clé attendue par l'API — détermine l'habilitation activée */
+  apiKey: FamilyKey;
   label: string;
   hint: string;
   /** Profils de cette famille, dans l'ordre d'affichage du combobox */
@@ -53,6 +55,7 @@ interface FamilyDef {
 const FAMILIES: FamilyDef[] = [
   {
     key: "ugp-gov",
+    apiKey: "UGP_GOUV",
     label: "UGP / Gouvernement",
     hint: "MPTN, UGP, MDA bénéficiaires, gouvernance COPIL/CTP",
     profiles: ["ugp", "mda", "gouvernance"],
@@ -60,6 +63,7 @@ const FAMILIES: FamilyDef[] = [
   },
   {
     key: "bailleurs",
+    apiKey: "BAILLEURS",
     label: "Bailleurs",
     hint: "Banque mondiale (IDA), Agence Française de Développement",
     profiles: ["bailleur"],
@@ -67,6 +71,7 @@ const FAMILIES: FamilyDef[] = [
   },
   {
     key: "beneficiaires",
+    apiKey: "BENEFICIAIRES",
     label: "Bénéficiaires & Soumissionnaires",
     hint: "Partenaires institutionnels, entreprises, EESU, hubs, startups",
     profiles: ["partenaire", "soumissionnaire", "sbp"],
@@ -74,6 +79,7 @@ const FAMILIES: FamilyDef[] = [
   },
   {
     key: "controle",
+    apiKey: "CONTROLE",
     label: "Contrôle & Vérification",
     hint: "Audit externe, TPM, Cour des Comptes, IGF, ACE",
     profiles: ["auditeur"],
@@ -166,10 +172,13 @@ export function LoginClient() {
   /**
    * Authentification réelle.
    *
-   * Le profil actif ne découle plus du sélecteur ci-dessus : il vient de
-   * l'habilitation accordée par un administrateur. Le sélecteur famille /
-   * sous-rôle reste affiché pour l'illustration et l'accent de couleur,
-   * mais n'a plus d'effet sur les droits obtenus.
+   * La famille sélectionnée est transmise à l'API : elle détermine
+   * l'habilitation activée pour la session, une même personne pouvant en
+   * détenir plusieurs. Un compte qui n'en détient aucune dans la famille
+   * demandée est refusé, avec le nom de celles qu'il détient réellement.
+   *
+   * Le sous-rôle, lui, n'est pas transmis : les droits viennent de
+   * l'habilitation accordée, pas d'une déclaration à la connexion.
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +191,7 @@ export function LoginClient() {
 
     setSubmitting(true);
     try {
-      const result = await login(email.trim(), password);
+      const result = await login(email.trim(), password, family.apiKey);
 
       // Prise de fonction inachevée — mot de passe temporaire non remplacé,
       // ou engagements pas encore signés. Dans le premier cas l'API refuse
@@ -292,8 +301,8 @@ export function LoginClient() {
           <div className={styles.formHeader}>
             <h2 className={styles.formTitle}>Connexion</h2>
             <p className={styles.formSubtitle}>
-              Vos droits découlent de l&apos;habilitation qui vous a été accordée. Le sélecteur
-              ci-dessous ne détermine que l&apos;apparence de l&apos;interface.
+              Sélectionnez la famille sous laquelle vous vous connectez. Vos droits découlent de
+              l&apos;habilitation qui vous a été accordée.
             </p>
           </div>
 

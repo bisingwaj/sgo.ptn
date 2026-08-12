@@ -34,6 +34,21 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty({ message: 'Le mot de passe est requis.' })
   password!: string;
+
+  /**
+   * Famille d'acteurs sélectionnée à la connexion.
+   *
+   * Détermine l'habilitation à activer pour la session : une personne peut
+   * en détenir plusieurs, dans des familles différentes. Omise, c'est
+   * l'habilitation principale qui est chargée.
+   */
+  @ApiPropertyOptional({
+    enum: ['UGP_GOUV', 'BAILLEURS', 'BENEFICIAIRES', 'CONTROLE'],
+    description: 'Famille d’acteurs — détermine l’habilitation activée',
+  })
+  @IsOptional()
+  @IsIn(['UGP_GOUV', 'BAILLEURS', 'BENEFICIAIRES', 'CONTROLE'])
+  family?: 'UGP_GOUV' | 'BAILLEURS' | 'BENEFICIAIRES' | 'CONTROLE';
 }
 
 export class RefreshDto {

@@ -409,9 +409,17 @@ export interface AddAssignmentPayload {
 // Points d'entrée
 // ============================================================
 
+export type FamilyKey = "UGP_GOUV" | "BAILLEURS" | "BENEFICIAIRES" | "CONTROLE";
+
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post<LoginResponse>("/auth/login", { email, password }),
+  /**
+   * `family` détermine l'habilitation activée pour la session : une même
+   * personne peut en détenir plusieurs, dans des familles différentes.
+   * L'API refuse la connexion si le compte n'en détient aucune dans la
+   * famille demandée.
+   */
+  login: (email: string, password: string, family?: FamilyKey) =>
+    api.post<LoginResponse>("/auth/login", { email, password, family }),
   me: () => api.get<{ user: SessionUser; availableAssignments: AssignmentSummary[] }>("/auth/me"),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post<void>("/auth/change-password", { currentPassword, newPassword }),
