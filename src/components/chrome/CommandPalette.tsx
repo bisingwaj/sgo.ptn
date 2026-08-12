@@ -425,6 +425,7 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
           role="dialog"
           aria-label="Recherche globale"
           onClick={(e) => e.stopPropagation()}
+          suppressHydrationWarning
         >
           <div className={styles.searchBar}>
             <Search size={18} aria-hidden className={styles.searchIco} />
