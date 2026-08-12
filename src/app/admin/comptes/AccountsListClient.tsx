@@ -205,7 +205,7 @@ export function AccountsListClient() {
 
               return (
                 <li key={account.id} className={styles.item}>
-                  <div className={styles.itemMain}>
+                  <Link href={`/admin/comptes/${account.id}`} className={styles.itemMain}>
                     <div className={styles.itemHead}>
                       <strong>
                         {account.firstName} {account.lastName}
@@ -234,7 +234,7 @@ export function AccountsListClient() {
                         {new Date(expiring.validUntil).toLocaleDateString("fr-FR")}
                       </span>
                     )}
-                  </div>
+                  </Link>
 
                   <div className={styles.itemMeta}>
                     <span className={styles.itemLogin}>

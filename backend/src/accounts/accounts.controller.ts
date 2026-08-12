@@ -13,7 +13,13 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AccountsService } from './accounts.service';
-import { CreateAccountDto, ListAccountsQueryDto, SuspendAccountDto } from './dto/accounts.dto';
+import {
+  AddAssignmentDto,
+  CreateAccountDto,
+  ListAccountsQueryDto,
+  RevokeAssignmentDto,
+  SuspendAccountDto,
+} from './dto/accounts.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -80,6 +86,45 @@ export class AccountsController {
   @ApiOperation({ summary: 'Fiche d’un compte et historique de ses habilitations' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.accounts.findOne(id);
+  }
+
+  @Post(':id/habilitations/verifier')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Contrôler les règles avant d’ajouter une habilitation',
+    description:
+      'Seule voie où la séparation des tâches s’évalue : elle se juge au regard des habilitations déjà détenues.',
+  })
+  checkAssignment(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AddAssignmentDto) {
+    return this.accounts.checkAssignmentGuardrails(id, dto);
+  }
+
+  @Post(':id/habilitations')
+  @ApiOperation({ summary: 'Ajouter une habilitation à un compte existant' })
+  addAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddAssignmentDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.accounts.addAssignment(id, dto, actor, contextOf(req));
+  }
+
+  @Post(':id/habilitations/:assignmentId/revoquer')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Révoquer une habilitation',
+    description:
+      'La dernière habilitation active ne peut être révoquée : suspendre ou archiver le compte est le geste approprié.',
+  })
+  revokeAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('assignmentId', ParseUUIDPipe) assignmentId: string,
+    @Body() dto: RevokeAssignmentDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.accounts.revokeAssignment(id, assignmentId, dto.reason, actor, contextOf(req));
   }
 
   @Post(':id/suspendre')

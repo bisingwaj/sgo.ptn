@@ -338,6 +338,56 @@ export interface AccountListResponse {
   items: AccountListItem[];
 }
 
+export interface AssignmentDetail {
+  id: string;
+  profile: ProfileKeyApi;
+  status: "ACTIVE" | "SUSPENDED" | "EXPIRED" | "REVOKED";
+  isPrimary: boolean;
+  componentCode: string | null;
+  provinceCode: string | null;
+  missionRef: string | null;
+  validFrom: string;
+  validUntil: string | null;
+  justification: string | null;
+  createdAt: string;
+  revokedAt: string | null;
+  revokeReason: string | null;
+  subrole: { code: string; label: string; isSensitive: boolean; isUnique: boolean };
+  organisation: { code: string; name: string; fullName: string };
+  grantedBy: { firstName: string; lastName: string; email: string } | null;
+}
+
+export interface AccountDetail {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  preferredLanguage: string;
+  status: UserStatusApi;
+  mustChangePassword: boolean;
+  tempPasswordExpiresAt: string | null;
+  lastLoginAt: string | null;
+  codeOfConductSignedAt: string | null;
+  coiDeclaredAt: string | null;
+  onboardingCompletedAt: string | null;
+  createdAt: string;
+  createdBy: { firstName: string; lastName: string; email: string } | null;
+  assignments: AssignmentDetail[];
+}
+
+export interface AddAssignmentPayload {
+  profile: ProfileKeyApi;
+  subroleCode: string;
+  organisationId: string;
+  componentCode?: string;
+  provinceCode?: string;
+  missionRef?: string;
+  validUntil?: string;
+  justification?: string;
+  isPrimary?: boolean;
+}
+
 // ============================================================
 // Points d'entrée
 // ============================================================
@@ -373,6 +423,9 @@ export const accountsApi = {
     const suffix = query.toString();
     return api.get<AccountListResponse>(`/admin/comptes${suffix ? `?${suffix}` : ""}`);
   },
+  get: (id: string) => api.get<AccountDetail>(`/admin/comptes/${id}`),
+  dormants: () => api.get<AccountListItem[]>("/admin/comptes/dormants"),
+
   resetPassword: (id: string) =>
     api.post<{ temporaryPassword: string; expiresInHours: number }>(
       `/admin/comptes/${id}/reinitialiser-mot-de-passe`,
@@ -381,4 +434,20 @@ export const accountsApi = {
     api.post<{ id: string; status: UserStatusApi }>(`/admin/comptes/${id}/suspendre`, { reason }),
   reactivate: (id: string) =>
     api.post<{ id: string; status: UserStatusApi }>(`/admin/comptes/${id}/reactiver`),
+  archive: (id: string, reason: string) =>
+    api.post<{ id: string; status: UserStatusApi }>(`/admin/comptes/${id}/archiver`, { reason }),
+
+  // --- Habilitations d'un compte existant ---
+  checkAssignment: (id: string, payload: AddAssignmentPayload) =>
+    api.post<GuardrailReport>(`/admin/comptes/${id}/habilitations/verifier`, payload),
+  addAssignment: (id: string, payload: AddAssignmentPayload) =>
+    api.post<{ assignment: { id: string; subroleCode: string; subroleLabel: string }; warnings: Guardrail[] }>(
+      `/admin/comptes/${id}/habilitations`,
+      payload,
+    ),
+  revokeAssignment: (id: string, assignmentId: string, reason: string) =>
+    api.post<{ id: string; status: string }>(
+      `/admin/comptes/${id}/habilitations/${assignmentId}/revoquer`,
+      { reason },
+    ),
 };

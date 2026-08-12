@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { generateTemporaryPassword } from './password-generator';
-import type { CreateAccountDto, ListAccountsQueryDto } from './dto/accounts.dto';
+import type { AddAssignmentDto, CreateAccountDto, ListAccountsQueryDto } from './dto/accounts.dto';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 import type { ComponentCode, Language, ProfileKey } from '../../generated/prisma/enums';
@@ -19,6 +19,25 @@ export interface GuardrailReport {
   blockers: Guardrail[];
   /** N'empêchent pas, mais doivent être portés à la connaissance de l'admin */
   warnings: Guardrail[];
+}
+
+/**
+ * Éléments soumis au contrôle des règles institutionnelles.
+ *
+ * Volontairement plus étroit que `CreateAccountDto` : les mêmes règles
+ * s'appliquent à la création d'un compte et à l'ajout d'une habilitation
+ * sur un compte existant, où l'identité n'est pas resaisie.
+ */
+export interface GuardrailInput {
+  email: string;
+  profile: keyof typeof ProfileKey;
+  subroleCode: string;
+  organisationId: string;
+  componentCode?: keyof typeof ComponentCode;
+  provinceCode?: string;
+  missionRef?: string;
+  validUntil?: string;
+  justification?: string;
 }
 
 /** Domaine institutionnel attendu pour les comptes UGP. */
@@ -47,7 +66,7 @@ export class AccountsService {
    * compte déjà créé : les incompatibilités s'évaluent alors au regard
    * de ses affectations en cours.
    */
-  async checkGuardrails(dto: CreateAccountDto, existingUserId?: string): Promise<GuardrailReport> {
+  async checkGuardrails(dto: GuardrailInput, existingUserId?: string): Promise<GuardrailReport> {
     const blockers: Guardrail[] = [];
     const warnings: Guardrail[] = [];
 
@@ -305,6 +324,181 @@ export class AccountsService {
       temporaryPasswordExpiresAt: created.user.tempPasswordExpiresAt,
       warnings: report.warnings,
     };
+  }
+
+  // ==========================================================
+  // Habilitations d'un compte existant
+  // ==========================================================
+
+  /** Contrôle des règles pour un ajout d'habilitation sur un compte existant. */
+  async checkAssignmentGuardrails(userId: string, dto: AddAssignmentDto): Promise<GuardrailReport> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!user) throw new NotFoundException('Compte introuvable.');
+    return this.checkGuardrails({ ...dto, email: user.email }, userId);
+  }
+
+  /**
+   * Ajoute une habilitation à un compte existant.
+   *
+   * C'est la seule voie où la règle de séparation des tâches peut jouer :
+   * elle s'évalue au regard des habilitations déjà détenues, ce qu'une
+   * création de compte neuf ne permet pas par construction.
+   */
+  async addAssignment(
+    userId: string,
+    dto: AddAssignmentDto,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, status: true },
+    });
+    if (!user) throw new NotFoundException('Compte introuvable.');
+    if (user.status === 'ARCHIVE') {
+      throw new BadRequestException('Compte archivé : aucune habilitation ne peut y être ajoutée.');
+    }
+
+    const report = await this.checkGuardrails({ ...dto, email: user.email }, userId);
+    if (report.blockers.length > 0) {
+      throw new ConflictException({
+        message: 'L’ajout est bloqué par des règles institutionnelles.',
+        blockers: report.blockers,
+        warnings: report.warnings,
+      });
+    }
+
+    const subrole = await this.prisma.subrole.findUniqueOrThrow({
+      where: { code: dto.subroleCode },
+    });
+
+    const assignment = await this.prisma.$transaction(async (tx) => {
+      // Une seule habilitation principale : celle chargée à la connexion.
+      if (dto.isPrimary) {
+        await tx.assignment.updateMany({
+          where: { userId, isPrimary: true },
+          data: { isPrimary: false },
+        });
+      }
+
+      return tx.assignment.create({
+        data: {
+          userId,
+          organisationId: dto.organisationId,
+          profile: dto.profile as ProfileKey,
+          subroleId: subrole.id,
+          isPrimary: dto.isPrimary ?? false,
+          componentCode: (dto.componentCode ?? null) as ComponentCode | null,
+          provinceCode: dto.provinceCode ?? null,
+          missionRef: dto.missionRef?.trim() || null,
+          validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
+          justification: dto.justification?.trim() || null,
+          grantedById: actor.userId,
+          status: 'ACTIVE',
+        },
+      });
+    });
+
+    await this.audit.record({
+      actorId: actor.userId,
+      actorEmail: actor.email,
+      action: subrole.isSensitive ? 'assignment.granted.sensitive' : 'assignment.granted',
+      entityType: 'Assignment',
+      entityId: assignment.id,
+      payload: {
+        beneficiary: user.email,
+        subrole: subrole.code,
+        organisationId: dto.organisationId,
+        missionRef: dto.missionRef ?? null,
+        validUntil: dto.validUntil ?? null,
+        justification: dto.justification ?? null,
+      },
+      ...ctx,
+    });
+
+    return {
+      assignment: { id: assignment.id, subroleCode: subrole.code, subroleLabel: subrole.label },
+      warnings: report.warnings,
+    };
+  }
+
+  /** Révoque une habilitation. Le compte et son historique sont conservés. */
+  async revokeAssignment(
+    userId: string,
+    assignmentId: string,
+    reason: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: { subrole: { select: { code: true, label: true } } },
+    });
+    if (!assignment || assignment.userId !== userId) {
+      throw new NotFoundException('Habilitation introuvable pour ce compte.');
+    }
+    if (assignment.status !== 'ACTIVE') {
+      throw new BadRequestException('Cette habilitation n’est plus active.');
+    }
+
+    const activeCount = await this.prisma.assignment.count({
+      where: { userId, status: 'ACTIVE' },
+    });
+    if (activeCount <= 1) {
+      // Sans habilitation, la connexion échouerait sur un message obscur.
+      // Mieux vaut orienter l'administrateur vers le bon geste.
+      throw new BadRequestException(
+        'Dernière habilitation active de ce compte. Suspendez ou archivez le compte plutôt que de la révoquer.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.assignment.update({
+        where: { id: assignmentId },
+        data: {
+          status: 'REVOKED',
+          revokedAt: new Date(),
+          revokeReason: reason,
+          isPrimary: false,
+        },
+      });
+
+      // Si c'était l'habilitation principale, la plus ancienne restante
+      // prend le relais — sinon la connexion n'en trouverait aucune par défaut.
+      if (assignment.isPrimary) {
+        const successor = await tx.assignment.findFirst({
+          where: { userId, status: 'ACTIVE' },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (successor) {
+          await tx.assignment.update({
+            where: { id: successor.id },
+            data: { isPrimary: true },
+          });
+        }
+      }
+
+      // Coupe les sessions adossées à cette habilitation.
+      await tx.refreshToken.updateMany({
+        where: { userId, activeAssignmentId: assignmentId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    await this.audit.record({
+      actorId: actor.userId,
+      actorEmail: actor.email,
+      action: 'assignment.revoked',
+      entityType: 'Assignment',
+      entityId: assignmentId,
+      payload: { subrole: assignment.subrole.code, reason },
+      ...ctx,
+    });
+
+    return { id: assignmentId, status: 'REVOKED' as const };
   }
 
   // ==========================================================

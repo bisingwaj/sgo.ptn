@@ -102,7 +102,72 @@ export class CreateAccountDto {
   isPrimary?: boolean;
 }
 
-export class AddAssignmentDto extends CreateAccountDto {}
+/**
+ * Ajout d'une habilitation à un compte existant.
+ *
+ * L'identité n'est pas reprise : elle appartient déjà au compte. C'est
+ * par cette voie que le multi-affectation devient réel — un cadre UGP qui
+ * siège aussi au CTP — et c'est aussi la seule où la règle de séparation
+ * des tâches peut s'appliquer, puisqu'elle s'évalue au regard des
+ * habilitations déjà détenues.
+ */
+export class AddAssignmentDto {
+  @ApiProperty({ enum: ProfileKey })
+  @IsEnum(ProfileKey, { message: 'Profil inconnu.' })
+  profile!: keyof typeof ProfileKey;
+
+  @ApiProperty({ example: 'GOUV_MEMBRE_CTP' })
+  @IsString()
+  @MinLength(3)
+  subroleCode!: string;
+
+  @ApiProperty()
+  @IsUUID(undefined, { message: 'Organisation de rattachement invalide.' })
+  organisationId!: string;
+
+  @ApiPropertyOptional({ enum: ComponentCode })
+  @IsOptional()
+  @IsEnum(ComponentCode)
+  componentCode?: keyof typeof ComponentCode;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  provinceCode?: string;
+
+  @ApiPropertyOptional({ example: 'AUD-EXT-2026-T1' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  missionRef?: string;
+
+  @ApiPropertyOptional({ description: 'Date de fin d’habilitation (ISO 8601)' })
+  @IsOptional()
+  @IsDateString({}, { message: 'Date de fin d’habilitation invalide.' })
+  validUntil?: string;
+
+  @ApiPropertyOptional({ description: 'Obligatoire pour une habilitation sensible' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  justification?: string;
+
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Fait de cette habilitation celle chargée par défaut à la connexion',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isPrimary?: boolean;
+}
+
+export class RevokeAssignmentDto {
+  @ApiProperty({ description: 'Motif consigné dans la piste d’audit' })
+  @IsString()
+  @MinLength(5, { message: 'Un motif est requis.' })
+  @MaxLength(500)
+  reason!: string;
+}
 
 export class ListAccountsQueryDto {
   @ApiPropertyOptional({ enum: ProfileKey })
