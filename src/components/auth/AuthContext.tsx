@@ -24,6 +24,7 @@ import {
   getRefreshToken,
   setAccessToken,
   setRefreshToken,
+  setSessionExpiredHandler,
   type AssignmentSummary,
   type LoginResponse,
   type ProfileKeyApi,
@@ -125,15 +126,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
     try {
+      // Révoque le jeton côté serveur : sans cela, il resterait valable
+      // jusqu'à son expiration naturelle.
       if (refreshToken) await authApi.logout(refreshToken);
     } catch {
-      // La session locale est close quoi qu'il arrive.
+      // API injoignable ou jeton déjà révoqué : la session locale est
+      // close quoi qu'il arrive.
     }
     setAccessToken(null);
     setRefreshToken(null);
     setUser(null);
     setAssignments([]);
     router.push("/login");
+  }, [router]);
+
+  // Session éteinte côté serveur (jeton expiré, habilitation révoquée,
+  // compte suspendu) : on vide l'état local et on ramène à la connexion.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setUser(null);
+      setAssignments([]);
+      router.push("/login?session=expiree");
+    });
+    return () => setSessionExpiredHandler(null);
   }, [router]);
 
   const changePassword = useCallback(

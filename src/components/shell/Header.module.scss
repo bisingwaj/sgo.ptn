@@ -279,3 +279,133 @@
     display: none;
   }
 }
+
+/* ============================================================
+   Menu de compte
+   Reprend l'élévation et les surfaces de .profileMenu pour rester
+   homogène avec le reste du header.
+   ============================================================ */
+
+.accountBlock {
+  position: relative;
+}
+
+.accountMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
+  border: 1px solid var(--cds-border-subtle);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  min-width: 300px;
+  z-index: 100;
+}
+
+.accountIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle);
+
+  strong {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  span {
+    font-size: 12px;
+    color: var(--cds-text-secondary);
+    line-height: 1.4;
+  }
+}
+
+.accountSection {
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.accountLabel {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper);
+  margin-bottom: var(--ptn-space-02);
+}
+
+.accountCurrent,
+.accountSwitch {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--cds-text-primary);
+
+  strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  small {
+    display: block;
+    font-size: 11px;
+    color: var(--cds-text-secondary);
+  }
+}
+
+.accountSwitch {
+  background: transparent;
+  border: 0;
+  padding: 6px 0;
+  cursor: pointer;
+
+  svg {
+    color: var(--ptn-accent);
+    flex-shrink: 0;
+  }
+
+  &:hover:not(:disabled) strong {
+    color: var(--ptn-accent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+.accountLogout {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  width: 100%;
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--cds-text-primary);
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    color: var(--ptn-status-danger);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}

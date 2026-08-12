@@ -515,6 +515,16 @@
   font-size: 13px;
   color: var(--cds-text-primary);
 
+  /* Fin de session : information, pas échec — le rouge serait à contresens. */
+  &[data-tone="info"] {
+    background: var(--ptn-status-info-surface);
+    border-left-color: var(--ptn-status-info);
+
+    svg {
+      color: var(--ptn-status-info);
+    }
+  }
+
   svg {
     flex-shrink: 0;
     color: var(--ptn-status-danger);

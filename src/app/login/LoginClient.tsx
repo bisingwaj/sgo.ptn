@@ -153,6 +153,16 @@ export function LoginClient() {
   const [pwdVisible, setPwdVisible] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [expired, setExpired] = useState(false);
+
+  // Lu depuis window plutôt que via useSearchParams : cela éviterait de
+  // basculer la page de connexion en rendu dynamique pour un simple
+  // message d'information.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("session") === "expiree") {
+      setExpired(true);
+    }
+  }, []);
 
   /**
    * Authentification réelle.
@@ -401,6 +411,20 @@ export function LoginClient() {
               <span>{profileConfig.description}</span>
             </div>
           </div>
+
+          {/* ----- Session expirée ----- */}
+          {expired && !err && (
+            <div className={styles.errBox} role="status" data-tone="info">
+              <Locked size={16} aria-hidden />
+              <div>
+                <strong>Session terminée</strong>
+                <p>
+                  Votre session a expiré ou votre habilitation a été modifiée. Reconnectez-vous
+                  pour poursuivre.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ----- Erreur ----- */}
           {err && (

@@ -226,11 +226,17 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  /**
+   * @param replacesTokenId Jeton écarté par cette émission. Renseigné lors
+   *   d'un rafraîchissement : le lien `replacedById` distingue ensuite une
+   *   rotation d'une révocation par déconnexion.
+   */
   private async issueTokens(
     userId: string,
     assignmentId: string,
     email: string,
     ctx: RequestContext,
+    replacesTokenId?: string,
   ): Promise<AuthTokens> {
     const accessExpiration = this.config.get<string>('JWT_ACCESS_EXPIRATION') ?? '15m';
     const refreshExpiration = this.config.get<string>('JWT_REFRESH_EXPIRATION') ?? '7d';
@@ -259,6 +265,14 @@ export class AuthService {
         ipAddress: ctx.ipAddress ?? null,
       },
     });
+
+    // Rotation : l'ancien jeton est révoqué et pointe vers son successeur.
+    if (replacesTokenId) {
+      await this.prisma.refreshToken.update({
+        where: { id: replacesTokenId },
+        data: { revokedAt: new Date(), replacedById: jti },
+      });
+    }
 
     return { accessToken, refreshToken, expiresIn: accessExpiration };
   }
@@ -294,16 +308,26 @@ export class AuthService {
     }
 
     if (stored.revokedAt) {
-      await this.revokeAllSessions(stored.userId);
-      await this.audit.record({
-        actorId: stored.userId,
-        action: 'auth.refresh.reuse_detected',
-        payload: { tokenId: stored.id },
-        ...ctx,
-      });
-      throw new UnauthorizedException(
-        'Jeton déjà utilisé. Toutes les sessions ont été closes par précaution.',
-      );
+      // Un jeton écarté par ROTATION qui se représente signale un vol :
+      // le client légitime a reçu son successeur, donc quiconque présente
+      // l'ancien en a gardé copie. On coupe toutes les sessions.
+      if (stored.replacedById) {
+        await this.revokeAllSessions(stored.userId);
+        await this.audit.record({
+          actorId: stored.userId,
+          action: 'auth.refresh.reuse_detected',
+          payload: { tokenId: stored.id, replacedBy: stored.replacedById },
+          ...ctx,
+        });
+        throw new UnauthorizedException(
+          'Jeton déjà utilisé. Toutes les sessions ont été closes par précaution.',
+        );
+      }
+
+      // Révoqué par une déconnexion ou une suspension : simplement périmé.
+      // Couper les autres sessions de la personne serait disproportionné —
+      // un onglet resté ouvert suffirait à la déconnecter partout.
+      throw new UnauthorizedException('Session close. Reconnectez-vous.');
     }
 
     if (stored.expiresAt < new Date()) {
@@ -321,14 +345,8 @@ export class AuthService {
     const assignmentId =
       stored.activeAssignmentId ?? (await this.resolvePrimaryAssignment(stored.userId)).id;
 
-    const tokens = await this.issueTokens(stored.userId, assignmentId, user.email, ctx);
-
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date() },
-    });
-
-    return tokens;
+    // La rotation révoque l'ancien jeton et l'enchaîne au nouveau.
+    return this.issueTokens(stored.userId, assignmentId, user.email, ctx, stored.id);
   }
 
   async logout(token: string, userId: string, ctx: RequestContext): Promise<void> {

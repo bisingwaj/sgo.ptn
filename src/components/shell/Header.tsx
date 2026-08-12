@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Notification,
   Help,
@@ -17,8 +17,11 @@ import {
   ChevronDown,
   Asleep,
   Light,
+  Logout,
+  Renew,
 } from "@carbon/icons-react";
 import { useProfile } from "@/components/profile/ProfileContext";
+import { useAuth } from "@/components/auth/AuthContext";
 import { PROFILES, PROFILE_KEYS } from "@/lib/profiles";
 import { LanguagePicker } from "@/components/chrome/LanguagePicker";
 import { useCommandPalette } from "@/components/chrome/CommandPalette";
@@ -37,9 +40,40 @@ interface HeaderProps {
 export function Header({ crumbs = [] }: HeaderProps) {
   const router = useRouter();
   const { profile, setProfile, config, theme, setTheme } = useProfile();
+  const { user, assignments, logout, switchAssignment } = useAuth();
   const { open: openPalette } = useCommandPalette();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
   const isDark = theme === "g100";
+
+  // Fermeture au clic extérieur
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountMenuOpen(false);
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [accountMenuOpen]);
+
+  const handleSwitchAssignment = async (assignmentId: string) => {
+    setSwitching(true);
+    try {
+      await switchAssignment(assignmentId);
+      setAccountMenuOpen(false);
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   const handleProfileSwitch = (newProfile: typeof profile) => {
     setProfile(newProfile);
@@ -122,6 +156,10 @@ export function Header({ crumbs = [] }: HeaderProps) {
 
       <LanguagePicker variant="compact" tone="dark" />
 
+      {/* Sélecteur de profil — mode démonstration uniquement. Dès qu'une
+          session réelle est ouverte, le profil découle de l'habilitation
+          et ne se choisit plus dans un menu. */}
+      {!user && (
       <div className={styles.profileBlock}>
         <button
           type="button"
@@ -170,10 +208,97 @@ export function Header({ crumbs = [] }: HeaderProps) {
           </ul>
         )}
       </div>
+      )}
 
-      <button type="button" className={styles.iconBtn} aria-label="Profil utilisateur">
-        <UserAvatar size={20} aria-hidden />
-      </button>
+      <div className={styles.accountBlock} ref={accountRef}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => setAccountMenuOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={accountMenuOpen}
+          aria-label={user ? `Compte de ${user.firstName} ${user.lastName}` : "Compte utilisateur"}
+        >
+          <UserAvatar size={20} aria-hidden />
+        </button>
+
+        {accountMenuOpen && (
+          <div className={styles.accountMenu} role="menu">
+            {user ? (
+              <>
+                <div className={styles.accountIdentity}>
+                  <strong>
+                    {user.firstName} {user.lastName}
+                  </strong>
+                  <span className="ptn-mono">{user.email}</span>
+                </div>
+
+                <div className={styles.accountSection}>
+                  <span className={styles.accountLabel}>Habilitation active</span>
+                  <div className={styles.accountCurrent}>
+                    <span
+                      className={styles.profileDot}
+                      style={{ background: config.accent.base }}
+                      aria-hidden
+                    />
+                    <span>
+                      <strong>{user.subroleLabel}</strong>
+                      <small>{user.organisationName}</small>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Multi-affectation : un cadre UGP peut aussi siéger au CTP.
+                    Basculer réémet un jeton portant l'autre habilitation. */}
+                {assignments.length > 1 && (
+                  <div className={styles.accountSection}>
+                    <span className={styles.accountLabel}>Autres habilitations</span>
+                    {assignments
+                      .filter((a) => a.id !== user.assignmentId)
+                      .map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          role="menuitem"
+                          disabled={switching}
+                          className={styles.accountSwitch}
+                          onClick={() => void handleSwitchAssignment(a.id)}
+                        >
+                          <Renew size={14} aria-hidden />
+                          <span>
+                            <strong>{a.subroleLabel}</strong>
+                            <small>{a.organisationName}</small>
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.accountLogout}
+                  onClick={() => void logout()}
+                >
+                  <Logout size={16} aria-hidden />
+                  Se déconnecter
+                </button>
+              </>
+            ) : (
+              <>
+                <div className={styles.accountIdentity}>
+                  <strong>Mode démonstration</strong>
+                  <span>Aucune session ouverte. Les écrans affichent des données d’exemple.</span>
+                </div>
+                <Link href="/login" className={styles.accountLogout} role="menuitem">
+                  <Logout size={16} aria-hidden />
+                  Se connecter
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </header>
   );
 }

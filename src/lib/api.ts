@@ -40,6 +40,22 @@ export function getRefreshToken(): string | null {
   }
 }
 
+/**
+ * Notification d'expiration de session.
+ *
+ * Déclenchée quand une requête est refusée et que le rafraîchissement
+ * échoue : le jeton de rafraîchissement est expiré, révoqué, ou
+ * l'habilitation a été retirée. `AuthContext` s'y abonne pour vider la
+ * session et ramener à l'écran de connexion — sans quoi l'utilisateur
+ * resterait sur une interface qui ne répond plus.
+ */
+type SessionExpiredHandler = () => void;
+let sessionExpiredHandler: SessionExpiredHandler | null = null;
+
+export function setSessionExpiredHandler(handler: SessionExpiredHandler | null): void {
+  sessionExpiredHandler = handler;
+}
+
 /** Règle métier renvoyée par les garde-fous du backend. */
 export interface Guardrail {
   code: string;
@@ -87,21 +103,41 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, skipRefresh, headers, ...rest } = options;
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...headers,
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...rest,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...headers,
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch {
+    // `fetch` ne rejette que sur une panne réseau : serveur arrêté, DNS,
+    // CORS. Distinguer ce cas d'une erreur métier évite d'afficher un
+    // « Failed to fetch » brut à l'utilisateur.
+    throw new ApiError(
+      `Service injoignable à l'adresse ${API_BASE}. Vérifiez que l'API est démarrée.`,
+      0,
+    );
+  }
 
   // Jeton d'accès expiré : une tentative de rafraîchissement, puis rejeu.
   if (response.status === 401 && !skipRefresh) {
+    // `hadSession` distingue une session qui s'éteint d'un simple échec
+    // de connexion : sans ce test, un mot de passe erroné sur /auth/login
+    // déclencherait une « expiration de session » inexistante.
+    const hadSession = accessToken !== null;
     const renewed = await tryRefresh();
     if (renewed) {
       return request<T>(path, { ...options, skipRefresh: true });
+    }
+    if (hadSession) {
+      setAccessToken(null);
+      setRefreshToken(null);
+      sessionExpiredHandler?.();
     }
   }
 
