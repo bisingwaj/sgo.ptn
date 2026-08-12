@@ -1,0 +1,7 @@
+.next
+node_modules
+backend
+_archive_v1
+_design_prep
+package-lock.json
+*.md

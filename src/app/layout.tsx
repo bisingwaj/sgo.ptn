@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+// Ordre volontaire : Carbon d'abord, Tailwind ensuite.
+// À spécificité égale, la dernière règle l'emporte — les utilitaires
+// Tailwind peuvent donc surcharger un défaut Carbon, jamais l'inverse.
 import "@/styles/globals.scss";
+import "@/styles/tailwind.css";
 import { ProfileProvider } from "@/components/profile/ProfileContext";
 import { AuthProvider } from "@/components/auth/AuthContext";
 import { OrganisationProvider } from "@/components/profile/OrganisationContext";

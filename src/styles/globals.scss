@@ -1,48 +1,52 @@
 // ============================================================
 // PTN-RDC · Styles globaux
-// Carbon DS v11 + tokens projet + reset minimal
+// Carbon DS v11 + tokens projet
 // ============================================================
 
+// ----- Configuration Carbon (doit précéder TOUT autre module Carbon) -----
+// Sass n'autorise la configuration d'un module qu'au premier chargement :
+// une fois `config` tiré par un autre module, `@use … with (…)` échoue avec
+// « This module was already loaded ». D'où sa position en tête de fichier.
+//
+// Polices : Carbon émet sinon ses propres `@font-face` vers le paquet
+// `@ibm/plex`, que nous n'installons pas — `next/font/google` charge déjà
+// IBM Plex Sans et Mono en auto-hébergement, avec préchargement et sans FOUT.
+@use '@carbon/styles/scss/config' with (
+  $css--font-face: false
+);
+
+// Sass impose que les `@use` précèdent toute autre règle.
+// Ce module n'émet que des variables CSS (`:root { --ptn-*: … }`), qui
+// ne sont affectées par aucune couche : sa position ici est sans effet
+// sur la cascade définie juste en dessous.
 @use './tokens';
 
-// Carbon imports — modular pour réduire le bundle
-@use '@carbon/styles/scss/reset';
-@use '@carbon/styles/scss/themes';
-@use '@carbon/styles/scss/theme';
-@use '@carbon/styles/scss/type';
-@use '@carbon/styles/scss/breakpoint';
-@use '@carbon/styles/scss/spacing';
-@use '@carbon/styles/scss/motion';
-@use '@carbon/styles/scss/zone';
+// ----- Ordre des couches de cascade -----
+// DÉCLARÉ EN PREMIER, et volontairement dans cet ordre.
+//
+// En CSS, une règle NON affectée à une couche l'emporte sur toute règle
+// qui en a une. Or Tailwind v4 place l'intégralité de sa production dans
+// des couches. Carbon, lui, s'écrit sans couche : le reset Carbon
+// (`div { padding: 0 }`, `span { font-size: 100% }`, hérité du reset
+// Meyer) battait donc *toutes* les utilitaires Tailwind, y compris
+// `px-6` et `text-heading-06`, quel que soit l'ordre des imports.
+//
+// En rangeant Carbon dans sa propre couche, on obtient la hiérarchie
+// voulue, de la plus faible à la plus forte :
+//
+//   theme      → variables Tailwind
+//   base       → Preflight (reset Tailwind)
+//   carbon     → reset + composants Carbon  (l'emporte sur Preflight)
+//   components → couche de composants Tailwind
+//   utilities  → utilitaires Tailwind       (l'emportent sur Carbon)
+//
+// Conséquence pratique : un composant Carbon garde son style natif, mais
+// reste surchargeable par une utilitaire explicitement posée dans le JSX.
+@layer theme, base, carbon, components, utilities;
 
-// Carbon components — on importe seulement ceux qu'on utilise dès Vague 1
-@use '@carbon/styles/scss/components/button';
-@use '@carbon/styles/scss/components/tag';
-@use '@carbon/styles/scss/components/tile';
-@use '@carbon/styles/scss/components/notification';
-@use '@carbon/styles/scss/components/modal';
-@use '@carbon/styles/scss/components/text-input';
-@use '@carbon/styles/scss/components/dropdown';
-@use '@carbon/styles/scss/components/combo-box';
-@use '@carbon/styles/scss/components/checkbox';
-@use '@carbon/styles/scss/components/radio-button';
-@use '@carbon/styles/scss/components/file-uploader';
-@use '@carbon/styles/scss/components/loading';
-@use '@carbon/styles/scss/components/inline-loading';
-@use '@carbon/styles/scss/components/progress-indicator';
-@use '@carbon/styles/scss/components/data-table';
-@use '@carbon/styles/scss/components/pagination';
-@use '@carbon/styles/scss/components/tabs';
-@use '@carbon/styles/scss/components/breadcrumb';
-@use '@carbon/styles/scss/components/link';
-@use '@carbon/styles/scss/components/list';
-@use '@carbon/styles/scss/components/structured-list';
-@use '@carbon/styles/scss/components/tooltip';
-@use '@carbon/styles/scss/components/popover';
-@use '@carbon/styles/scss/components/select';
-@use '@carbon/styles/scss/components/text-area';
-@use '@carbon/styles/scss/components/toggle';
-@use '@carbon/styles/scss/components/skeleton-styles';
+@layer carbon {
+  @import './carbon';
+}
 
 // Reset minimal additionnel
 *,

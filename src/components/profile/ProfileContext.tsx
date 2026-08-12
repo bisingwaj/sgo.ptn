@@ -75,6 +75,18 @@ export function ProfileProvider({
     const root = document.documentElement;
     root.setAttribute("data-profile", profile);
     root.setAttribute("data-carbon-theme", theme);
+
+    // Zone de thème Carbon — indispensable en plus de l'attribut.
+    //
+    // `@include theme($g100)` (tokens.scss) n'émet que les tokens de base.
+    // Les *tokens de composants* — dont `--cds-notification-background-info`
+    // — ne sont portés que par les classes de zone officielles. Sans elles,
+    // une InlineNotification gardait un fond bleu clair en thème sombre
+    // pendant que son texte passait en blanc : libellé illisible sur les
+    // messages de garde-fou et d'habilitation, qui sont précisément ceux
+    // qu'on ne peut pas se permettre de rendre illisibles.
+    root.classList.toggle("cds--g100", theme === "g100");
+    root.classList.toggle("cds--g10", theme === "g10");
   }, [profile, theme]);
 
   const setProfile = useCallback((key: ProfileKey) => {

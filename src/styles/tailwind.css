@@ -1,0 +1,225 @@
+/* ============================================================
+ * PTN-RDC · Pont Carbon → Tailwind v4
+ *
+ * Ce fichier est chargé APRÈS globals.scss (donc après Carbon).
+ * Ordre volontaire : à spécificité égale, une utilitaire Tailwind
+ * l'emporte sur le style par défaut d'un composant Carbon.
+ *
+ * Principe directeur : aucune valeur de couleur n'est écrite en dur ici.
+ * Chaque utilitaire pointe vers une variable `--cds-*` (Carbon) ou
+ * `--ptn-*` (projet). Conséquence : `bg-layer` suit automatiquement
+ * le thème g10/g100, et `bg-accent` suit automatiquement le profil
+ * actif — sans une seule ligne de JavaScript.
+ *
+ * `@theme inline` est obligatoire ici : il force Tailwind à référencer
+ * la variable au runtime au lieu d'en copier la valeur à la compilation.
+ * Sans `inline`, le changement de thème et d'accent cesserait de fonctionner.
+ * ============================================================ */
+
+@import "tailwindcss";
+
+/* Périmètre d'analyse — on exclut l'archive v1 et le backend. */
+@source "../../src";
+@source not "../../_archive_v1";
+@source not "../../backend";
+
+@theme inline {
+  /* --------------------------------------------------------
+   * Couleurs — surfaces
+   * -------------------------------------------------------- */
+  --color-background: var(--cds-background);
+  --color-layer: var(--cds-layer);
+  --color-layer-hover: var(--cds-layer-hover);
+  --color-layer-accent: var(--cds-layer-accent);
+  --color-field: var(--cds-field);
+  --color-field-hover: var(--cds-field-hover);
+
+  /* Couleurs — texte */
+  --color-primary: var(--cds-text-primary);
+  --color-secondary: var(--cds-text-secondary);
+  --color-helper: var(--cds-text-helper);
+  --color-placeholder: var(--cds-text-placeholder);
+  --color-on-color: var(--cds-text-on-color);
+  --color-inverse: var(--cds-text-inverse);
+
+  /* Couleurs — bordures */
+  --color-subtle: var(--cds-border-subtle);
+  --color-strong: var(--cds-border-strong);
+  --color-inverse-border: var(--cds-border-inverse);
+
+  /* --------------------------------------------------------
+   * Accent de profil — pilotée par <html data-profile>
+   * Les 8 profils repeignent l'interface via ces 5 variables.
+   * -------------------------------------------------------- */
+  --color-accent: var(--ptn-accent);
+  --color-accent-hover: var(--ptn-accent-hover);
+  --color-accent-active: var(--ptn-accent-active);
+  --color-accent-surface: var(--ptn-accent-surface);
+  --color-accent-on: var(--ptn-accent-on);
+
+  /* --------------------------------------------------------
+   * Statuts — UNIVERSELS. Jamais repeints par le profil.
+   * Un rouge doit signifier « erreur » pour les 8 profils.
+   * -------------------------------------------------------- */
+  --color-success: var(--ptn-status-success);
+  --color-success-surface: var(--ptn-status-success-surface);
+  --color-success-text: var(--ptn-status-success-text);
+  --color-warning: var(--ptn-status-warning);
+  --color-warning-surface: var(--ptn-status-warning-surface);
+  --color-warning-text: var(--ptn-status-warning-text);
+  --color-danger: var(--ptn-status-danger);
+  --color-danger-surface: var(--ptn-status-danger-surface);
+  --color-danger-text: var(--ptn-status-danger-text);
+  --color-info: var(--ptn-status-info);
+  --color-info-surface: var(--ptn-status-info-surface);
+  --color-info-text: var(--ptn-status-info-text);
+
+  /* IA — marqueur violet Carbon. Tout ce qui est généré ou suggéré
+   * par un modèle porte cette couleur, et rien d'autre ne la porte. */
+  --color-ai: var(--ptn-status-ai);
+  --color-ai-surface: var(--ptn-status-ai-surface);
+  --color-ai-text: var(--ptn-status-ai-text);
+
+  /* --------------------------------------------------------
+   * Identité institutionnelle UGPTN (logo)
+   * Distincte de l'accent : jamais utilisée pour un élément
+   * cliquable. Voir la note « brand ≠ interactif » plus bas.
+   * -------------------------------------------------------- */
+  --color-brand: var(--ptn-brand);
+  --color-brand-deep: var(--ptn-brand-deep);
+  --color-brand-ink: var(--ptn-brand-ink);
+  --color-drc-blue: var(--ptn-drc-blue);
+  --color-drc-yellow: var(--ptn-drc-yellow);
+  --color-drc-red: var(--ptn-drc-red);
+
+  /* --------------------------------------------------------
+   * Typographie — échelle productive Carbon, en rem.
+   *
+   * Le rem est un choix d'accessibilité, pas de style : un
+   * utilisateur qui agrandit la police par défaut de son
+   * navigateur voit l'interface suivre. Les 585 déclarations
+   * en px de l'ancien code ignoraient ce réglage.
+   *
+   * Plancher dur : 0.75rem (12px). Les tailles 9/10/11px
+   * de l'ancienne version ne sont pas reproductibles ici.
+   * -------------------------------------------------------- */
+  --font-sans: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+
+  --text-caption: 0.75rem; /* 12px — plancher absolu */
+  --text-caption--line-height: 1.3333;
+  --text-label: 0.75rem; /* 12px */
+  --text-label--line-height: 1.3333;
+  --text-helper: 0.75rem; /* 12px */
+  --text-helper--line-height: 1.3333;
+
+  --text-body-compact: 0.875rem; /* 14px — données denses */
+  --text-body-compact--line-height: 1.2857;
+  --text-body: 0.875rem; /* 14px — corps par défaut */
+  --text-body--line-height: 1.4286;
+  --text-body-lg: 1rem; /* 16px — lecture, formulaires */
+  --text-body-lg--line-height: 1.5;
+
+  --text-heading-01: 0.875rem; /* 14px */
+  --text-heading-01--line-height: 1.2857;
+  --text-heading-01--font-weight: 600;
+  --text-heading-02: 1rem; /* 16px */
+  --text-heading-02--line-height: 1.375;
+  --text-heading-02--font-weight: 600;
+  --text-heading-03: 1.25rem; /* 20px */
+  --text-heading-03--line-height: 1.4;
+  --text-heading-04: 1.75rem; /* 28px */
+  --text-heading-04--line-height: 1.2857;
+  --text-heading-05: 2rem; /* 32px */
+  --text-heading-05--line-height: 1.25;
+  --text-heading-06: 2.625rem; /* 42px */
+  --text-heading-06--line-height: 1.199;
+
+  /* --------------------------------------------------------
+   * Espacement — échelle Carbon (base 8px), en rem.
+   * On expose les noms Carbon (spacing-01…13) pour couper court
+   * aux marges « à l'œil » (10px, 14px, 18px) de l'ancien code.
+   * -------------------------------------------------------- */
+  --spacing: 0.25rem; /* pas de base : p-1 = 4px, p-2 = 8px, p-4 = 16px */
+
+  /* --------------------------------------------------------
+   * Rayon — Carbon est carré. Le défaut est 0.
+   * Seules exceptions : `rounded-full` (avatars, pastilles).
+   * -------------------------------------------------------- */
+  --radius-none: 0px;
+  --radius-sm: 0px;
+  --radius: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  /* --------------------------------------------------------
+   * Mouvement — Carbon Productive.
+   * Neutralisé par prefers-reduced-motion (voir tokens.scss).
+   * -------------------------------------------------------- */
+  --animate-duration-fast-01: var(--ptn-motion-fast-01);
+  --animate-duration-fast-02: var(--ptn-motion-fast-02);
+  --animate-duration-moderate-01: var(--ptn-motion-moderate-01);
+  --animate-duration-moderate-02: var(--ptn-motion-moderate-02);
+  --ease-productive: var(--ptn-motion-easing-productive);
+  --ease-expressive: var(--ptn-motion-easing-expressive);
+
+  /* --------------------------------------------------------
+   * Élévation — Carbon n'a quasiment pas d'ombre.
+   * Réservée aux éléments flottants (popover, drawer, menu).
+   * -------------------------------------------------------- */
+  --shadow-overlay: 0 6px 16px rgba(0, 0, 0, 0.12);
+
+  /* Largeurs de chrome applicatif */
+  --spacing-sidenav: 14rem; /* 224px */
+  --spacing-sidepanel: 20rem; /* 320px */
+  --spacing-header: 3rem; /* 48px */
+}
+
+/* ============================================================
+ * Base — appliquée à toute l'application
+ * ============================================================ */
+@layer base {
+  html {
+    /* 100% = on hérite du réglage utilisateur, on ne l'écrase pas. */
+    font-size: 100%;
+    /* Le défilement piloté au clavier ne doit pas cacher la cible
+     * sous le header collant de 48px. */
+    scroll-padding-top: 4rem;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.4286;
+    color: var(--color-primary);
+    background-color: var(--color-background);
+  }
+
+  /* Chiffres alignés verticalement partout où il y a des montants,
+   * des dates ou des références. Une colonne de montants mal alignée
+   * est illisible, et c'est 90 % de ce produit. */
+  .tabular,
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}
+
+/* ============================================================
+ * Utilitaires projet
+ * ============================================================ */
+@utility mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Zone défilante dans une grille/flex : sans `min-height: 0`,
+ * un enfant défilant force son parent à s'étirer au lieu de défiler.
+ * C'est le remplaçant sain des 20 `calc(100vh - 320px)` de l'ancien code,
+ * qui s'effondraient dès 150 % de zoom navigateur. */
+@utility scroll-region {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

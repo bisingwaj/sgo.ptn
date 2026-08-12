@@ -1,0 +1,25 @@
+// ============================================================
+// PTN-RDC · Import des styles Carbon
+//
+// Ce partiel est destiné à être inclus DANS `@layer carbon`
+// (voir globals.scss). Il n'est jamais importé directement.
+// ============================================================
+
+// ----- Pourquoi Carbon en entier plutôt qu'à la carte -----
+//
+// La version précédente importait 28 sous-modules choisis un par un.
+// Ce découpage est silencieusement faux : `components/data-table`
+// n'entraîne pas `data-table/sort`, si bien que la classe
+// `.cds--table-sort__description` restait sans style et que le libellé
+// destiné aux lecteurs d'écran — « Click to sort rows by… » — s'affichait
+// en clair au milieu du tableau. Aucune erreur, aucun avertissement :
+// le défaut ne se voyait qu'à l'œil, sur la page concernée.
+//
+// Le même piège existe pour action/, expandable/, skeleton/ et pour les
+// sous-modules équivalents d'autres composants.
+//
+// Coût mesuré du passage à l'import complet : 84 Ko gzip contre 48 Ko,
+// soit 36 Ko une seule fois, puis en cache. Pour un outil interne de
+// bureau, c'est un prix négligeable comparé au risque de composants
+// partiellement stylés découverts en production.
+@use '@carbon/styles';
