@@ -16,6 +16,7 @@
     "@carbon/icons-react": "^11.80.0",
     "@carbon/react": "^1.107.1",
     "@carbon/styles": "^1.106.0",
+    "@tanstack/react-query": "^5.101.4",
     "@tiptap/extension-placeholder": "^3.23.1",
     "@tiptap/pm": "^3.23.1",
     "@tiptap/react": "^3.23.1",
@@ -26,10 +27,13 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sass": "^1.99.0",
-    "tailwind-merge": "^3.6.0"
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@tanstack/react-query-devtools": "^5.101.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

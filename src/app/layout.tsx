@@ -12,6 +12,7 @@ import { UserProvider } from "@/components/profile/UserContext";
 import { ToastProvider } from "@/components/toast/ToastContext";
 import { TranslationProvider } from "@/components/translation/TranslationWidget";
 import { CommandPaletteProvider } from "@/components/chrome/CommandPalette";
+import { QueryProvider } from "@/lib/api/QueryProvider";
 
 const ibmSans = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -49,19 +50,21 @@ export default function RootLayout({
         <a href="#ptn-main" className="ptn-skip-link">
           Aller au contenu principal
         </a>
-        <ProfileProvider>
-          <AuthProvider>
-            <OrganisationProvider>
-              <UserProvider>
-                <ToastProvider>
-                  <TranslationProvider>
-                    <CommandPaletteProvider>{children}</CommandPaletteProvider>
-                  </TranslationProvider>
-                </ToastProvider>
-              </UserProvider>
-            </OrganisationProvider>
-          </AuthProvider>
-        </ProfileProvider>
+        <QueryProvider>
+          <ProfileProvider>
+            <AuthProvider>
+              <OrganisationProvider>
+                <UserProvider>
+                  <ToastProvider>
+                    <TranslationProvider>
+                      <CommandPaletteProvider>{children}</CommandPaletteProvider>
+                    </TranslationProvider>
+                  </ToastProvider>
+                </UserProvider>
+              </OrganisationProvider>
+            </AuthProvider>
+          </ProfileProvider>
+        </QueryProvider>
       </body>
     </html>
   );
