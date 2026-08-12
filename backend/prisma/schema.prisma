@@ -1,17 +1,474 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// ============================================================
+// PTN-RDC · Schéma Prisma — Domaine Authentification & Habilitations
+//
+// Source de vérité institutionnelle : Manuel d'Exécution du Projet (MEP)
+// du 23 juin 2025, validé par le Gouvernement de la RDC, la Banque mondiale
+// et l'AFD.
+//
+// Principe directeur : un compte n'est pas « un utilisateur avec un rôle ».
+// C'est une personne (User), rattachée à une organisation (Organisation),
+// exerçant un sous-rôle (Subrole) sur un périmètre, pendant une durée
+// déterminée. Ce triplet est porté par Assignment.
+// ============================================================
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "cjs"
+  // Imports sans extension : NestJS compile en CommonJS et le seed
+  // s'exécute via ts-node, qui ne réécrit pas `.js` vers `.ts`.
+  importFileExtension = ""
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+// ============================================================
+// ÉNUMÉRATIONS
+// ============================================================
+
+/// Les 8 profils utilisateurs — MEP § 15.2.
+/// Aligné sur src/lib/profiles.ts côté frontend.
+enum ProfileKey {
+  UGP
+  MDA
+  PARTENAIRE
+  BAILLEUR
+  SOUMISSIONNAIRE
+  SBP
+  AUDITEUR
+  GOUVERNANCE
+}
+
+/// Les 4 familles du sélecteur de connexion.
+enum ProfileFamily {
+  UGP_GOUV
+  BAILLEURS
+  BENEFICIAIRES
+  CONTROLE
+}
+
+/// Cycle de vie d'un compte. Aucune suppression physique : la piste
+/// d'audit doit permettre de répondre à « qui avait accès à quoi, quand »
+/// plusieurs années après les faits.
+enum UserStatus {
+  /// Créé par un admin, mot de passe temporaire non encore consommé
+  INVITE
+  /// Mot de passe défini et onboarding complété
+  ACTIF
+  /// Accès suspendu temporairement (décision administrative)
+  SUSPENDU
+  /// Mot de passe temporaire expiré sans activation
+  EXPIRE
+  /// Archivé — conservé pour l'audit, ne peut plus se connecter
+  ARCHIVE
+}
+
+enum OrganisationType {
+  UGP
+  MINISTERE
+  AGENCE
+  UNIVERSITE
+  OSC
+  FEDERATION
+  ENTREPRISE
+  CABINET_AUDIT
+  BAILLEUR
+  HUB
+  STARTUP
+  EESU
+  AUTRE
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  SUSPENDED
+  /// Dépassement de validUntil (missions d'audit bornées)
+  EXPIRED
+  REVOKED
+}
+
+/// Langues supportées — MEP, communications publiques.
+enum Language {
+  FR
+  EN
+  LN
+  SW
+  TS
+  KK
+}
+
+enum ComponentCode {
+  C1
+  C2
+  C3
+  C4
+  C5
+}
+
+// ============================================================
+// RÉFÉRENTIEL MEP
+// Données identiques dans tous les environnements, production comprise.
+// Alimenté par le seed en mode idempotent (upsert).
+// ============================================================
+
+/// Composantes du projet — MEP Tableau 2 § 2.2.4. Total = 510 M USD.
+/// Servir ces montants depuis la base est la parade structurelle à la
+/// dérive constatée dans les écrans qui les réécrivaient en dur.
+model Component {
+  code           ComponentCode @id
+  label          String
+  shortLabel     String
+  /// Montants en millions USD
+  totalUsdM      Decimal       @db.Decimal(10, 2)
+  idaUsdM        Decimal       @db.Decimal(10, 2)
+  afdUsdM        Decimal       @db.Decimal(10, 2)
+  privateUsdM    Decimal       @db.Decimal(10, 2)
+  /// Note de réconciliation lorsque MEP et PAD divergent
+  reconciliation String?
+
+  assignments Assignment[]
+
+  @@map("components")
+}
+
+/// 26 provinces de la RDC. `isPriorityCpf` marque les 10 provinces
+/// prioritaires du Cadre de Partenariat-Pays.
+model Province {
+  code          String  @id
+  label         String
+  isPriorityCpf Boolean @default(false)
+
+  organisations Organisation[]
+  assignments   Assignment[]
+
+  @@map("provinces")
+}
+
+// ============================================================
+// ORGANISATIONS
+// ============================================================
+
+model Organisation {
+  id       String           @id @default(uuid()) @db.Uuid
+  /// Sigle officiel — MPTN, ARPTC, ONIP… (glossaire MEP § 13.1)
+  code     String           @unique
+  name     String
+  fullName String
+  type     OrganisationType
+
+  provinceCode String?
+  province     Province? @relation(fields: [provinceCode], references: [code])
+
+  /// KYC — partenaires institutionnels et soumissionnaires
+  /// 1 = déclaratif · 2 = vérifié · 3 = signataires habilités
+  rccm     String?
+  nif      String?
+  kycLevel Int     @default(1)
+
+  email String?
+  phone String?
+
+  /// Marque les organisations du référentiel MEP (non supprimables)
+  isReference Boolean @default(false)
+  isActive    Boolean @default(true)
+
+  assignments Assignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@map("organisations")
+}
+
+// ============================================================
+// SOUS-RÔLES & PERMISSIONS
+// ============================================================
+
+/// Sous-rôles officiels — 21 pour l'UGP (MEP § 6.1), plus ceux des
+/// 7 autres profils. Les contraintes institutionnelles (unicité,
+/// séparation des tâches, sensibilité) sont portées ici pour que les
+/// garde-fous du formulaire de création soient dirigés par la donnée.
+model Subrole {
+  id      String     @id @default(uuid()) @db.Uuid
+  /// Identifiant stable — UGP_COORDONNATEUR, BAILLEUR_TTL_BM…
+  code    String     @unique
+  label   String
+  profile ProfileKey
+
+  /// Un seul titulaire actif à la fois : Coordonnateur, RAF,
+  /// Auditeur Interne, RPM. Une réattribution suspend le titulaire.
+  isUnique Boolean @default(false)
+
+  /// Habilitation sensible : octroi soumis à justification écrite et
+  /// validation du Coordonnateur. Concerne au premier chef le
+  /// Spécialiste VBG/EAS, qui ouvre le canal confidentiel EAS/HS.
+  isSensitive Boolean @default(false)
+
+  /// Séparation des tâches — codes de sous-rôles incompatibles.
+  /// Ex. RAF / Comptable / Caissier ; Auditeur Interne / tout opérationnel.
+  incompatibleWith String[] @default([])
+
+  /// Rattachement à une composante obligatoire (RC1, RC2, RC3)
+  requiresComponent Boolean @default(false)
+  /// Mission bornée obligatoire (auditeurs externes, TPM)
+  requiresMission   Boolean @default(false)
+
+  displayOrder Int @default(0)
+
+  permissions SubrolePermission[]
+  assignments Assignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profile])
+  @@map("subroles")
+}
+
+/// Permissions granulaires. Avec 21 sous-rôles UGP, un contrôle par
+/// profil ne suffit pas : les interdits du MEP (un bailleur ne rédige
+/// jamais de TDR, un auditeur n'écrit jamais) s'expriment ici.
+model Permission {
+  /// Format `domaine:action` — ano:decide, easHs:read, tdr:author
+  code     String  @id
+  label    String
+  /// passation · fiduciaire · sauvegardes · mgp · pilotage · admin
+  category String
+  /// Permission d'écriture : refusée d'office aux profils lecture seule
+  isWrite  Boolean @default(false)
+  /// Permission sensible : tracée individuellement dans le journal d'audit
+  isSensitive Boolean @default(false)
+
+  subroles    SubrolePermission[]
+  assignments AssignmentPermission[]
+
+  @@index([category])
+  @@map("permissions")
+}
+
+/// Permissions attachées par défaut à un sous-rôle.
+model SubrolePermission {
+  subroleId      String @db.Uuid
+  permissionCode String
+
+  subrole    Subrole    @relation(fields: [subroleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@id([subroleId, permissionCode])
+  @@map("subrole_permissions")
+}
+
+// ============================================================
+// UTILISATEURS
+// ============================================================
+
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id    String @id @default(uuid()) @db.Uuid
+  email String @unique
+
+  /// Null tant que le compte n'a pas été activé
+  passwordHash String?
+
+  firstName String
+  lastName  String
+  phone     String?
+  preferredLanguage Language @default(FR)
+
+  status UserStatus @default(INVITE)
+
+  // --- Mot de passe temporaire (mode d'activation retenu) ---
+  /// L'admin ne connaît jamais le mot de passe définitif
+  mustChangePassword    Boolean   @default(true)
+  tempPasswordExpiresAt DateTime?
+
+  // --- Engagements signés par l'utilisateur lui-même ---
+  // Un administrateur ne peut pas les signer à sa place : la déclaration
+  // de conflit d'intérêts engage la personne (MEP § 5.2.8).
+  codeOfConductSignedAt DateTime?
+  coiDeclaredAt         DateTime?
+  dataPrivacyAckAt      DateTime?
+  onboardingCompletedAt DateTime?
+
+  // --- Sécurité de connexion ---
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  // --- Traçabilité de la création ---
+  createdById  String? @db.Uuid
+  createdBy    User?   @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers User[]  @relation("UserCreatedBy")
+
+  assignments   Assignment[]   @relation("AssignmentUser")
+  grantedAssignments Assignment[] @relation("AssignmentGrantedBy")
+  approvedAssignments Assignment[] @relation("AssignmentApprovedBy")
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@index([status])
+  @@map("users")
+}
+
+// ============================================================
+// AFFECTATIONS — le cœur du modèle d'habilitation
+// ============================================================
+
+/// Une affectation lie une personne à une organisation, pour un profil
+/// et un sous-rôle donnés, sur un périmètre et pendant une durée.
+///
+/// Le multi-affectation est assumé : un cadre UGP peut aussi siéger au
+/// CTP, un point focal MDA peut être membre de commission. Créer deux
+/// comptes distincts pour la même personne brouillerait la piste d'audit.
+model Assignment {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  profile   ProfileKey
+  subroleId String     @db.Uuid
+  subrole   Subrole    @relation(fields: [subroleId], references: [id])
+
+  /// Affectation chargée par défaut à la connexion
+  isPrimary Boolean @default(false)
+
+  // --- Périmètre ---
+  componentCode ComponentCode?
+  component     Component?     @relation(fields: [componentCode], references: [code])
+  provinceCode  String?
+  province      Province?      @relation(fields: [provinceCode], references: [code])
+
+  // --- Bornage temporel ---
+  /// Référence de mission — ex. AUD-EXT-2026-T1. Un auditeur externe
+  /// conservant son accès après la fin de son mandat est une
+  /// non-conformité que tout contrôleur relèvera.
+  missionRef String?
+  validFrom  DateTime  @default(now())
+  validUntil DateTime?
+
+  status AssignmentStatus @default(ACTIVE)
+
+  // --- Habilitation sensible ---
+  justification String?
+  approvedById  String?   @db.Uuid
+  approvedBy    User?     @relation("AssignmentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt    DateTime?
+
+  // --- Traçabilité de l'octroi ---
+  grantedById String? @db.Uuid
+  grantedBy   User?   @relation("AssignmentGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  revokedAt    DateTime?
+  revokeReason String?
+
+  /// Ajustements par rapport aux permissions par défaut du sous-rôle
+  permissions AssignmentPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([organisationId])
+  @@index([profile, subroleId])
+  @@map("assignments")
+}
+
+/// Écart explicite aux permissions par défaut du sous-rôle.
+/// `granted = false` retire une permission, `true` en ajoute une.
+model AssignmentPermission {
+  assignmentId   String  @db.Uuid
+  permissionCode String
+  granted        Boolean @default(true)
+  reason         String?
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+
+  @@id([assignmentId, permissionCode])
+  @@map("assignment_permissions")
+}
+
+// ============================================================
+// SESSIONS
+// ============================================================
+
+/// Jetons de rafraîchissement, stockés hachés et à rotation.
+/// `replacedById` permet de détecter une réutilisation de jeton révoqué,
+/// signal classique de vol de session.
+model RefreshToken {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique
+
+  /// Affectation active durant cette session (multi-affectation)
+  activeAssignmentId String? @db.Uuid
+
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?   @db.Uuid
+
+  userAgent String?
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, revokedAt])
+  @@map("refresh_tokens")
+}
+
+// ============================================================
+// PISTE D'AUDIT
+// ============================================================
+
+/// Journal en ajout seul, chaîné cryptographiquement.
+///
+/// Chaque entrée porte le hachage de la précédente : toute suppression ou
+/// modification a posteriori rompt la chaîne et devient détectable. C'est
+/// l'exigence qui distingue une table de logs d'une piste d'audit
+/// opposable devant la Cour des Comptes, l'IGF ou un auditeur BM.
+model AuditLog {
+  id       String @id @default(uuid()) @db.Uuid
+  sequence BigInt @default(autoincrement())
+
+  actorId String? @db.Uuid
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  /// Dénormalisé : survit à l'archivage du compte
+  actorEmail String?
+
+  /// user.create · assignment.grant · auth.login · easHs.read…
+  action     String
+  entityType String?
+  entityId   String?
+
+  /// Détail de l'événement. Ne doit jamais contenir de secret ni de
+  /// donnée nominative issue du canal EAS/HS.
+  payload Json?
+
+  ipAddress String?
+  userAgent String?
+
+  /// Chaînage
+  previousHash String?
+  hash         String
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

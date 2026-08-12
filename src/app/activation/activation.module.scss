@@ -1,0 +1,210 @@
+/**
+ * Première connexion — définition du mot de passe.
+ * IBM Carbon v11 · radius 0 · échelle 8px.
+ */
+
+.shell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--ptn-space-07) var(--ptn-space-05);
+  background: var(--cds-background, #fff);
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-05);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+
+  h1 {
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--cds-text-secondary, #525252);
+  }
+}
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.notice {
+  display: flex;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-04);
+  border-left: 3px solid var(--ptn-accent);
+  background: var(--ptn-accent-surface);
+  color: var(--cds-text-secondary, #525252);
+
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  svg {
+    flex-shrink: 0;
+    color: var(--ptn-accent);
+  }
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-04);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 12px;
+    color: var(--cds-text-secondary, #525252);
+  }
+
+  input {
+    padding: 11px var(--ptn-space-03);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--cds-text-primary, #161616);
+    background: var(--cds-field, #f4f4f4);
+    border: none;
+    border-bottom: 1px solid var(--cds-border-strong, #8d8d8d);
+
+    &:focus {
+      outline: 2px solid var(--ptn-accent);
+      outline-offset: -2px;
+    }
+
+    &[aria-invalid="true"] {
+      border-bottom-color: var(--ptn-status-danger);
+    }
+  }
+}
+
+.fieldError {
+  font-size: 12px;
+  color: var(--ptn-status-danger-text);
+}
+
+.rules {
+  list-style: none;
+  margin: 0;
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  background: var(--cds-layer, #f4f4f4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--ptn-space-02);
+    font-size: 12px;
+    color: var(--cds-text-helper, #6f6f6f);
+
+    svg {
+      color: var(--cds-border-subtle, #e0e0e0);
+      flex-shrink: 0;
+    }
+  }
+}
+
+.ruleOk {
+  color: var(--ptn-status-success-text) !important;
+
+  svg {
+    color: var(--ptn-status-success) !important;
+  }
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  border-left: 3px solid var(--ptn-status-danger);
+  background: var(--ptn-status-danger-surface);
+  color: var(--ptn-status-danger-text);
+  font-size: 13px;
+}
+
+.submit {
+  padding: 14px var(--ptn-space-04);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  background: var(--ptn-accent);
+  color: var(--ptn-accent-on);
+  border: none;
+  cursor: pointer;
+  transition: background var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+
+  &:hover:not(:disabled) {
+    background: var(--ptn-accent-hover);
+  }
+
+  &:disabled {
+    background: var(--cds-button-disabled, #c6c6c6);
+    color: var(--cds-text-on-color-disabled, #8d8d8d);
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+.foot {
+  font-size: 12px;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ptn-space-04);
+  min-height: 60vh;
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+
+  h1 {
+    font-size: 24px;
+    font-weight: 300;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  p {
+    font-size: 14px;
+  }
+}
+
+.link {
+  color: var(--ptn-accent);
+  font-size: 14px;
+  text-decoration: none;
+  border-bottom: 1px solid currentcolor;
+}

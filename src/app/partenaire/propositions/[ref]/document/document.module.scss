@@ -309,7 +309,10 @@
   margin: 0 0 8px;
 }
 
-[contenteditable]:focus {
+/* Rattaché à `.page` : CSS Modules refuse les sélecteurs globaux
+   (« pure selectors must contain at least one local class or id »).
+   Les zones éditables vivent toutes dans la page du document. */
+.page [contenteditable]:focus {
   outline: 1px dashed var(--ptn-accent);
   outline-offset: 4px;
   background: var(--ptn-accent-light);

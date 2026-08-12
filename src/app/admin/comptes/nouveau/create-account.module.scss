@@ -1,0 +1,314 @@
+/**
+ * Création de compte — administration.
+ * IBM Carbon v11 · radius 0 · échelle 8px · IBM Plex.
+ */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-05);
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ptn-space-04);
+
+  @media (max-width: 672px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--ptn-space-03);
+}
+
+/* ===== Carte sous-rôle (étape 04) ===== */
+
+.subroleCard {
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-layer, #f4f4f4);
+  padding: var(--ptn-space-04);
+}
+
+.subroleHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ptn-space-03);
+  margin-bottom: var(--ptn-space-03);
+
+  strong {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--cds-text-primary, #161616);
+  }
+}
+
+.permCount {
+  font-size: 12px;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ptn-space-02);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-background, #fff);
+  color: var(--cds-text-secondary, #525252);
+}
+
+.badgeSensitive {
+  border-color: var(--ptn-status-danger);
+  color: var(--ptn-status-danger-text);
+  background: var(--ptn-status-danger-surface);
+}
+
+.checking {
+  font-size: 14px;
+  color: var(--cds-text-secondary, #525252);
+  padding: var(--ptn-space-03) 0;
+}
+
+/* ===== Récapitulatif ===== */
+
+.recap {
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.recapRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ptn-space-04);
+  padding: 10px var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  span {
+    font-size: 14px;
+    color: var(--cds-text-secondary, #525252);
+  }
+
+  strong {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cds-text-primary, #161616);
+    text-align: right;
+  }
+}
+
+/* ===== États d'accès ===== */
+
+.loading,
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ptn-space-04);
+  min-height: 60vh;
+  padding: var(--ptn-space-06);
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+
+  h1 {
+    font-size: 24px;
+    font-weight: 300;
+    letter-spacing: -0.005em;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  p {
+    font-size: 14px;
+    max-width: 46ch;
+    line-height: 1.5;
+  }
+
+  code {
+    font-family: var(--font-ibm-plex-mono), monospace;
+    font-size: 13px;
+    background: var(--cds-layer, #f4f4f4);
+    padding: 1px 6px;
+  }
+}
+
+.gateMeta {
+  font-size: 12px;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.gateLink {
+  color: var(--ptn-accent);
+  font-size: 14px;
+  text-decoration: none;
+  border-bottom: 1px solid currentcolor;
+
+  &:hover {
+    color: var(--ptn-accent-hover);
+  }
+}
+
+/* ===== Confirmation ===== */
+
+.successShell {
+  display: flex;
+  justify-content: center;
+  padding: var(--ptn-space-07) var(--ptn-space-05);
+  min-height: 100vh;
+  background: var(--cds-background, #fff);
+}
+
+.successCard {
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-05);
+}
+
+.successIcon {
+  color: var(--ptn-status-success);
+}
+
+.successHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+
+  h1 {
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  p {
+    font-size: 14px;
+    color: var(--cds-text-secondary, #525252);
+  }
+}
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.passwordBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-05);
+  border: 2px solid var(--ptn-accent);
+  background: var(--ptn-accent-surface);
+}
+
+.passwordLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.passwordValue {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--cds-text-primary, #161616);
+  user-select: all;
+  word-break: break-all;
+}
+
+.copyBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--ptn-accent);
+  background: transparent;
+  color: var(--ptn-accent);
+  cursor: pointer;
+  transition: background var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+
+  &:hover {
+    background: var(--cds-background, #fff);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+.successActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ptn-space-03);
+  padding-top: var(--ptn-space-03);
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.btnGhost,
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive),
+    color var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+.btnGhost {
+  background: transparent;
+  color: var(--cds-text-secondary, #525252);
+
+  &:hover {
+    background: var(--cds-layer-hover, #e8e8e8);
+    color: var(--cds-text-primary, #161616);
+  }
+}
+
+.btnPrimary {
+  background: var(--ptn-accent);
+  color: var(--ptn-accent-on);
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+}

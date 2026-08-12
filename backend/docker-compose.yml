@@ -1,0 +1,37 @@
+# PTN-RDC · Base de données de développement
+#
+# Objectif : garantir que les deux développeurs travaillent sur un PostgreSQL
+# strictement identique (version, encodage, collation). Une divergence de
+# collation suffit à produire des ORDER BY différents d'une machine à l'autre.
+#
+# Port 5433 côté hôte : évite le conflit avec une installation PostgreSQL
+# native qui occuperait déjà le 5432.
+#
+#   docker compose up -d      démarrer
+#   docker compose down       arrêter (les données sont conservées)
+#   docker compose down -v    arrêter et supprimer les données
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ptn_rdc_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ptn
+      POSTGRES_PASSWORD: ptn_dev_password
+      POSTGRES_DB: ptn_rdc
+      # Encodage et collation figés : source de vérité du tri
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - ptn_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ptn -d ptn_rdc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ptn_pgdata:
+    name: ptn_rdc_pgdata

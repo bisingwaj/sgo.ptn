@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "@/styles/globals.scss";
 import { ProfileProvider } from "@/components/profile/ProfileContext";
+import { AuthProvider } from "@/components/auth/AuthContext";
 import { OrganisationProvider } from "@/components/profile/OrganisationContext";
 import { UserProvider } from "@/components/profile/UserContext";
 import { ToastProvider } from "@/components/toast/ToastContext";
@@ -45,15 +46,17 @@ export default function RootLayout({
           Aller au contenu principal
         </a>
         <ProfileProvider>
-          <OrganisationProvider>
-            <UserProvider>
-              <ToastProvider>
-                <TranslationProvider>
-                  <CommandPaletteProvider>{children}</CommandPaletteProvider>
-                </TranslationProvider>
-              </ToastProvider>
-            </UserProvider>
-          </OrganisationProvider>
+          <AuthProvider>
+            <OrganisationProvider>
+              <UserProvider>
+                <ToastProvider>
+                  <TranslationProvider>
+                    <CommandPaletteProvider>{children}</CommandPaletteProvider>
+                  </TranslationProvider>
+                </ToastProvider>
+              </UserProvider>
+            </OrganisationProvider>
+          </AuthProvider>
         </ProfileProvider>
       </body>
     </html>

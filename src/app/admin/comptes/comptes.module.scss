@@ -1,0 +1,313 @@
+/**
+ * Registre des comptes — administration.
+ * IBM Carbon v11 · radius 0 · échelle 8px.
+ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ptn-space-04);
+  flex-wrap: wrap;
+  margin-bottom: var(--ptn-space-04);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  flex: 1 1 320px;
+  max-width: 420px;
+  padding: 0 var(--ptn-space-03);
+  background: var(--cds-field, #f4f4f4);
+  border-bottom: 1px solid var(--cds-border-strong, #8d8d8d);
+  color: var(--cds-text-secondary, #525252);
+
+  &:focus-within {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+
+  input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 11px 0;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--cds-text-primary, #161616);
+
+    &:focus {
+      outline: none;
+    }
+
+    &::placeholder {
+      color: var(--cds-text-placeholder, #a8a8a8);
+    }
+  }
+}
+
+.pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-background, #fff);
+  color: var(--cds-text-secondary, #525252);
+  cursor: pointer;
+  transition: all var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+
+  &:hover {
+    background: var(--cds-layer-hover, #e8e8e8);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 1px;
+  }
+}
+
+.pillActive {
+  background: var(--ptn-accent);
+  border-color: var(--ptn-accent);
+  color: var(--ptn-accent-on);
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+}
+
+/* ===== Liste ===== */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ptn-space-05);
+  padding: var(--ptn-space-04);
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--cds-layer-hover, #f4f4f4);
+  }
+}
+
+.itemMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  flex-wrap: wrap;
+
+  strong {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cds-text-primary, #161616);
+  }
+}
+
+.itemEmail {
+  font-size: 12px;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.itemRole {
+  font-size: 12px;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.itemExpiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ptn-status-warning-text);
+}
+
+.itemMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ptn-space-02);
+  flex-shrink: 0;
+}
+
+.itemLogin {
+  font-size: 12px;
+  color: var(--cds-text-helper, #6f6f6f);
+  white-space: nowrap;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-background, #fff);
+  color: var(--ptn-accent);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+
+  &:hover {
+    background: var(--ptn-accent-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 1px;
+  }
+}
+
+/* ===== États ===== */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ptn-space-03);
+  padding: var(--ptn-space-07);
+  color: var(--cds-text-helper, #6f6f6f);
+  font-size: 14px;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  margin-bottom: var(--ptn-space-04);
+  border-left: 3px solid var(--ptn-status-danger);
+  background: var(--ptn-status-danger-surface);
+  color: var(--ptn-status-danger-text);
+  font-size: 14px;
+}
+
+.reissued {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-04);
+  flex-wrap: wrap;
+  padding: var(--ptn-space-04);
+  margin-bottom: var(--ptn-space-04);
+  border-left: 3px solid var(--ptn-accent);
+  background: var(--ptn-accent-surface);
+
+  strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  p {
+    font-size: 12px;
+    color: var(--cds-text-secondary, #525252);
+    margin-top: 2px;
+  }
+
+  code {
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    user-select: all;
+    color: var(--cds-text-primary, #161616);
+  }
+}
+
+.dismiss {
+  margin-left: auto;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  border: 1px solid var(--ptn-accent);
+  background: transparent;
+  color: var(--ptn-accent);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 1px;
+  }
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--ptn-accent);
+  color: var(--ptn-accent-on);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--ptn-accent-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ===== Accès refusé ===== */
+
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ptn-space-04);
+  min-height: 60vh;
+  padding: var(--ptn-space-06);
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+
+  h1 {
+    font-size: 24px;
+    font-weight: 300;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  p {
+    font-size: 14px;
+    max-width: 46ch;
+    line-height: 1.5;
+  }
+}
+
+.gateLink {
+  color: var(--ptn-accent);
+  font-size: 14px;
+  text-decoration: none;
+  border-bottom: 1px solid currentcolor;
+}

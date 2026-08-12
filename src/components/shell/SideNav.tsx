@@ -9,6 +9,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useProfile } from "@/components/profile/ProfileContext";
 import { useOrganisation } from "@/components/profile/OrganisationContext";
+import { useAuth } from "@/components/auth/AuthContext";
 import type { ProfileKey } from "@/lib/profiles";
 import {
   Dashboard,
@@ -32,6 +33,7 @@ import {
   TaskApproved,
   Voicemail,
   Notification,
+  UserMultiple,
 } from "@carbon/icons-react";
 import styles from "./SideNav.module.scss";
 import type { ReactNode } from "react";
@@ -197,7 +199,18 @@ export function SideNav() {
   const pathname = usePathname() ?? "";
   const { profile, config } = useProfile();
   const { org } = useOrganisation();
-  const groups = navFor(profile);
+  const { can } = useAuth();
+
+  // L'entrée Administration n'apparaît que pour les habilitations qui la
+  // portent — le sous-rôle UGP « IT » (MEP § 6.1, poste n°18). En mode
+  // démonstration, aucune session n'est ouverte : elle reste masquée.
+  const groups = [...navFor(profile)];
+  if (can("admin:users")) {
+    groups.push({
+      title: "Administration",
+      items: [{ label: "Comptes", href: "/admin/comptes", icon: <UserMultiple size={16} /> }],
+    });
+  }
 
   // Pour le profil partenaire, le label/nom viennent du contexte organisation.
   // Sinon : config par défaut.

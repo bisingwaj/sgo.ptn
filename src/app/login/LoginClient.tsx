@@ -19,6 +19,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/components/profile/ProfileContext";
+import { useAuth, toProfileKey } from "@/components/auth/AuthContext";
+import { ApiError } from "@/lib/api";
 import { PROFILES, type ProfileKey } from "@/lib/profiles";
 import { PROJECT } from "@/lib/project-data";
 import { Illustration } from "@/components/illustrations/Illustration";
@@ -108,6 +110,7 @@ function buildSubroleOptions(family: FamilyDef): SubroleOption[] {
 export function LoginClient() {
   const router = useRouter();
   const { setProfile } = useProfile();
+  const { login } = useAuth();
   const [familyKey, setFamilyKey] = useState<FamilyDef["key"]>("ugp-gov");
   const family = useMemo(() => FAMILIES.find((f) => f.key === familyKey)!, [familyKey]);
   const allOptions = useMemo(() => buildSubroleOptions(family), [family]);
@@ -151,33 +154,62 @@ export function LoginClient() {
   const [err, setErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * Authentification réelle.
+   *
+   * Le profil actif ne découle plus du sélecteur ci-dessus : il vient de
+   * l'habilitation accordée par un administrateur. Le sélecteur famille /
+   * sous-rôle reste affiché pour l'illustration et l'accent de couleur,
+   * mais n'a plus d'effet sur les droits obtenus.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
 
     if (!email || !password) {
-      setErr("Renseignez votre email institutionnel et votre mot de passe.");
+      setErr("Renseignez votre adresse électronique et votre mot de passe.");
       return;
     }
 
     setSubmitting(true);
-    // Mock authentification (≈600ms)
-    await new Promise((r) => setTimeout(r, 600));
+    try {
+      const result = await login(email.trim(), password);
 
-    // Persiste le profil
+      // Mot de passe temporaire non encore changé : l'API refusera toute
+      // autre route tant que ce n'est pas fait.
+      if (result.user.mustChangePassword) {
+        router.push("/activation");
+        return;
+      }
+
+      router.push(PROFILES[toProfileKey(result.user.profile)].homePath);
+    } catch (error) {
+      setErr(
+        error instanceof ApiError
+          ? error.message
+          : "Service d'authentification injoignable. Vérifiez que l'API est démarrée.",
+      );
+      setSubmitting(false);
+    }
+  };
+
+  /**
+   * Mode démonstration — parcours des écrans sans compte.
+   *
+   * Conservé pour les présentations UGP / Banque mondiale : les sept
+   * profils autres que l'UGP n'ont pas encore de comptes en base, et
+   * leurs écrans resteraient inatteignables autrement. Aucune session
+   * n'est ouverte : seul le thème visuel du profil est appliqué.
+   */
+  const handleDemo = () => {
     setProfile(subrole.profile);
-
-    // Première connexion : on aiguille vers l'onboarding du profil.
-    // Une fois l'onboarding terminé, l'utilisateur sera redirigé vers son homePath.
     const onboardedKey = `ptn-onboarded:${subrole.profile}`;
     const alreadyOnboarded =
       typeof window !== "undefined" && window.localStorage.getItem(onboardedKey) === "1";
 
-    if (alreadyOnboarded) {
-      router.push(PROFILES[subrole.profile].homePath);
-    } else {
-      router.push(`/onboarding/${subrole.profile}`);
-    }
+    router.push(
+      alreadyOnboarded ? PROFILES[subrole.profile].homePath : `/onboarding/${subrole.profile}`,
+    );
   };
 
   const profileConfig = PROFILES[subrole.profile];
@@ -256,7 +288,8 @@ export function LoginClient() {
           <div className={styles.formHeader}>
             <h2 className={styles.formTitle}>Connexion</h2>
             <p className={styles.formSubtitle}>
-              Sélectionnez votre profil pour accéder à la plateforme.
+              Vos droits découlent de l&apos;habilitation qui vous a été accordée. Le sélecteur
+              ci-dessous ne détermine que l&apos;apparence de l&apos;interface.
             </p>
           </div>
 
@@ -468,6 +501,9 @@ export function LoginClient() {
               <Link href="/forgot" className={styles.tertiaryLink}>
                 Mot de passe oublié ?
               </Link>
+              <button type="button" onClick={handleDemo} className={styles.demoLink}>
+                Explorer en mode démonstration
+              </button>
               {profileConfig.key === "soumissionnaire" && (
                 <span className={styles.signupRow}>
                   <span>Vous représentez une entreprise candidate ?</span>
