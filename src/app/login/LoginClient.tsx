@@ -3,41 +3,71 @@
 /**
  * Connexion PTN-RDC.
  *
- * Trois éléments seulement : profil, identifiant, mot de passe.
+ * Trois choses : la famille d'acteurs, l'identifiant, le mot de passe.
  *
- * Le sélecteur porte les 8 PROFILS, pas les 51 sous-rôles. Le sous-rôle
- * (« Comptable », « Chargé de Passation des Marchés »…) découle de
- * l'habilitation accordée par un administrateur : le demander à la connexion
- * reviendrait à laisser choisir ses propres droits.
+ * La FAMILLE, et non le profil ni le sous-rôle. C'est ce que `LoginDto`
+ * attend (`UGP_GOUV` | `BAILLEURS` | `BENEFICIAIRES` | `CONTROLE`) et ce
+ * qu'elle sert à trancher : une personne peut détenir plusieurs
+ * habilitations, dans des familles différentes ; la famille choisie décide
+ * de celle qui est activée pour la session. Omise, c'est l'habilitation
+ * principale qui est chargée.
  *
- * Le profil est transmis à l'API lorsqu'elle l'accepte — voir `authApi.login`,
- * qui rejoue sans le champ tant que `LoginDto` ne le déclare pas. Le profil
- * effectif appliqué à la session reste celui renvoyé par le serveur.
+ * Le profil, le sous-rôle, l'organisation et les permissions effectifs sont
+ * renvoyés par l'API — ils ne se choisissent pas ici.
+ *
+ * Les quatre familles sont écrites en dur plutôt que chargées depuis
+ * `/referentiel/profils` : elles sont fixées par le MEP, et l'écran de
+ * connexion doit rester utilisable quand l'API ne répond pas — c'est
+ * précisément là qu'il faut un message clair, pas une page vide.
  */
 
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, InlineNotification, PasswordInput, TextInput } from "@carbon/react";
-import { ArrowRight } from "@carbon/icons-react";
+import { ArrowRight, CheckmarkFilled } from "@carbon/icons-react";
 import { useAuth, toProfileKey } from "@/components/auth/AuthContext";
-import { ApiError, type ProfileKeyApi } from "@/lib/api";
-import { PROFILES, PROFILE_KEYS, type ProfileKey } from "@/lib/profiles";
+import { ApiError, type FamilyKey } from "@/lib/api";
+import { PROFILES } from "@/lib/profiles";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { LanguagePicker } from "@/components/chrome/LanguagePicker";
 import { cn } from "@/lib/cn";
 
-/** Correspondance vers les codes majuscules attendus par l'API. */
-const TO_API_PROFILE: Record<ProfileKey, ProfileKeyApi> = {
-  ugp: "UGP",
-  mda: "MDA",
-  partenaire: "PARTENAIRE",
-  bailleur: "BAILLEUR",
-  soumissionnaire: "SOUMISSIONNAIRE",
-  sbp: "SBP",
-  auditeur: "AUDITEUR",
-  gouvernance: "GOUVERNANCE",
-};
+interface FamilyOption {
+  key: FamilyKey;
+  label: string;
+  hint: string;
+}
+
+/** Aligné sur `FAMILIES` du backend (referentiel.service.ts). */
+const FAMILIES: FamilyOption[] = [
+  {
+    key: "UGP_GOUV",
+    label: "UGP / Gouvernement",
+    hint: "MPTN, UGP, ministères et agences bénéficiaires, gouvernance COPIL / CTP",
+  },
+  {
+    key: "BAILLEURS",
+    label: "Bailleurs",
+    hint: "Banque mondiale (IDA) et Agence Française de Développement",
+  },
+  {
+    key: "BENEFICIAIRES",
+    label: "Bénéficiaires et soumissionnaires",
+    hint: "Partenaires institutionnels, entreprises candidates, EESU, hubs et startups",
+  },
+  {
+    key: "CONTROLE",
+    label: "Contrôle et vérification",
+    hint: "Audit externe, TPM, Cour des Comptes, IGF, ACE",
+  },
+];
+
+const PUBLIC_LINKS = [
+  { href: "/mgp", label: "Déposer une plainte" },
+  { href: "/documentation", label: "Documentation MEP" },
+  { href: "/mentions-legales", label: "Mentions légales" },
+];
 
 interface LoginClientProps {
   /** Résolu côté serveur depuis la chaîne de requête (voir page.tsx). */
@@ -48,7 +78,7 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
   const router = useRouter();
   const { login } = useAuth();
 
-  const [profile, setProfile] = useState<ProfileKey>("ugp");
+  const [family, setFamily] = useState<FamilyKey>("UGP_GOUV");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +95,7 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
 
     setSubmitting(true);
     try {
-      const result = await login(email.trim(), password, TO_API_PROFILE[profile]);
+      const result = await login(email.trim(), password, family);
 
       // Prise de fonction inachevée : mot de passe temporaire non remplacé ou
       // engagements non signés. L'API refuse de toute façon les autres routes.
@@ -86,15 +116,15 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)]">
+    <div className="grid min-h-screen lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)]">
       {/* ================= Panneau institutionnel ================= */}
       <aside
-        className="hidden flex-col justify-between bg-[#161616] p-10 xl:p-12 lg:flex"
+        className="hidden flex-col justify-between bg-[#161616] p-10 lg:flex xl:p-14"
         aria-label="Informations institutionnelles"
       >
         <BrandLockup variant="full" height={104} className="text-white" />
 
-        <div className="max-w-[40ch]">
+        <div className="max-w-[38ch]">
           <h1 className="text-heading-05 text-white">Plateforme de gouvernance</h1>
           <p className="text-body-lg mt-4 text-white/70">
             Passation des marchés, avis de non-objection, sauvegardes et reporting du
@@ -109,12 +139,8 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
           {/* Liens ouverts, accessibles sans compte. Le dépôt de plainte relève
               du Mécanisme de Gestion des Plaintes : il doit rester atteignable
               par une personne qui n'a précisément pas accès à la plateforme. */}
-          <nav aria-label="Liens publics" className="flex flex-wrap gap-x-5 gap-y-2">
-            {[
-              { href: "/mgp", label: "Déposer une plainte" },
-              { href: "/documentation", label: "Documentation MEP" },
-              { href: "/mentions-legales", label: "Mentions légales" },
-            ].map((l) => (
+          <nav aria-label="Liens publics" className="flex flex-wrap gap-x-6 gap-y-2">
+            {PUBLIC_LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -133,8 +159,7 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
         className="bg-background flex flex-col px-6 py-8 sm:px-12"
         aria-label="Connexion"
       >
-        {/* Barre de service — aide et langue, disponibles avant connexion. */}
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-5">
           <Link
             href="/aide"
             className="text-caption text-secondary hover:text-accent underline-offset-4 hover:underline"
@@ -144,15 +169,14 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
           <LanguagePicker variant="compact" tone="light" />
         </div>
 
-        <div className="mx-auto flex w-full max-w-[27rem] flex-1 flex-col justify-center py-10">
-          {/* Marque reprise ici quand le panneau de gauche est masqué. */}
+        <div className="mx-auto flex w-full max-w-[30rem] flex-1 flex-col justify-center py-10">
           <div className="mb-10 lg:hidden">
             <BrandLockup variant="full" height={80} className="text-primary" />
           </div>
 
           <h2 className="text-heading-04 text-primary">Connexion</h2>
           <p className="text-body text-secondary mt-2">
-            Sélectionnez votre profil, puis identifiez-vous.
+            Indiquez le cadre dans lequel vous intervenez, puis identifiez-vous.
           </p>
 
           {sessionEnded && (
@@ -181,44 +205,61 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
             />
           )}
 
-          <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-6" noValidate>
-            {/* ----- Profil ----- */}
+          <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-7" noValidate>
+            {/* ----- Famille d'acteurs ----- */}
             <fieldset className="border-0 p-0">
-              <legend className="text-caption text-secondary mb-2">Profil</legend>
-              {/* Boutons radio plutôt qu'une liste déroulante : huit choix
-                  tiennent à l'écran, et une option visible se lit sans ouvrir
-                  un menu — ce qui compte pour un public peu familier des
-                  interfaces denses. */}
+              <legend className="text-caption text-secondary mb-2.5">
+                Vous intervenez en tant que
+              </legend>
+
+              {/* Chaque option porte son intitulé ET ce qu'elle recouvre :
+                  « Bénéficiaires et soumissionnaires » ne se devine pas, et
+                  quelqu'un qui hésite ne doit pas avoir à essayer pour savoir. */}
               <div
                 role="radiogroup"
-                aria-label="Profil"
-                className="grid grid-cols-2 gap-px bg-[var(--cds-border-subtle)]"
+                aria-label="Famille d'acteurs"
+                className="flex flex-col gap-px"
               >
-                {PROFILE_KEYS.map((key) => {
-                  const active = key === profile;
+                {FAMILIES.map((f) => {
+                  const active = f.key === family;
                   return (
                     <button
-                      key={key}
+                      key={f.key}
                       type="button"
                       role="radio"
                       aria-checked={active}
-                      onClick={() => setProfile(key)}
+                      onClick={() => setFamily(f.key)}
                       className={cn(
-                        "text-body-compact min-h-11 px-3 py-2.5 text-left transition-colors",
+                        "border-subtle flex items-start gap-3 border px-4 py-3 text-left transition-colors",
                         "focus-visible:outline-accent focus-visible:z-10 focus-visible:outline-2",
                         active
-                          ? "bg-accent-surface text-primary shadow-[inset_3px_0_0_0_var(--ptn-accent)] font-medium"
-                          : "bg-layer text-secondary hover:bg-layer-hover",
+                          ? "bg-accent-surface border-accent relative z-10"
+                          : "bg-layer hover:bg-layer-hover",
                       )}
                     >
-                      {PROFILES[key].short}
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span
+                          className={cn("text-body text-primary", active && "font-semibold")}
+                        >
+                          {f.label}
+                        </span>
+                        <span className="text-caption text-secondary">{f.hint}</span>
+                      </span>
+                      {active && (
+                        <CheckmarkFilled
+                          size={18}
+                          className="text-accent mt-0.5 shrink-0"
+                          aria-hidden
+                        />
+                      )}
                     </button>
                   );
                 })}
               </div>
-              <p className="text-caption text-helper mt-2">
-                Vos droits effectifs découlent de l&apos;habilitation qui vous a été
-                accordée.
+
+              <p className="text-caption text-helper mt-2.5">
+                Ce choix détermine l&apos;habilitation activée si vous en détenez
+                plusieurs. Vos droits restent ceux qui vous ont été accordés.
               </p>
             </fieldset>
 
@@ -273,17 +314,11 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
             Les comptes sont créés par l&apos;administrateur de la plateforme.
           </p>
 
-          {/* Reprise des liens publics sous le formulaire quand le panneau
-              institutionnel est masqué : ils ne doivent jamais disparaître. */}
           <nav
             aria-label="Liens publics"
-            className="border-subtle mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t pt-6 lg:hidden"
+            className="border-subtle mt-6 flex flex-wrap gap-x-6 gap-y-2 border-t pt-6 lg:hidden"
           >
-            {[
-              { href: "/mgp", label: "Déposer une plainte" },
-              { href: "/documentation", label: "Documentation MEP" },
-              { href: "/mentions-legales", label: "Mentions légales" },
-            ].map((l) => (
+            {PUBLIC_LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

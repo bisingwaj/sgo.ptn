@@ -1,26 +1,57 @@
 # Assets de marque UGPTN
 
-## Manquant — à fournir
+## À faire — déposer le fichier source
 
-Le logo transmis est en basse définition, sur **fond blanc opaque**. Il est donc
-inutilisable tel quel : sur le header Carbon (fond `#161616`) il apparaîtrait
-dans un rectangle blanc, et sur le thème sombre g100 également.
+Le logo officiel **n'est pas encore dans le dépôt**. Il a été transmis par
+conversation, sous forme d'image ; il doit être enregistré ici pour être utilisé.
 
-Fichiers attendus dans ce dossier :
+En attendant, `BrandLockup` affiche une **reconstitution vectorielle** : elle
+reprend la structure de la marque (lettrage, carte en réseau, barre aux couleurs
+du drapeau, développé du sigle) mais le tracé de la carte est approximatif. Ce
+n'est pas le logo officiel et cela ne doit pas être présenté comme tel.
+
+### Marche à suivre
+
+1. Enregistrer le fichier sous `public/brand/ugptn-logo-source.png`
+   (ou `.jpg` — le format d'origine convient).
+
+2. Détourer le fond blanc :
+
+   ```bash
+   npm run logo -- public/brand/ugptn-logo-source.png
+   ```
+
+   Deux fichiers sont produits :
+
+   | Fichier | Usage |
+   |---|---|
+   | `ugptn-logo.png` | Fonds clairs — connexion en thème clair, impression |
+   | `ugptn-logo-light.png` | Fonds sombres — bandeau Carbon `#161616`, thème g100 |
+
+   Deux variantes sont nécessaires parce que le lettrage est anthracite :
+   détouré mais inchangé, il disparaît sur le bandeau sombre. Le script
+   n'éclaircit que les pixels sombres et conserve le bleu de la carte.
+
+3. Prévenir : `BrandLockup` sera basculé sur ces fichiers.
+
+### Le format qui compte vraiment
+
+Un **SVG** vaut mieux que n'importe quel PNG : net à toute taille, net à
+l'impression — et les usagers de cette plateforme impriment des dossiers ANO et
+des procès-verbaux — pour quelques kilo-octets. Si le studio qui a produit le
+logo peut fournir le fichier vectoriel d'origine (`.svg`, `.ai` ou `.eps`), c'est
+lui qu'il faut, et le script de détourage devient inutile.
+
+Idéalement, à terme :
 
 | Fichier | Usage | Contrainte |
 |---|---|---|
-| `ugptn-logo.svg` | Référence vectorielle | Fond **transparent**, tracés vectoriels (pas d'image bitmap embarquée) |
-| `ugptn-logo-mono-light.svg` | Header sombre, g100 | Aplat blanc unique |
-| `ugptn-logo-mono-dark.svg` | Impression, fond clair | Aplat `#161616` unique |
+| `ugptn-logo.svg` | Référence | Fond transparent, tracés vectoriels (pas de bitmap embarqué) |
 | `favicon.svg` + `icon-512.png` | Onglet, PWA | Glyphe cartographique seul, lisible à 16 px |
-
-Le SVG est le format qui compte : il reste net à l'impression (les usagers de
-cette plateforme impriment des dossiers ANO et des PV) et pèse quelques kilo-octets.
 
 ## Couleurs relevées sur le logo
 
-Elles sont déclarées dans [`src/styles/tokens.scss`](../../src/styles/tokens.scss).
+Déclarées dans [`src/styles/tokens.scss`](../../src/styles/tokens.scss).
 
 | Rôle | Valeur | Correspondance Carbon |
 |---|---|---|
@@ -37,14 +68,29 @@ system sont compatibles sans compromis.
 **La marque identifie, l'accent agit.**
 
 `--ptn-brand` (le cyan du logo) ne colore **jamais** un élément cliquable. Les
-affordances interactives utilisent `--ptn-accent`, qui varie selon le profil actif.
+affordances interactives utilisent `--ptn-accent`, qui varie selon le profil.
 
-Raison : si la couleur de marque et la couleur d'action sont la même famille de
-bleu, plus rien ne distingue « ceci est notre logo » de « ceci se clique ». Pour
-un public d'agents publics souvent seniors, dont la lisibilité des affordances est
-le premier critère d'utilisabilité, cette ambiguïté est disqualifiante.
+Raison : si la couleur de marque et la couleur d'action appartiennent à la même
+famille de bleu, plus rien ne distingue « ceci est notre logo » de « ceci se
+clique ». Pour un public d'agents publics souvent seniors, dont la lisibilité des
+affordances est le premier critère d'utilisabilité, cette ambiguïté est
+disqualifiante.
 
 En pratique :
 
-- `--ptn-brand` → signature, page de connexion, en-têtes imprimés, onboarding.
+- `--ptn-brand` → signature, page de connexion, en-têtes imprimés.
 - `--ptn-accent` → boutons, liens, onglet actif, focus, sélection.
+
+## Tailles minimales
+
+`BrandLockup` propose trois variantes. Le choix n'est pas cosmétique :
+
+| Variante | À partir de | Contenu |
+|---|---|---|
+| `wordmark` | 16 px | Lettrage seul — bandeau applicatif de 48 px |
+| `mark` | ~40 px | Lettrage + carte |
+| `full` | ~72 px | Signature complète avec le développé du sigle |
+
+Sous environ 40 px, les nœuds de la carte tombent sous le pixel et se réduisent
+à une tache : mieux vaut un lettrage parfaitement lisible que la marque entière
+illisible.
