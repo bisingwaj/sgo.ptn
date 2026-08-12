@@ -33,6 +33,14 @@ export interface WizardStep<T = unknown> {
   render: (state: T, setState: (s: T) => void) => ReactNode;
   /** Validation : retourne null si OK, message d'erreur sinon */
   validate?: (state: T) => string | null;
+  /**
+   * Action asynchrone exécutée avant de passer à l'étape suivante.
+   * Utile quand une étape doit aboutir côté serveur pour que la suivante
+   * soit accessible — par exemple un changement de mot de passe temporaire,
+   * qui déverrouille les autres routes de l'API. Une erreur laisse
+   * l'utilisateur sur l'étape courante.
+   */
+  commit?: (state: T) => Promise<void>;
   /** Optionnel : afficher cette étape uniquement si la condition est vraie */
   visibleIf?: (state: T) => boolean;
 }
@@ -89,6 +97,18 @@ export function Wizard<T>({
       return;
     }
     setError(null);
+
+    if (current.commit) {
+      setSubmitting(true);
+      try {
+        await current.commit(state);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "L'opération a échoué.");
+        return;
+      } finally {
+        setSubmitting(false);
+      }
+    }
 
     if (step < steps.length - 1) {
       setDone((d) => new Set(d).add(step));

@@ -422,6 +422,95 @@ export class AuthService {
   }
 
   // ==========================================================
+  // Prise de fonction
+  // ==========================================================
+
+  /**
+   * Consigne les engagements signés par la personne elle-même.
+   *
+   * Chaque signature est horodatée séparément : un contrôleur doit pouvoir
+   * établir qu'une déclaration de conflit d'intérêts était en vigueur à la
+   * date où l'intéressé a siégé en commission.
+   */
+  async signEngagements(userId: string, ctx: RequestContext) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        codeOfConductSignedAt: true,
+        coiDeclaredAt: true,
+        dataPrivacyAckAt: true,
+      },
+    });
+
+    const now = new Date();
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        // Une signature déjà posée n'est pas réécrite : sa date fait foi.
+        codeOfConductSignedAt: user.codeOfConductSignedAt ?? now,
+        coiDeclaredAt: user.coiDeclaredAt ?? now,
+        dataPrivacyAckAt: user.dataPrivacyAckAt ?? now,
+        onboardingCompletedAt: now,
+      },
+      select: {
+        codeOfConductSignedAt: true,
+        coiDeclaredAt: true,
+        dataPrivacyAckAt: true,
+        onboardingCompletedAt: true,
+      },
+    });
+
+    await this.audit.record({
+      actorId: userId,
+      actorEmail: user.email,
+      action: 'engagements.signed',
+      entityType: 'User',
+      entityId: userId,
+      payload: {
+        signataire: `${user.firstName} ${user.lastName}`,
+        codeOfConduct: updated.codeOfConductSignedAt,
+        coi: updated.coiDeclaredAt,
+        dataPrivacy: updated.dataPrivacyAckAt,
+      },
+      ...ctx,
+    });
+
+    return updated;
+  }
+
+  /** Préférences personnelles — hors périmètre de l'habilitation. */
+  async updatePreferences(
+    userId: string,
+    data: { phone?: string; preferredLanguage?: string },
+    ctx: RequestContext,
+  ) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.phone !== undefined ? { phone: data.phone.trim() || null } : {}),
+        ...(data.preferredLanguage
+          ? { preferredLanguage: data.preferredLanguage as 'FR' | 'EN' | 'LN' | 'SW' | 'TS' | 'KK' }
+          : {}),
+      },
+      select: { phone: true, preferredLanguage: true },
+    });
+
+    await this.audit.record({
+      actorId: userId,
+      action: 'preferences.updated',
+      entityType: 'User',
+      entityId: userId,
+      payload: { ...data },
+      ...ctx,
+    });
+
+    return updated;
+  }
+
+  // ==========================================================
   // Bascule de contexte (multi-affectation)
   // ==========================================================
 

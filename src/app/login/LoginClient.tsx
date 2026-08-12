@@ -184,9 +184,10 @@ export function LoginClient() {
     try {
       const result = await login(email.trim(), password);
 
-      // Mot de passe temporaire non encore changé : l'API refusera toute
-      // autre route tant que ce n'est pas fait.
-      if (result.user.mustChangePassword) {
+      // Prise de fonction inachevée — mot de passe temporaire non remplacé,
+      // ou engagements pas encore signés. Dans le premier cas l'API refuse
+      // de toute façon les autres routes.
+      if (result.user.mustChangePassword || !result.user.onboardingCompleted) {
         router.push("/activation");
         return;
       }
@@ -212,13 +213,7 @@ export function LoginClient() {
    */
   const handleDemo = () => {
     setProfile(subrole.profile);
-    const onboardedKey = `ptn-onboarded:${subrole.profile}`;
-    const alreadyOnboarded =
-      typeof window !== "undefined" && window.localStorage.getItem(onboardedKey) === "1";
-
-    router.push(
-      alreadyOnboarded ? PROFILES[subrole.profile].homePath : `/onboarding/${subrole.profile}`,
-    );
+    router.push("/demo");
   };
 
   const profileConfig = PROFILES[subrole.profile];
@@ -530,12 +525,17 @@ export function LoginClient() {
               <button type="button" onClick={handleDemo} className={styles.demoLink}>
                 Explorer en mode démonstration
               </button>
+              {/* L'inscription en libre-service des entreprises candidates,
+                  avec vérification KYC et validation par l'UGP, reste à
+                  construire. D'ici là, le message dit la procédure réelle
+                  plutôt que de renvoyer vers une page inexistante. */}
               {profileConfig.key === "soumissionnaire" && (
                 <span className={styles.signupRow}>
-                  <span>Vous représentez une entreprise candidate ?</span>
-                  <Link href="/onboarding/soumissionnaire" className={styles.signupLink}>
-                    Créer un compte entreprise <ArrowRight size={12} />
-                  </Link>
+                  <span>
+                    Vous représentez une entreprise candidate ? L’ouverture de compte se fait
+                    auprès de l’UGP-PTN, qui vous transmettra vos accès après vérification de
+                    votre dossier.
+                  </span>
                 </span>
               )}
             </div>

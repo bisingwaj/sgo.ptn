@@ -1,5 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, IsUUID, Matches, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  Equals,
+  IsBoolean,
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 /**
  * Politique de mot de passe.
@@ -48,4 +60,49 @@ export class SwitchAssignmentDto {
   @ApiProperty({ description: 'Affectation à activer pour la session' })
   @IsUUID()
   assignmentId!: string;
+}
+
+/**
+ * Engagements signés lors de la prise de fonction.
+ *
+ * Ces actes n'appartiennent qu'à la personne : un administrateur ne peut
+ * pas déclarer un conflit d'intérêts à sa place (MEP § 5.2.8). Les trois
+ * sont exigés — l'API refuse une signature partielle plutôt que de laisser
+ * un compte à moitié engagé.
+ */
+export class SignEngagementsDto {
+  @ApiProperty({ description: 'Code de Conduite UGP-PTN' })
+  @IsBoolean()
+  @Equals(true, { message: 'La signature du Code de Conduite est obligatoire.' })
+  codeOfConduct!: boolean;
+
+  @ApiProperty({ description: 'Déclaration de conflits d’intérêts' })
+  @IsBoolean()
+  @Equals(true, { message: 'La déclaration de conflits d’intérêts est obligatoire.' })
+  coi!: boolean;
+
+  @ApiProperty({ description: 'Confidentialité et protection des données' })
+  @IsBoolean()
+  @Equals(true, { message: 'L’engagement de confidentialité est obligatoire.' })
+  dataPrivacy!: boolean;
+}
+
+/**
+ * Préférences personnelles.
+ *
+ * Volontairement limité au téléphone et à la langue. Le nom, l'adresse
+ * électronique et le périmètre relèvent de l'habilitation accordée par
+ * l'administrateur : les laisser modifiables ici les désynchroniserait.
+ */
+export class UpdatePreferencesDto {
+  @ApiPropertyOptional({ example: '+243 81 234 56 78' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  phone?: string;
+
+  @ApiPropertyOptional({ enum: ['FR', 'EN', 'LN', 'SW', 'TS', 'KK'] })
+  @IsOptional()
+  @IsIn(['FR', 'EN', 'LN', 'SW', 'TS', 'KK'])
+  preferredLanguage?: 'FR' | 'EN' | 'LN' | 'SW' | 'TS' | 'KK';
 }

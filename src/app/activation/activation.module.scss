@@ -1,111 +1,33 @@
 /**
- * Première connexion — définition du mot de passe.
- * IBM Carbon v11 · radius 0 · échelle 8px.
+ * Prise de fonction — premier accès à la plateforme.
+ * Le cadre (stepper, en-tête, pied) vient du composant Wizard ;
+ * ce module ne style que le contenu des étapes.
  */
 
-.shell {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  min-height: 100vh;
-  padding: var(--ptn-space-07) var(--ptn-space-05);
-  background: var(--cds-background, #fff);
-}
-
-.card {
-  width: 100%;
-  max-width: 520px;
+.stack {
   display: flex;
   flex-direction: column;
   gap: var(--ptn-space-05);
 }
 
-.head {
+.sectionTitle {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--ptn-space-02);
-
-  h1 {
-    font-size: 32px;
-    font-weight: 300;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-    color: var(--cds-text-primary, #161616);
-  }
-
-  p {
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--cds-text-secondary, #525252);
-  }
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 4px;
 }
 
-.eyebrow {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.32px;
-  color: var(--cds-text-helper, #6f6f6f);
-}
-
-.notice {
-  display: flex;
-  gap: var(--ptn-space-03);
-  padding: var(--ptn-space-04);
-  border-left: 3px solid var(--ptn-accent);
-  background: var(--ptn-accent-surface);
+.sectionHint {
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--cds-text-secondary, #525252);
-
-  p {
-    font-size: 13px;
-    line-height: 1.5;
-  }
-
-  svg {
-    flex-shrink: 0;
-    color: var(--ptn-accent);
-  }
+  margin-bottom: var(--ptn-space-03);
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ptn-space-04);
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-
-  label {
-    font-size: 12px;
-    color: var(--cds-text-secondary, #525252);
-  }
-
-  input {
-    padding: 11px var(--ptn-space-03);
-    font-family: inherit;
-    font-size: 14px;
-    color: var(--cds-text-primary, #161616);
-    background: var(--cds-field, #f4f4f4);
-    border: none;
-    border-bottom: 1px solid var(--cds-border-strong, #8d8d8d);
-
-    &:focus {
-      outline: 2px solid var(--ptn-accent);
-      outline-offset: -2px;
-    }
-
-    &[aria-invalid="true"] {
-      border-bottom-color: var(--ptn-status-danger);
-    }
-  }
-}
-
-.fieldError {
-  font-size: 12px;
-  color: var(--ptn-status-danger-text);
-}
+/* ===== Politique de mot de passe ===== */
 
 .rules {
   list-style: none;
@@ -138,48 +60,107 @@
   }
 }
 
-.error {
+/* ===== Termes de l'habilitation, en lecture seule ===== */
+
+.readonly {
   display: flex;
-  align-items: center;
-  gap: var(--ptn-space-02);
-  padding: var(--ptn-space-03) var(--ptn-space-04);
-  border-left: 3px solid var(--ptn-status-danger);
+  flex-direction: column;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.readonlyRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ptn-space-04);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+
+  dt {
+    font-size: 12px;
+    color: var(--cds-text-secondary, #525252);
+  }
+
+  dd {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cds-text-primary, #161616);
+    text-align: right;
+  }
+}
+
+/* ===== Habilitation : permissions et interdits ===== */
+
+.permGroup {
+  border-left: 2px solid var(--ptn-accent);
+  padding-left: var(--ptn-space-03);
+}
+
+.permList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--ptn-space-02);
+    font-size: 13px;
+    color: var(--cds-text-primary, #161616);
+
+    svg {
+      color: var(--ptn-status-success);
+      flex-shrink: 0;
+    }
+  }
+}
+
+.permSensitive {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  padding: 1px 6px;
   background: var(--ptn-status-danger-surface);
   color: var(--ptn-status-danger-text);
-  font-size: 13px;
 }
 
-.submit {
-  padding: 14px var(--ptn-space-04);
-  font-family: inherit;
-  font-size: 14px;
-  text-align: left;
-  background: var(--ptn-accent);
-  color: var(--ptn-accent-on);
-  border: none;
-  cursor: pointer;
-  transition: background var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+.restrictions {
+  padding: var(--ptn-space-04);
+  border-left: 3px solid var(--ptn-status-warning);
+  background: var(--ptn-status-warning-surface);
 
-  &:hover:not(:disabled) {
-    background: var(--ptn-accent-hover);
+  .sectionTitle {
+    color: var(--ptn-status-warning-text);
   }
 
-  &:disabled {
-    background: var(--cds-button-disabled, #c6c6c6);
-    color: var(--cds-text-on-color-disabled, #8d8d8d);
-    cursor: not-allowed;
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--ptn-accent);
-    outline-offset: 2px;
+  li {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ptn-status-warning-text);
+    padding-left: var(--ptn-space-03);
+    position: relative;
+
+    &::before {
+      content: "—";
+      position: absolute;
+      left: 0;
+    }
   }
 }
 
-.foot {
-  font-size: 12px;
-  color: var(--cds-text-helper, #6f6f6f);
-}
+/* ===== États hors parcours ===== */
 
 .centered {
   display: flex;

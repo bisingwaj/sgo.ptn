@@ -39,4 +39,10 @@ export class ReferentielController {
   composantes() {
     return this.referentiel.composantes();
   }
+
+  @Get('permissions')
+  @ApiOperation({ summary: 'Catalogue des permissions, avec libellés et catégories' })
+  permissions() {
+    return this.referentiel.permissions();
+  }
 }

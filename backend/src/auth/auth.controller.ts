@@ -6,7 +6,9 @@ import {
   ChangePasswordDto,
   LoginDto,
   RefreshDto,
+  SignEngagementsDto,
   SwitchAssignmentDto,
+  UpdatePreferencesDto,
 } from './dto/auth.dto';
 import { AllowTempPassword, CurrentUser, Public } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
@@ -76,6 +78,41 @@ export class AuthController {
     @Req() req: Request,
   ): Promise<void> {
     await this.auth.changePassword(userId, dto.currentPassword, dto.newPassword, contextOf(req));
+  }
+
+  @Post('engagements')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Signer ses engagements de prise de fonction',
+    description:
+      'Code de Conduite, déclaration de conflits d’intérêts et confidentialité. Ces actes n’appartiennent qu’à la personne : un administrateur ne peut pas les poser à sa place (MEP § 5.2.8).',
+  })
+  signEngagements(
+    @Body() _dto: SignEngagementsDto,
+    @CurrentUser('userId') userId: string,
+    @Req() req: Request,
+  ) {
+    // Le DTO n'a d'autre rôle que d'exiger les trois consentements : la
+    // validation refuse toute valeur autre que `true`.
+    return this.auth.signEngagements(userId, contextOf(req));
+  }
+
+  @Post('preferences')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @AllowTempPassword()
+  @ApiOperation({
+    summary: 'Mettre à jour ses préférences personnelles',
+    description:
+      'Téléphone et langue uniquement. Le nom, l’adresse électronique et le périmètre relèvent de l’habilitation accordée par l’administrateur.',
+  })
+  updatePreferences(
+    @Body() dto: UpdatePreferencesDto,
+    @CurrentUser('userId') userId: string,
+    @Req() req: Request,
+  ) {
+    return this.auth.updatePreferences(userId, dto, contextOf(req));
   }
 
   @Get('assignments')

@@ -83,6 +83,8 @@ interface AuthContextValue {
   logout: (reason?: "inactivite") => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
   switchAssignment: (assignmentId: string) => Promise<void>;
+  /** Recharge le contexte depuis l'API — après signature des engagements */
+  refresh: () => Promise<void>;
   /** Vérifie une permission de l'affectation active */
   can: (permission: string) => boolean;
 }
@@ -237,14 +239,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
+  const refresh = useCallback(async () => {
+    applySession(await authApi.me());
+  }, [applySession]);
+
   const can = useCallback(
     (permission: string) => user?.permissions.includes(permission) ?? false,
     [user],
   );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, assignments, loading, login, logout, changePassword, switchAssignment, can }),
-    [user, assignments, loading, login, logout, changePassword, switchAssignment, can],
+    () => ({
+      user,
+      assignments,
+      loading,
+      login,
+      logout,
+      changePassword,
+      switchAssignment,
+      refresh,
+      can,
+    }),
+    [user, assignments, loading, login, logout, changePassword, switchAssignment, refresh, can],
   );
 
   return (

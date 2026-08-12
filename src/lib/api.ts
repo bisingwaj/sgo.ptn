@@ -245,7 +245,24 @@ export interface ProfileApi {
   label: string;
   short: string;
   readOnly: boolean;
+  /** Ce que le profil ne peut pas faire — énoncé explicitement */
+  restrictions: string[];
   subroles: SubroleApi[];
+}
+
+export interface PermissionApi {
+  code: string;
+  label: string;
+  category: string;
+  isWrite: boolean;
+  isSensitive: boolean;
+}
+
+export interface EngagementsResponse {
+  codeOfConductSignedAt: string;
+  coiDeclaredAt: string;
+  dataPrivacyAckAt: string;
+  onboardingCompletedAt: string;
 }
 
 export interface FamilyApi {
@@ -401,6 +418,14 @@ export const authApi = {
   logout: (refreshToken: string) => api.post<void>("/auth/logout", { refreshToken }),
   switchAssignment: (assignmentId: string) =>
     api.post<LoginResponse>("/auth/switch-assignment", { assignmentId }),
+  signEngagements: () =>
+    api.post<EngagementsResponse>("/auth/engagements", {
+      codeOfConduct: true,
+      coi: true,
+      dataPrivacy: true,
+    }),
+  updatePreferences: (data: { phone?: string; preferredLanguage?: string }) =>
+    api.post<{ phone: string | null; preferredLanguage: string }>("/auth/preferences", data),
 };
 
 export const referentielApi = {
@@ -408,6 +433,7 @@ export const referentielApi = {
   organisations: () => api.get<OrganisationApi[]>("/referentiel/organisations"),
   provinces: () => api.get<ProvinceApi[]>("/referentiel/provinces"),
   composantes: () => api.get<ComponentApi[]>("/referentiel/composantes"),
+  permissions: () => api.get<PermissionApi[]>("/referentiel/permissions"),
 };
 
 export const accountsApi = {
