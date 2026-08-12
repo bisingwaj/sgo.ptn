@@ -14,9 +14,9 @@ import { extendTailwindMerge } from "tailwind-merge";
  * les deux coexistent.
  */
 const FONT_SIZES = [
+  // `label` et `helper` ont été retirés : ils dupliquaient `caption` (12px),
+  // et `helper` entrait en collision avec la couleur du même nom.
   "caption",
-  "label",
-  "helper",
   "body-compact",
   "body",
   "body-lg",

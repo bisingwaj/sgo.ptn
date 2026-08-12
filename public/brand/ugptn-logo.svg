@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 390" role="img" aria-labelledby="ugptn-title ugptn-desc" fill="none">
+  <title id="ugptn-title">UGPTN</title>
+  <desc id="ugptn-desc">Unité de Gestion du Projet de Transformation Numérique — logotype accompagné d'une carte de la République Démocratique du Congo figurée par un réseau de nœuds connectés.</desc>
+
+  <!--
+    RECONSTITUTION VECTORIELLE du logo fourni.
+
+    L'original transmis est une image matricielle de faible définition, sur
+    fond blanc opaque : inutilisable sur le bandeau Carbon (#161616) comme en
+    thème sombre, et floue à l'impression.
+
+    Cette version reprend la structure de la marque — lettrage, carte en
+    réseau, barre aux couleurs du drapeau, développé du sigle. Le tracé de la
+    carte est une approximation : il doit être remplacé par le fichier
+    vectoriel officiel dès qu'il est disponible. Voir README.md.
+
+    `currentColor` sur le lettrage : la couleur est décidée par le contexte
+    (anthracite sur fond clair, blanc sur fond sombre) sans dupliquer l'actif.
+  -->
+
+  <!-- ===== Lettrage « ugptn » ===== -->
+  <g fill="currentColor">
+    <!-- u -->
+    <path d="M6 84h44v96c0 18 10 28 27 28s28-10 28-28V84h44v100c0 44-28 70-72 70S6 228 6 184V84Z"/>
+    <!-- g -->
+    <path d="M164 168c0-50 32-86 78-86 22 0 39 8 50 22V84h43v160c0 48-32 78-84 78-40 0-70-16-82-44l38-18c7 15 22 24 43 24 26 0 41-15 41-42v-14c-11 14-28 22-49 22-46 0-78-36-78-82Zm128 0c0-26-17-45-42-45s-42 19-42 45 17 45 42 45 42-19 42-45Z"/>
+    <!-- p -->
+    <path d="M348 84h43v22c11-15 29-24 51-24 46 0 78 37 78 86s-32 86-78 86c-22 0-39-8-50-22v90h-44V84Zm128 84c0-26-17-45-42-45s-42 19-42 45 17 45 42 45 42-19 42-45Z"/>
+    <!-- t (avec la barre inclinée caractéristique) -->
+    <path d="M536 122V84h26V38l44-14v60h38v38h-38v72c0 12 6 18 18 18h20v40h-30c-36 0-52-18-52-52v-78h-26Z"/>
+    <!-- n -->
+    <path d="M660 84h44v20c11-15 28-22 48-22 40 0 64 27 64 70v100h-44V160c0-22-11-35-30-35-21 0-38 15-38 42v81h-44V84Z"/>
+  </g>
+
+  <!-- ===== Carte de la RDC en réseau ===== -->
+  <g transform="translate(452 -6)">
+    <g stroke="#1192E8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
+      <!-- Contour principal, stylisé en polygone -->
+      <path d="M96 26 148 8 214 22 268 6 296 42 276 96 300 140 286 190 244 214 236 262 198 300 156 286 120 306 78 268 96 224 62 196 74 148 44 118 62 74 96 26Z"/>
+      <!-- Maillage interne -->
+      <path d="M96 26 148 68 214 22M148 68 268 6M148 68 174 118 296 42M174 118 276 96M174 118 118 96 96 26M118 96 62 74M118 96 74 148M174 118 148 176 300 140M148 176 62 196M148 176 96 224M148 176 220 190 286 190M220 190 244 214M220 190 198 254 236 262M198 254 156 286M198 254 120 306M198 254 198 300M96 224 78 268M44 118 74 148M62 196 78 268"/>
+    </g>
+    <!-- Nœuds -->
+    <g fill="#1192E8">
+      <circle cx="96" cy="26" r="9"/><circle cx="148" cy="8" r="7"/><circle cx="214" cy="22" r="9"/>
+      <circle cx="268" cy="6" r="7"/><circle cx="296" cy="42" r="9"/><circle cx="276" cy="96" r="8"/>
+      <circle cx="300" cy="140" r="7"/><circle cx="286" cy="190" r="9"/><circle cx="244" cy="214" r="7"/>
+      <circle cx="236" cy="262" r="8"/><circle cx="198" cy="300" r="7"/><circle cx="156" cy="286" r="9"/>
+      <circle cx="120" cy="306" r="7"/><circle cx="78" cy="268" r="8"/><circle cx="96" cy="224" r="9"/>
+      <circle cx="62" cy="196" r="7"/><circle cx="74" cy="148" r="8"/><circle cx="44" cy="118" r="7"/>
+      <circle cx="62" cy="74" r="8"/><circle cx="148" cy="68" r="10"/><circle cx="174" cy="118" r="10"/>
+      <circle cx="118" cy="96" r="8"/><circle cx="148" cy="176" r="10"/><circle cx="220" cy="190" r="9"/>
+      <circle cx="198" cy="254" r="9"/>
+    </g>
+  </g>
+
+  <!-- ===== Barre du drapeau + développé du sigle ===== -->
+  <g transform="translate(300 286)">
+    <rect x="0" y="0" width="7" height="22" fill="#1192E8"/>
+    <rect x="0" y="26" width="7" height="22" fill="#0072C3"/>
+    <rect x="0" y="52" width="7" height="22" fill="#F1C21B"/>
+    <rect x="0" y="78" width="7" height="22" fill="#DA1E28"/>
+
+    <g fill="currentColor" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="23" font-weight="600" letter-spacing="0.4">
+      <text x="24" y="18">UNITÉ DE GESTION</text>
+      <text x="24" y="44">DU PROJET</text>
+      <text x="24" y="70">DE TRANSFORMATION</text>
+      <text x="24" y="96">NUMÉRIQUE</text>
+    </g>
+  </g>
+</svg>

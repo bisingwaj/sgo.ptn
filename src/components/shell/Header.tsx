@@ -26,6 +26,7 @@ import { PROFILES, PROFILE_KEYS } from "@/lib/profiles";
 import { LanguagePicker } from "@/components/chrome/LanguagePicker";
 import { useCommandPalette } from "@/components/chrome/CommandPalette";
 import { useRouter } from "next/navigation";
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import styles from "./Header.module.scss";
 
 interface Crumb {
@@ -87,11 +88,11 @@ export function Header({ crumbs = [] }: HeaderProps) {
 
   return (
     <header className={styles.header} role="banner">
-      <Link href="/" className={styles.brand}>
-        <span className={styles.brandLogo} aria-hidden>
-          PT
-        </span>
-        <span className={styles.brandName}>PTN-RDC</span>
+      {/* Le logo remplace le monogramme « PT » improvisé. Lettrage seul : à
+          20 px de haut, les nœuds de la carte tombent sous le pixel et se
+          réduisent à une tache. */}
+      <Link href="/" className={styles.brand} aria-label="UGPTN — accueil">
+        <BrandLockup variant="wordmark" height={18} className="text-white" />
         <span className={styles.brandPipe} aria-hidden>
           /
         </span>

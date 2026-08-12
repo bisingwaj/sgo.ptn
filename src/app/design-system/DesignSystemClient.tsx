@@ -119,7 +119,7 @@ export function DesignSystemClient() {
       {/* ---------- Barre de contrôle ---------- */}
       <header className="border-subtle bg-layer sticky top-0 z-10 border-b">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-4 px-6 py-3">
-          <BrandLockup variant="full" />
+          <BrandLockup variant="mark" height={24} className="text-primary" />
           <div className="ml-auto flex flex-wrap items-center gap-3">
             <label className="text-caption text-secondary" htmlFor="ds-profile">
               Profil actif
@@ -276,10 +276,13 @@ export function DesignSystemClient() {
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-8">
             <div className="border-subtle bg-layer border p-5">
-              <BrandLockup variant="full" />
+              <BrandLockup variant="full" height={72} className="text-primary" />
             </div>
             <div className="border-subtle border bg-[#161616] p-5">
-              <BrandLockup variant="full" inverse />
+              <BrandLockup variant="full" height={72} className="text-white" />
+            </div>
+            <div className="border-subtle bg-layer flex items-center border p-5">
+              <BrandLockup variant="mark" height={28} className="text-primary" />
             </div>
           </div>
         </Section>

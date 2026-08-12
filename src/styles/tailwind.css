@@ -106,12 +106,17 @@
   --font-sans: var(--font-ibm-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
 
-  --text-caption: 0.75rem; /* 12px — plancher absolu */
+  /* 12px — plancher absolu. UN SEUL nom pour cette taille.
+   *
+   * Il y en avait trois (caption, label, helper) pour une même valeur, et
+   * `helper` existait aussi comme couleur (--color-helper). Tailwind ne peut
+   * résoudre `text-helper` qu'une fois : il choisissait la couleur, la taille
+   * était silencieusement perdue et le texte retombait à 16px hérités.
+   *
+   * Règle qui en découle : un nom ne doit jamais figurer à la fois dans
+   * --text-* et --color-*. */
+  --text-caption: 0.75rem;
   --text-caption--line-height: 1.3333;
-  --text-label: 0.75rem; /* 12px */
-  --text-label--line-height: 1.3333;
-  --text-helper: 0.75rem; /* 12px */
-  --text-helper--line-height: 1.3333;
 
   --text-body-compact: 0.875rem; /* 14px — données denses */
   --text-body-compact--line-height: 1.2857;
