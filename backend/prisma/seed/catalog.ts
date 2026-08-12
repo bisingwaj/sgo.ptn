@@ -29,6 +29,31 @@ export const PERMISSIONS: PermissionDef[] = [
   // --- Référentiel ---
   { code: 'referentiel:read', label: 'Consulter le référentiel projet', category: 'referentiel' },
 
+  // Administration du référentiel de passation. Responsabilité métier du
+  // RPM et des spécialistes, distincte de l'administration technique de la
+  // plateforme (`admin:*`, portée par le sous-rôle IT) : éditer une clause
+  // contractuelle n'est pas un réglage système.
+  {
+    code: 'referentiel:passation',
+    label: 'Administrer les types de TDR, méthodes et seuils de passation',
+    category: 'referentiel',
+    isWrite: true,
+    isSensitive: true,
+  },
+  {
+    code: 'referentiel:clauses',
+    label: 'Maintenir les bibliothèques de clauses, indicateurs et risques',
+    category: 'referentiel',
+    isWrite: true,
+    isSensitive: true,
+  },
+  {
+    code: 'referentiel:modeles',
+    label: 'Maintenir les modèles de TDR réutilisables',
+    category: 'referentiel',
+    isWrite: true,
+  },
+
   // --- PTBA ---
   { code: 'ptba:read', label: 'Consulter le PTBA', category: 'passation' },
   { code: 'ptba:write', label: 'Éditer le PTBA', category: 'passation', isWrite: true },
@@ -366,6 +391,10 @@ export const SUBROLES: SubroleDef[] = [
       'commission:constitute',
       'commission:preside',
       'contrat:write',
+      // Administration du référentiel de passation : c'est son mandat.
+      'referentiel:passation',
+      'referentiel:clauses',
+      'referentiel:modeles',
     ],
   },
   {
@@ -373,21 +402,21 @@ export const SUBROLES: SubroleDef[] = [
     label: 'Chargé de Passation des Marchés',
     profile: 'UGP',
     incompatibleWith: ['UGP_AUDITEUR_INTERNE'],
-    permissions: [...BASE, ...LECTURE_PASSATION, 'ppm:write', 'tdr:review', 'ano:submit', 'dao:write', 'commission:sit', 'contrat:write'],
+    permissions: [...BASE, ...LECTURE_PASSATION, 'ppm:write', 'tdr:review', 'ano:submit', 'dao:write', 'commission:sit', 'contrat:write', 'referentiel:modeles'],
   },
   {
     code: 'UGP_SPE_ENVIRONNEMENT',
     label: 'Spécialiste Environnement',
     profile: 'UGP',
     isUnique: true,
-    permissions: [...BASE, 'tdr:read', 'dao:read', 'es:read', 'es:screen', 'es:validate', 'mgp:read', 'indicateur:read'],
+    permissions: [...BASE, 'tdr:read', 'dao:read', 'es:read', 'es:screen', 'es:validate', 'mgp:read', 'indicateur:read', 'referentiel:clauses'],
   },
   {
     code: 'UGP_SPE_DEV_SOCIAL',
     label: 'Spécialiste Développement Social',
     profile: 'UGP',
     isUnique: true,
-    permissions: [...BASE, 'tdr:read', 'dao:read', 'es:read', 'es:screen', 'es:validate', 'mgp:read', 'mgp:process', 'indicateur:read'],
+    permissions: [...BASE, 'tdr:read', 'dao:read', 'es:read', 'es:screen', 'es:validate', 'mgp:read', 'mgp:process', 'indicateur:read', 'referentiel:clauses'],
   },
   {
     code: 'UGP_SPE_VBG_EAS',
@@ -404,7 +433,7 @@ export const SUBROLES: SubroleDef[] = [
     label: 'Spécialiste Suivi & Évaluation',
     profile: 'UGP',
     isUnique: true,
-    permissions: [...BASE, ...LECTURE_PASSATION, 'indicateur:read', 'indicateur:write', 'sbp:read', 'mgp:stats', 'es:read'],
+    permissions: [...BASE, ...LECTURE_PASSATION, 'indicateur:read', 'indicateur:write', 'sbp:read', 'mgp:stats', 'es:read', 'ptba:write', 'referentiel:clauses'],
   },
   {
     code: 'UGP_SPE_COMMUNICATION',

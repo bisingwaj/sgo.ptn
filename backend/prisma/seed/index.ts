@@ -26,6 +26,15 @@ import type { ProfileKey, OrganisationType, ComponentCode } from '../../generate
 import { idFor } from './uuid';
 import { PERMISSIONS, SUBROLES_WITH_ORDER, assertCatalogIntegrity } from './catalog';
 import { COMPONENTS, PROVINCES, ORGANISATIONS } from './referentiel';
+import {
+  CLAUSE_CATEGORY,
+  PROCUREMENT_METHODS,
+  RISK_LEVEL,
+  TDR_TYPE_META,
+  THRESHOLDS,
+  familyKeyFor,
+  loadExtractedContent,
+} from './tdr-referentiel';
 
 // Prisma 7 exige un driver adapter explicite.
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -193,6 +202,211 @@ async function seedSubroles(): Promise<void> {
 }
 
 // ============================================================
+// 1 bis. RÉFÉRENTIEL DE PASSATION ET BIBLIOTHÈQUES TDR
+// ============================================================
+
+async function seedProcurementReferentiel(): Promise<void> {
+  for (const m of PROCUREMENT_METHODS) {
+    await prisma.procurementMethod.upsert({
+      where: { code: m.code },
+      update: { label: m.label, category: m.category, description: m.description, isException: m.isException ?? false },
+      create: {
+        code: m.code,
+        label: m.label,
+        category: m.category,
+        description: m.description,
+        isException: m.isException ?? false,
+        displayOrder: PROCUREMENT_METHODS.indexOf(m),
+      },
+    });
+  }
+
+  // Les seuils n'ont pas de clé naturelle : on les remplace intégralement
+  // plutôt que de les fusionner, sinon un seuil retiré du catalogue
+  // survivrait en base.
+  await prisma.procurementThreshold.deleteMany({});
+  await prisma.procurementThreshold.createMany({
+    data: THRESHOLDS.map((t) => ({
+      methodCode: t.methodCode,
+      category: t.category,
+      minUsd: t.minUsd ?? null,
+      maxUsd: t.maxUsd ?? null,
+      reviewType: t.reviewType,
+      note: t.note ?? null,
+    })),
+  });
+
+  log('Méthodes de passation', `${PROCUREMENT_METHODS.length} · ${THRESHOLDS.length} seuils`);
+}
+
+async function seedTdrTypes(content: ReturnType<typeof loadExtractedContent>): Promise<void> {
+  let count = 0;
+  for (const type of content.types) {
+    const meta = TDR_TYPE_META[type.slug];
+    // `generic` n'est pas un type du MEP : il sert de repli côté frontend.
+    if (!meta) continue;
+
+    await prisma.tdrType.upsert({
+      where: { code: type.code },
+      update: {
+        slug: type.slug,
+        name: type.name,
+        family: type.family,
+        familyLabel: meta.familyLabel,
+        defaultMethodCode: type.defaultMethod,
+        allowedOrigins: meta.allowedOrigins,
+        stepCount: meta.stepCount,
+        contextTemplate: type.contextTemplate,
+        requiresPges: meta.requiresPges ?? false,
+        displayOrder: meta.displayOrder,
+      },
+      create: {
+        code: type.code,
+        slug: type.slug,
+        name: type.name,
+        family: type.family,
+        familyLabel: meta.familyLabel,
+        defaultMethodCode: type.defaultMethod,
+        allowedOrigins: meta.allowedOrigins,
+        stepCount: meta.stepCount,
+        contextTemplate: type.contextTemplate,
+        requiresPges: meta.requiresPges ?? false,
+        displayOrder: meta.displayOrder,
+      },
+    });
+    count += 1;
+  }
+
+  // Garde-fou MEP § 15.4 : le bailleur ne rédige jamais.
+  const offending = await prisma.tdrType.findFirst({ where: { allowedOrigins: { has: 'BAILLEUR' } } });
+  if (offending) {
+    throw new Error(
+      `Le type « ${offending.name} » autorise l'origine BAILLEUR : un bailleur ne rédige jamais de TDR (MEP § 15.4).`,
+    );
+  }
+
+  log('Types de TDR', `${count} sur 3 familles`);
+}
+
+/**
+ * Bibliothèques versionnées. Le seed pose la version 1 en PUBLIE ; les
+ * éditions ultérieures passeront par le panneau d'administration, qui
+ * créera des versions successives sans écraser celles déjà citées par des
+ * TDR soumis.
+ */
+async function seedLibraries(content: ReturnType<typeof loadExtractedContent>): Promise<void> {
+  const now = new Date();
+  let clauses = 0;
+  let indicators = 0;
+  let risks = 0;
+
+  const upsertClause = async (
+    scope: string,
+    typeCode: string | null,
+    c: { label: string; text: string; cat: keyof typeof CLAUSE_CATEGORY },
+  ) => {
+    const familyKey = familyKeyFor(scope, c.label);
+    await prisma.clauseTemplate.upsert({
+      where: { familyKey_version: { familyKey, version: 1 } },
+      update: { label: c.label, text: c.text, category: CLAUSE_CATEGORY[c.cat], tdrTypeCode: typeCode },
+      create: {
+        familyKey,
+        version: 1,
+        tdrTypeCode: typeCode,
+        category: CLAUSE_CATEGORY[c.cat],
+        label: c.label,
+        text: c.text,
+        status: 'PUBLIE',
+        effectiveFrom: now,
+      },
+    });
+    clauses += 1;
+  };
+
+  const upsertIndicator = async (
+    scope: string,
+    typeCode: string | null,
+    i: { label: string; measure: string; target: string },
+  ) => {
+    const familyKey = familyKeyFor(scope, i.label);
+    await prisma.indicatorTemplate.upsert({
+      where: { familyKey_version: { familyKey, version: 1 } },
+      update: { label: i.label, measure: i.measure, target: i.target, tdrTypeCode: typeCode },
+      create: {
+        familyKey,
+        version: 1,
+        tdrTypeCode: typeCode,
+        label: i.label,
+        measure: i.measure,
+        target: i.target,
+        status: 'PUBLIE',
+        effectiveFrom: now,
+      },
+    });
+    indicators += 1;
+  };
+
+  const upsertRisk = async (
+    scope: string,
+    typeCode: string | null,
+    r: { label: string; description: string; mitigation: string; level: keyof typeof RISK_LEVEL },
+  ) => {
+    const familyKey = familyKeyFor(scope, r.label);
+    await prisma.riskTemplate.upsert({
+      where: { familyKey_version: { familyKey, version: 1 } },
+      update: {
+        label: r.label,
+        description: r.description,
+        mitigation: r.mitigation,
+        level: RISK_LEVEL[r.level],
+        tdrTypeCode: typeCode,
+      },
+      create: {
+        familyKey,
+        version: 1,
+        tdrTypeCode: typeCode,
+        label: r.label,
+        description: r.description,
+        mitigation: r.mitigation,
+        level: RISK_LEVEL[r.level],
+        status: 'PUBLIE',
+        effectiveFrom: now,
+      },
+    });
+    risks += 1;
+  };
+
+  for (const type of content.types) {
+    if (!TDR_TYPE_META[type.slug]) continue;
+    for (const c of type.clauses) await upsertClause(type.slug, type.code, c);
+    for (const i of type.indicators) await upsertIndicator(type.slug, type.code, i);
+    for (const r of type.risks) await upsertRisk(type.slug, type.code, r);
+  }
+
+  // Transversaux : applicables à tous les types, donc rattachés à aucun.
+  for (const i of content.crossIndicators) await upsertIndicator('transversal', null, i);
+  for (const r of content.crossRisks) await upsertRisk('transversal', null, r);
+
+  log('Bibliothèques TDR', `${clauses} clauses · ${indicators} indicateurs · ${risks} risques`);
+}
+
+/**
+ * Exercice PTBA courant, sans activités : celles-ci sont saisies depuis
+ * l'écran /ptba. Les inventer ici les rendrait opposables alors qu'aucun
+ * PTBA officiel n'a encore été chargé.
+ */
+async function seedPtbaYear(): Promise<void> {
+  const year = 2026;
+  await prisma.ptbaYear.upsert({
+    where: { year },
+    update: {},
+    create: { year, label: `PTBA ${year}`, status: 'BROUILLON' },
+  });
+  const activities = await prisma.ptbaActivity.count();
+  log('Exercice PTBA', `${year} · ${activities} activité(s) — à saisir depuis /ptba`);
+}
+
+// ============================================================
 // 2. AMORÇAGE — premier administrateur
 // ============================================================
 
@@ -288,6 +502,13 @@ async function main(): Promise<void> {
   await seedOrganisations();
   await seedPermissions();
   await seedSubroles();
+
+  const tdrContent = loadExtractedContent();
+  await seedProcurementReferentiel();
+  await seedTdrTypes(tdrContent);
+  await seedLibraries(tdrContent);
+  await seedPtbaYear();
+
   await seedBootstrapAdmin();
 
   console.log('│');

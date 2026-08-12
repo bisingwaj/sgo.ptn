@@ -129,7 +129,8 @@ model Component {
   /// Note de réconciliation lorsque MEP et PAD divergent
   reconciliation String?
 
-  assignments Assignment[]
+  assignments    Assignment[]
+  ptbaActivities PtbaActivity[]
 
   @@map("components")
 }
@@ -141,8 +142,9 @@ model Province {
   label         String
   isPriorityCpf Boolean @default(false)
 
-  organisations Organisation[]
-  assignments   Assignment[]
+  organisations  Organisation[]
+  assignments    Assignment[]
+  ptbaActivities PtbaActivity[]
 
   @@map("provinces")
 }
@@ -471,4 +473,299 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================================
+// PLANIFICATION — PTBA
+//
+// Le Plan de Travail et Budget Annuel est le rattachement obligatoire
+// de tout TDR : une activité sans ligne PTBA n'a pas d'enveloppe, donc
+// pas de marché possible. Arrêté annuellement et validé par le COPIL.
+// ============================================================
+
+enum PtbaStatus {
+  /// En préparation par l'UGP
+  BROUILLON
+  /// Validé par le COPIL, opposable
+  VALIDE
+  /// Exercice clos
+  CLOS
+}
+
+model PtbaYear {
+  id     String     @id @default(uuid()) @db.Uuid
+  year   Int        @unique
+  label  String
+  status PtbaStatus @default(BROUILLON)
+
+  validatedAt   DateTime?
+  validatedById String?   @db.Uuid
+
+  activities PtbaActivity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ptba_years")
+}
+
+model PtbaActivity {
+  id         String   @id @default(uuid()) @db.Uuid
+  ptbaYearId String   @db.Uuid
+  ptbaYear   PtbaYear @relation(fields: [ptbaYearId], references: [id], onDelete: Cascade)
+
+  /// Code d'activité — A2.3.1
+  code  String
+  title String
+
+  componentCode ComponentCode
+  component     Component     @relation(fields: [componentCode], references: [code])
+  /// Sous-composante MEP — 2.3
+  subComponent String?
+
+  /// Enveloppe et sa ventilation, en USD
+  envelopeUsd Decimal  @db.Decimal(14, 2)
+  idaUsd      Decimal? @db.Decimal(14, 2)
+  afdUsd      Decimal? @db.Decimal(14, 2)
+
+  provinceCode String?
+  province     Province? @relation(fields: [provinceCode], references: [code])
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ptbaYearId, code])
+  @@index([componentCode])
+  @@map("ptba_activities")
+}
+
+// ============================================================
+// RÉFÉRENTIEL DE PASSATION
+// Règlements de Passation des Marchés BM pour Emprunteurs IPF,
+// édition de février 2025, et PPSD du PTN-RDC.
+// ============================================================
+
+enum ProcurementCategory {
+  TRAVAUX
+  FOURNITURES
+  SERVICES_NON_CONSULTANTS
+  SERVICES_CONSULTANTS
+}
+
+enum ReviewType {
+  /// Revue préalable du bailleur
+  PRIOR
+  /// Revue postérieure, sur échantillon
+  POST
+}
+
+/// Origines de rédaction d'un TDR — MEP § 15.4.
+enum TdrOrigin {
+  UGP
+  PARTENAIRE
+  /// Consultation et ANO uniquement : ne rédige jamais
+  BAILLEUR
+  SBP
+}
+
+model ProcurementMethod {
+  code        String              @id
+  label       String
+  category    ProcurementCategory
+  description String?
+  displayOrder Int                @default(0)
+  isActive    Boolean             @default(true)
+
+  /// Méthode d'exception : gré à gré, source unique, accord-cadre.
+  /// Elle ne se déduit jamais d'un montant — elle se justifie. L'exclure
+  /// de la résolution automatique évite qu'un marché bascule en gré à gré
+  /// pour la seule raison qu'aucun autre seuil ne correspondait.
+  isException Boolean             @default(false)
+
+  thresholds ProcurementThreshold[]
+  tdrTypes   TdrType[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("procurement_methods")
+}
+
+/// Seuil déterminant la méthode applicable et le type de revue.
+/// Bornes en USD ; `maxUsd` nul signifie « sans plafond ».
+model ProcurementThreshold {
+  id         String              @id @default(uuid()) @db.Uuid
+  methodCode String
+  method     ProcurementMethod   @relation(fields: [methodCode], references: [code], onDelete: Cascade)
+  category   ProcurementCategory
+
+  minUsd Decimal? @db.Decimal(14, 2)
+  maxUsd Decimal? @db.Decimal(14, 2)
+
+  reviewType ReviewType
+  note       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("procurement_thresholds")
+}
+
+/// Les 11 types de TDR — MEP § 15.4.
+model TdrType {
+  code   String @id
+  slug   String @unique
+  name   String
+  /// 1 Passation classique · 2 Activités opérationnelles · 3 Subventions & contrôles
+  family      Int
+  familyLabel String
+
+  defaultMethodCode String?
+  defaultMethod     ProcurementMethod? @relation(fields: [defaultMethodCode], references: [code])
+
+  /// Origines autorisées à rédiger ce type
+  allowedOrigins TdrOrigin[]
+  /// Nombre d'étapes du parcours de rédaction
+  stepCount Int @default(5)
+
+  /// Amorce de contexte pré-remplie, avec substitution {{ptbaCode}} et {{ptbaTitle}}
+  contextTemplate String? @db.Text
+  /// Un PGES est-il requis pour ce type ?
+  requiresPges Boolean @default(false)
+
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  clauses    ClauseTemplate[]
+  indicators IndicatorTemplate[]
+  risks      RiskTemplate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([family])
+  @@map("tdr_types")
+}
+
+// ============================================================
+// BIBLIOTHÈQUES VERSIONNÉES
+//
+// Ces textes partent dans des documents contractuels soumis à ANO.
+// Une modification ne doit jamais réécrire rétroactivement un TDR déjà
+// approuvé : chaque édition crée une nouvelle version, l'ancienne est
+// archivée mais conservée. `familyKey` relie les versions entre elles.
+// ============================================================
+
+enum TemplateStatus {
+  BROUILLON
+  PUBLIE
+  ARCHIVE
+}
+
+enum ClauseCategory {
+  /// Réglementaire
+  REG
+  /// Technique
+  TECH
+  /// Conformité
+  CONF
+  /// Sauvegarde environnementale et sociale
+  SAFE
+  /// Gouvernance
+  GOV
+}
+
+model ClauseTemplate {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Identifiant stable partagé par toutes les versions d'une même clause
+  familyKey String
+  version   Int    @default(1)
+
+  /// Null pour une clause transversale, applicable à tous les types
+  tdrTypeCode String?
+  tdrType     TdrType? @relation(fields: [tdrTypeCode], references: [code])
+
+  category ClauseCategory
+  label    String
+  text     String         @db.Text
+
+  status        TemplateStatus @default(BROUILLON)
+  effectiveFrom DateTime?
+  supersededAt  DateTime?
+
+  createdById String? @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([familyKey, version])
+  @@index([tdrTypeCode, status])
+  @@index([category])
+  @@map("clause_templates")
+}
+
+model IndicatorTemplate {
+  id String @id @default(uuid()) @db.Uuid
+
+  familyKey String
+  version   Int    @default(1)
+
+  tdrTypeCode String?
+  tdrType     TdrType? @relation(fields: [tdrTypeCode], references: [code])
+
+  label String
+  /// Type de mesure — ratio, délai, score, pourcentage
+  measure String
+  /// Cible MEP ou standard PTN-RDC
+  target String
+
+  status        TemplateStatus @default(BROUILLON)
+  effectiveFrom DateTime?
+  supersededAt  DateTime?
+
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([familyKey, version])
+  @@index([tdrTypeCode, status])
+  @@map("indicator_templates")
+}
+
+enum RiskLevel {
+  FAIBLE
+  MODERE
+  SUBSTANTIEL
+  ELEVE
+}
+
+model RiskTemplate {
+  id String @id @default(uuid()) @db.Uuid
+
+  familyKey String
+  version   Int    @default(1)
+
+  tdrTypeCode String?
+  tdrType     TdrType? @relation(fields: [tdrTypeCode], references: [code])
+
+  label       String
+  description String    @db.Text
+  mitigation  String    @db.Text
+  level       RiskLevel
+
+  status        TemplateStatus @default(BROUILLON)
+  effectiveFrom DateTime?
+  supersededAt  DateTime?
+
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([familyKey, version])
+  @@index([tdrTypeCode, status])
+  @@map("risk_templates")
 }

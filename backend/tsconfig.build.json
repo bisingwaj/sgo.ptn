@@ -1,4 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  // `prisma/` est exclu du build applicatif : l'extracteur du registre TDR
+  // importe un fichier du frontend, ce qui remonterait la racine de
+  // compilation au dépôt entier et déplacerait la sortie en
+  // `dist/backend/src/main.js`, là où Nest attend `dist/main.js`.
+  // Ces scripts s'exécutent via ts-node, ils n'ont pas à être compilés ici.
+  "exclude": ["node_modules", "test", "dist", "prisma", "**/*spec.ts"]
 }
