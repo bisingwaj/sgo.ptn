@@ -24,6 +24,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "ts-node --transpileOnly prisma/seed/index.ts",
+    "db:seed:dev": "ts-node --transpileOnly prisma/seed/dev-users.ts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "db:extract-tdr": "ts-node --transpileOnly -P prisma/seed/tsconfig.extract.json prisma/seed/extract-tdr-content.ts"

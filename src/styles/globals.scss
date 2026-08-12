@@ -44,6 +44,20 @@
 // reste surchargeable par une utilitaire explicitement posée dans le JSX.
 @layer theme, base, carbon, components, utilities;
 
+// `@import` et non `@use` : Sass n'autorise `@use` qu'au premier niveau d'un
+// fichier, il ne peut donc pas être imbriqué dans un `@layer`. `@import` le
+// peut — c'est aujourd'hui le seul moyen de ranger Carbon dans une couche
+// depuis Sass.
+//
+// DETTE CONNUE : `@import` est déprécié et disparaîtra avec Dart Sass 3.0.
+// Chaque compilation émet un avertissement. Migration prévue : remplacer ce
+// bloc par un `@import` CSS de la feuille précompilée —
+// `@import '@carbon/styles/css/styles.css' layer(carbon);` dans tailwind.css —
+// ce qui supprimerait Sass de notre code au profit de CSS natif. Le report
+// tient à une seule chose : les thèmes passeraient des classes de zone
+// `.cds--g10` / `.cds--g100` à notre attribut `data-carbon-theme`, ce qui
+// demande de revoir tokens.scss. À faire quand la migration des écrans sera
+// achevée, pas au milieu.
 @layer carbon {
   @import './carbon';
 }

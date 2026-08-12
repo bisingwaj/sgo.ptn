@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Réglages de permissions propres à la session Claude Code
+.claude/settings.json
