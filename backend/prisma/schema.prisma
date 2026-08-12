@@ -145,6 +145,7 @@ model Province {
   organisations  Organisation[]
   assignments    Assignment[]
   ptbaActivities PtbaActivity[]
+  tdrs           Tdr[]
 
   @@map("provinces")
 }
@@ -178,6 +179,7 @@ model Organisation {
   isActive    Boolean @default(true)
 
   assignments Assignment[]
+  tdrs        Tdr[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -304,6 +306,7 @@ model User {
   createdById  String? @db.Uuid
   createdBy    User?   @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdUsers User[]  @relation("UserCreatedBy")
+  authoredTdrs Tdr[]   @relation("TdrAuthor")
 
   assignments   Assignment[]   @relation("AssignmentUser")
   grantedAssignments Assignment[] @relation("AssignmentGrantedBy")
@@ -533,6 +536,8 @@ model PtbaActivity {
 
   isActive Boolean @default(true)
 
+  tdrs Tdr[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -586,6 +591,7 @@ model ProcurementMethod {
 
   thresholds ProcurementThreshold[]
   tdrTypes   TdrType[]
+  tdrs       Tdr[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -643,6 +649,7 @@ model TdrType {
   clauses    ClauseTemplate[]
   indicators IndicatorTemplate[]
   risks      RiskTemplate[]
+  tdrs       Tdr[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -768,4 +775,217 @@ model RiskTemplate {
   @@unique([familyKey, version])
   @@index([tdrTypeCode, status])
   @@map("risk_templates")
+}
+
+// ============================================================
+// LE DOCUMENT TDR
+//
+// Aboutissement du module : jusqu'ici les parcours de rédaction
+// n'écrivaient nulle part. Le TDR est la pièce contractuelle initiale
+// d'un marché — c'est lui qui part au premier ANO du bailleur.
+// ============================================================
+
+enum TdrStatus {
+  /// En cours de rédaction par son auteur
+  BROUILLON
+  /// Transmis à l'UGP
+  SOUMIS_UGP
+  /// En arbitrage : alignement PTBA, priorisation, validation technique
+  REVUE_UGP
+  /// Renvoyé à l'auteur pour correction
+  RETOURNE
+  /// Validé par l'UGP, prêt pour soumission au bailleur
+  VALIDE_UGP
+  ANO_EN_COURS
+  ANO_OBTENU
+  ANO_REFUSE
+  ARCHIVE
+}
+
+/// Niveaux de risque environnemental et social — Cadre BM.
+enum EsCategory {
+  FAIBLE
+  MODERE
+  SUBSTANTIEL
+  ELEVE
+}
+
+model Tdr {
+  id        String @id @default(uuid()) @db.Uuid
+  /// Référence lisible — PTN-2026-019
+  reference String @unique
+
+  /// Rattachement au plan. Obligatoire à la soumission : une activité
+  /// sans ligne PTBA n'a pas d'enveloppe, donc pas de marché possible.
+  ptbaActivityId String?       @db.Uuid
+  ptbaActivity   PtbaActivity? @relation(fields: [ptbaActivityId], references: [id])
+
+  tdrTypeCode String
+  tdrType     TdrType @relation(fields: [tdrTypeCode], references: [code])
+
+  /// Origine de rédaction. Déduite de la session, jamais déclarée par
+  /// l'auteur : un bailleur ne rédige jamais de TDR (MEP § 15.4).
+  origin TdrOrigin
+
+  authorId       String       @db.Uuid
+  author         User         @relation("TdrAuthor", fields: [authorId], references: [id])
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  title  String
+  status TdrStatus @default(BROUILLON)
+
+  // --- Cadrage ---
+  context       String? @db.Text
+  justification String? @db.Text
+  beneficiaries String? @db.Text
+
+  // --- Méthodologie ---
+  approach    String? @db.Text
+  methodology String? @db.Text
+  constraints String? @db.Text
+
+  // --- Calendrier et expertise ---
+  startDate      DateTime?
+  durationMonths Int?
+  provinceCode   String?
+  province       Province? @relation(fields: [provinceCode], references: [code])
+  expertise      String?   @db.Text
+  keyProfiles    String[]  @default([])
+
+  // --- Budget, ventilé par source ---
+  budgetTotalUsd Decimal? @db.Decimal(14, 2)
+  budgetIdaUsd   Decimal? @db.Decimal(14, 2)
+  budgetAfdUsd   Decimal? @db.Decimal(14, 2)
+  budgetGovUsd   Decimal? @db.Decimal(14, 2)
+
+  /// Méthode et type de revue figés à la soumission, depuis les seuils en
+  /// vigueur à cette date. Les recalculer plus tard donnerait un résultat
+  /// différent si les seuils ont changé entre-temps.
+  procurementMethodCode String?
+  procurementMethod     ProcurementMethod? @relation(fields: [procurementMethodCode], references: [code])
+  reviewType            ReviewType?
+
+  // --- Sauvegardes ---
+  esCategory EsCategory?
+  esRisks    String[]    @default([])
+
+  // --- Engagements de l'auteur ---
+  consentMepAt  DateTime?
+  consentRgpdAt DateTime?
+
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  reviewNote  String?   @db.Text
+
+  objectives   TdrObjective[]
+  deliverables TdrDeliverable[]
+  clauses      TdrClause[]
+  indicators   TdrIndicator[]
+  risks        TdrRisk[]
+  versions     TdrVersion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([authorId])
+  @@index([organisationId])
+  @@map("tdrs")
+}
+
+model TdrObjective {
+  id       String @id @default(uuid()) @db.Uuid
+  tdrId    String @db.Uuid
+  tdr      Tdr    @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+  title    String
+  criteria String @db.Text
+  position Int    @default(0)
+
+  @@map("tdr_objectives")
+}
+
+model TdrDeliverable {
+  id       String  @id @default(uuid()) @db.Uuid
+  tdrId    String  @db.Uuid
+  tdr      Tdr     @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+  title    String
+  format   String?
+  deadline String?
+  position Int     @default(0)
+
+  @@map("tdr_deliverables")
+}
+
+/// Clause retenue dans un TDR.
+///
+/// Le texte est COPIÉ depuis la bibliothèque, jamais référencé : modifier
+/// la bibliothèque ne doit pas réécrire un TDR déjà soumis à ANO.
+/// `sourceFamilyKey` et `sourceVersion` gardent la trace de l'origine,
+/// à titre documentaire.
+model TdrClause {
+  id              String         @id @default(uuid()) @db.Uuid
+  tdrId           String         @db.Uuid
+  tdr             Tdr            @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+  sourceFamilyKey String?
+  sourceVersion   Int?
+  category        ClauseCategory
+  label           String
+  text            String         @db.Text
+  position        Int            @default(0)
+
+  @@map("tdr_clauses")
+}
+
+model TdrIndicator {
+  id              String  @id @default(uuid()) @db.Uuid
+  tdrId           String  @db.Uuid
+  tdr             Tdr     @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+  sourceFamilyKey String?
+  sourceVersion   Int?
+  label           String
+  measure         String
+  target          String
+  position        Int     @default(0)
+
+  @@map("tdr_indicators")
+}
+
+model TdrRisk {
+  id              String    @id @default(uuid()) @db.Uuid
+  tdrId           String    @db.Uuid
+  tdr             Tdr       @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+  sourceFamilyKey String?
+  sourceVersion   Int?
+  label           String
+  description     String    @db.Text
+  mitigation      String    @db.Text
+  level           RiskLevel
+  position        Int       @default(0)
+
+  @@map("tdr_risks")
+}
+
+/// Instantané immuable pris à chaque soumission. C'est lui qui permet de
+/// reconstituer le document exactement tel qu'il a été transmis, des
+/// années après — exigence d'auditabilité.
+model TdrVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  tdrId         String   @db.Uuid
+  tdr           Tdr      @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+  version       Int
+  snapshot      Json
+  submittedById String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  @@unique([tdrId, version])
+  @@map("tdr_versions")
+}
+
+/// Compteur de références par exercice, pour produire PTN-2026-019.
+model TdrSequence {
+  year    Int @id
+  lastSeq Int @default(0)
+
+  @@map("tdr_sequences")
 }
