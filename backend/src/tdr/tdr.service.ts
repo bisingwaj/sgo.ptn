@@ -123,7 +123,7 @@ export class TdrService {
       'title', 'context', 'justification', 'beneficiaries',
       'approach', 'methodology', 'constraints',
       'expertise', 'provinceCode', 'esCategory',
-      'ptbaActivityId', 'durationMonths',
+      'ptbaActivityId', 'beneficiaryOrganisationId', 'durationMonths',
       'budgetTotalUsd', 'budgetIdaUsd', 'budgetAfdUsd', 'budgetGovUsd',
     ] as const;
 
@@ -192,6 +192,7 @@ export class TdrService {
     tdrType: true,
     ptbaActivity: { include: { component: true } },
     organisation: { select: { code: true, name: true } },
+    beneficiaryOrganisation: { select: { code: true, name: true, fullName: true } },
     author: { select: { firstName: true, lastName: true, email: true } },
     objectives: { orderBy: { position: 'asc' } },
     deliverables: { orderBy: { position: 'asc' } },

@@ -79,6 +79,7 @@ export class TdrAssistService {
         tdrType: { include: { defaultMethod: true } },
         ptbaActivity: { include: { component: true, province: true } },
         organisation: { select: { name: true, fullName: true, type: true } },
+        beneficiaryOrganisation: { select: { name: true, fullName: true } },
         province: true,
         objectives: { orderBy: { position: 'asc' } },
       },
@@ -138,10 +139,26 @@ export class TdrAssistService {
       lines.push('Couverture géographique : nationale.');
     }
 
+    lines.push(`Entité qui rédige le dossier : ${tdr.organisation.fullName}`);
+    grounded.push(`Rédacteur — ${tdr.organisation.name}`);
+
+    // La maîtrise d'ouvrage bénéficiaire, quand elle est désignée, donne au
+    // modèle un nom vérifié. À défaut, il faut lui dire explicitement qu'il
+    // n'y en a pas : c'est ce vide qu'il comblait en devinant.
+    if (tdr.beneficiaryOrganisation) {
+      lines.push(
+        `Maîtrise d'ouvrage bénéficiaire, pour laquelle l'activité est conduite : ${tdr.beneficiaryOrganisation.fullName}. Vous pouvez la nommer.`,
+      );
+      grounded.push(`Bénéficiaire — ${tdr.beneficiaryOrganisation.name}`);
+    } else {
+      lines.push(
+        `AUCUNE maîtrise d'ouvrage bénéficiaire n'est désignée dans ce dossier. N'en devinez pas : désignez l'acteur par sa fonction — « l'entité bénéficiaire », « l'exploitant », « l'administration destinataire » — et laissez le rédacteur y substituer le nom qu'il aura vérifié.`,
+      );
+    }
+
     lines.push(
-      `Entité qui rédige : ${tdr.organisation.fullName}. C'est la seule institution partie prenante connue de ce dossier ; n'en impliquez aucune autre.`,
+      `Hors ces entités, aucune autre institution n'est connue de ce dossier ; n'en impliquez aucune.`,
     );
-    grounded.push(`Organisation — ${tdr.organisation.name}`);
 
     if (tdr.durationMonths) {
       lines.push(`Durée prévisionnelle : ${tdr.durationMonths} mois`);
@@ -153,7 +170,10 @@ export class TdrAssistService {
       );
     }
     if (tdr.beneficiaries?.trim()) {
-      lines.push(`Bénéficiaires déjà identifiés par le rédacteur : ${tdr.beneficiaries.trim()}`);
+      lines.push(
+        `Bénéficiaires visés, tels qu'identifiés par le rédacteur — il s'agit des populations servies, non de l'institution maître d'ouvrage : ${tdr.beneficiaries.trim()}`,
+      );
+      grounded.push('Bénéficiaires visés');
     }
     if (tdr.justification?.trim()) {
       lines.push(`Justification déjà rédigée : ${tdr.justification.trim()}`);

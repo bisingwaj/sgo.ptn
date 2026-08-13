@@ -29,6 +29,7 @@ import {
   type IndicatorApi,
   type LibraryEntry,
   type PtbaActivityApi,
+  type OrganisationApi,
   type ProvinceApi,
   type RiskApi,
   type TdrApi,
@@ -50,6 +51,7 @@ interface State {
   reference: string | null;
   tdrTypeCode: string;
   ptbaActivityId: string;
+  beneficiaryOrganisationId: string;
   title: string;
 
   context: string;
@@ -87,7 +89,7 @@ interface State {
 }
 
 const INITIAL: State = {
-  tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", title: "",
+  tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", beneficiaryOrganisationId: "", title: "",
   context: "", justification: "", beneficiaries: "",
   objectives: [], deliverables: [],
   approach: "", methodology: "", constraints: "",
@@ -299,6 +301,7 @@ export function TdrCreationClient() {
   const [types, setTypes] = useState<TdrTypeApi[]>([]);
   const [activities, setActivities] = useState<PtbaActivityApi[]>([]);
   const [provinces, setProvinces] = useState<ProvinceApi[]>([]);
+  const [organisations, setOrganisations] = useState<OrganisationApi[]>([]);
   const [library, setLibrary] = useState<{ clauses: ClauseApi[]; indicators: IndicatorApi[]; risks: RiskApi[] }>({
     clauses: [], indicators: [], risks: [],
   });
@@ -311,11 +314,13 @@ export function TdrCreationClient() {
       tdrReferentielApi.types(),
       ptbaApi.activities(new Date().getFullYear()),
       referentielApi.provinces(),
+      referentielApi.organisations(),
     ])
-      .then(([t, p, pr]) => {
+      .then(([t, p, pr, orgs]) => {
         setTypes(t.filter((x) => x.isActive));
         setActivities(p.activities);
         setProvinces(pr);
+        setOrganisations(orgs);
       })
       .catch((e: unknown) =>
         setLoadError(e instanceof Error ? e.message : "Référentiel indisponible."),
@@ -368,7 +373,11 @@ export function TdrCreationClient() {
         // Ouvre le brouillon en base : la suite du parcours écrit dessus.
         commit: async (s) => {
           if (s.tdrId) {
-            await persist(s, { title: s.title, ptbaActivityId: s.ptbaActivityId });
+            await persist(s, {
+              title: s.title,
+              ptbaActivityId: s.ptbaActivityId,
+              beneficiaryOrganisationId: s.beneficiaryOrganisationId || null,
+            });
             return;
           }
           const draft = await tdrApi.createDraft({
@@ -382,10 +391,21 @@ export function TdrCreationClient() {
             const activity = activities.find((a) => a.id === s.ptbaActivityId);
             s.context = fillTemplate(draft.context, activity);
           }
+          if (s.beneficiaryOrganisationId) {
+            await tdrApi.update(draft.id, {
+              beneficiaryOrganisationId: s.beneficiaryOrganisationId,
+            });
+          }
           await loadLibrary(s.tdrTypeCode);
         },
         render: (s, set) => (
-          <TypeStep state={s} set={set} types={types} activities={activities} />
+          <TypeStep
+            state={s}
+            set={set}
+            types={types}
+            activities={activities}
+            organisations={organisations}
+          />
         ),
       },
 
@@ -423,8 +443,17 @@ export function TdrCreationClient() {
               </Field>
 
               <JustificationAssist state={s} set={set} />
-              <Field label="Bénéficiaires">
-                <Textarea rows={3} value={s.beneficiaries} onChange={(e) => set({ ...s, beneficiaries: e.target.value })} />
+              <Field
+                label="Bénéficiaires visés"
+                helper="Les populations servies, non l’institution maître d’ouvrage. Quantifier si possible : effectifs, part de femmes, couverture géographique — ces éléments alimentent le cadre de résultats."
+              >
+                <Textarea
+                  rows={3}
+                  value={s.beneficiaries}
+                  onChange={(e) => set({ ...s, beneficiaries: e.target.value })}
+                  placeholder={`Bénéficiaires directs : 800 agents publics
+Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
+                />
               </Field>
             </div>
           );
@@ -757,12 +786,13 @@ export function TdrCreationClient() {
 // ============================================================
 
 function TypeStep({
-  state, set, types, activities,
+  state, set, types, activities, organisations,
 }: {
   state: State;
   set: (s: State) => void;
   types: TdrTypeApi[];
   activities: PtbaActivityApi[];
+  organisations: OrganisationApi[];
 }) {
   const families = [...new Set(types.map((t) => t.family))].sort();
 
@@ -848,6 +878,24 @@ function TypeStep({
           options={activities.map((a) => ({
             value: a.id,
             label: `${a.code} · ${a.title} — ${(Number(a.envelopeUsd) / 1e6).toFixed(2)} M USD`,
+          }))}
+        />
+      </Field>
+
+      {/* Maîtrise d'ouvrage bénéficiaire — distincte de l'organisation qui
+          rédige, et distincte des bénéficiaires visés, qui sont des
+          populations. Sans elle, l'assistance rédactionnelle devine. */}
+      <Field
+        label="Maîtrise d’ouvrage bénéficiaire"
+        helper="L’entité pour laquelle l’activité est conduite, si elle diffère de la vôtre. À ne pas confondre avec les bénéficiaires visés, qui sont les populations servies."
+      >
+        <Select
+          value={state.beneficiaryOrganisationId}
+          onChange={(e) => set({ ...state, beneficiaryOrganisationId: e.target.value })}
+          placeholder="Aucune — l’activité est conduite pour votre propre compte"
+          options={organisations.map((o) => ({
+            value: o.id,
+            label: `${o.code} — ${o.fullName}`,
           }))}
         />
       </Field>

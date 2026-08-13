@@ -659,6 +659,8 @@ export interface TdrApi {
   tdrType?: { code: string; name: string; requiresPges: boolean; stepCount: number };
   ptbaActivityId: string | null;
   ptbaActivity?: { code: string; title: string; envelopeUsd: string; componentCode: string } | null;
+  beneficiaryOrganisationId: string | null;
+  beneficiaryOrganisation?: { code: string; name: string; fullName: string } | null;
   context: string | null;
   justification: string | null;
   beneficiaries: string | null;

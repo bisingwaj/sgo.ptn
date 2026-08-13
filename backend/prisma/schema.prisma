@@ -179,7 +179,10 @@ model Organisation {
   isActive    Boolean @default(true)
 
   assignments Assignment[]
-  tdrs        Tdr[]
+  /// TDR rédigés par cette organisation
+  authoredTdrs    Tdr[] @relation("TdrAuthorOrganisation")
+  /// TDR conduits au bénéfice de cette organisation
+  beneficiaryTdrs Tdr[] @relation("TdrBeneficiaryOrganisation")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -829,8 +832,17 @@ model Tdr {
 
   authorId       String       @db.Uuid
   author         User         @relation("TdrAuthor", fields: [authorId], references: [id])
+  /// Organisation qui rédige le dossier
   organisationId String       @db.Uuid
-  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  organisation   Organisation @relation("TdrAuthorOrganisation", fields: [organisationId], references: [id])
+
+  /// Maîtrise d'ouvrage bénéficiaire — l'entité pour laquelle l'activité
+  /// est conduite, distincte de celle qui rédige. Un TDR porté par l'UGPTN
+  /// au bénéfice d'une agence sectorielle n'avait jusqu'ici aucun endroit
+  /// où consigner cette agence, ce qui conduisait l'assistance
+  /// rédactionnelle à la deviner.
+  beneficiaryOrganisationId String?       @db.Uuid
+  beneficiaryOrganisation   Organisation? @relation("TdrBeneficiaryOrganisation", fields: [beneficiaryOrganisationId], references: [id])
 
   title  String
   status TdrStatus @default(BROUILLON)
