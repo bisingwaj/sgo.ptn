@@ -129,6 +129,22 @@ export class TdrService {
 
     const patch: Record<string, unknown> = {};
     for (const key of scalar) if (key in data) patch[key] = data[key];
+
+    // La maîtrise d'ouvrage bénéficiaire est reprise telle quelle dans les
+    // propositions de rédaction : une entité inconnue y ferait entrer un
+    // acteur qui n'existe pas au référentiel. Le contrôle vaut mieux ici
+    // qu'une violation de clé étrangère remontée en erreur serveur.
+    if (patch.beneficiaryOrganisationId) {
+      const org = await this.prisma.organisation.findUnique({
+        where: { id: String(patch.beneficiaryOrganisationId) },
+        select: { isActive: true },
+      });
+      if (!org?.isActive) {
+        throw new BadRequestException(
+          'La maîtrise d’ouvrage bénéficiaire ne correspond à aucune organisation active du référentiel.',
+        );
+      }
+    }
     if ('startDate' in data) patch.startDate = data.startDate ? new Date(String(data.startDate)) : null;
     if ('keyProfiles' in data) patch.keyProfiles = data.keyProfiles;
     if ('esRisks' in data) patch.esRisks = data.esRisks;
