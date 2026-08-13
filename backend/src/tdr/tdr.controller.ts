@@ -134,6 +134,22 @@ export class TdrController {
     return this.assist.proposeContext(id, actor, contextOf(req));
   }
 
+  @Post(':id/assistance/justification')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Proposer ou reprendre la justification',
+    description:
+      'Rédige si le champ est vide. S’il est renseigné, le modèle en reprend la forme sans y introduire de fait nouveau — améliorer ne doit pas servir à ajouter des affirmations que l’auteur n’a pas écrites.',
+  })
+  assistJustification(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.assist.proposeJustification(id, actor, contextOf(req));
+  }
+
   @Post(':id/assistance/objectifs')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions('tdr:author')

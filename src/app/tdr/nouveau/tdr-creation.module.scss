@@ -535,3 +535,11 @@
   line-height: 1.5;
   color: var(--cds-text-helper, #6f6f6f);
 }
+
+.assistMode {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  color: var(--ptn-status-ai);
+  margin-bottom: var(--ptn-space-02);
+}

@@ -206,14 +206,14 @@ function AiAssist({
 }: {
   label: string;
   description: string;
-  onGenerate: () => Promise<{ model: string; groundedOn: string[] }>;
+  onGenerate: () => Promise<{ groundedOn: string[] }>;
   renderProposal: () => React.ReactNode;
   onAccept: () => void;
   disabled?: boolean;
   disabledReason?: string;
 }) {
   const [busy, setBusy] = useState(false);
-  const [meta, setMeta] = useState<{ model: string; groundedOn: string[] } | null>(null);
+  const [meta, setMeta] = useState<{ groundedOn: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const run = async () => {
@@ -248,9 +248,12 @@ function AiAssist({
       {meta && (
         <>
           <div className={styles.assistProposal}>{renderProposal()}</div>
+          {/* Le modèle employé est consigné au journal d'audit, pas
+              affiché : ce qui intéresse le rédacteur, c'est sur quoi la
+              proposition repose et qu'elle reste à relire. */}
           <p className={styles.assistProvenance}>
-            Proposition produite par <span className="ptn-mono">{meta.model}</span>, à partir de :{" "}
-            {meta.groundedOn.join(" · ")}. À relire et adapter avant transmission.
+            Établie à partir de : {meta.groundedOn.join(" · ")}. Aucune donnée personnelle n’a été
+            transmise. Texte à relire et à adapter avant transmission.
           </p>
         </>
       )}
@@ -418,6 +421,8 @@ export function TdrCreationClient() {
               <Field label="Justification" helper="Pourquoi cette activité, maintenant.">
                 <Textarea rows={4} value={s.justification} onChange={(e) => set({ ...s, justification: e.target.value })} />
               </Field>
+
+              <JustificationAssist state={s} set={set} />
               <Field label="Bénéficiaires">
                 <Textarea rows={3} value={s.beneficiaries} onChange={(e) => set({ ...s, beneficiaries: e.target.value })} />
               </Field>
@@ -863,10 +868,48 @@ function ContextAssist({ state, set }: { state: State; set: (s: State) => void }
       onGenerate={async () => {
         const r = await tdrApi.assistContext(state.tdrId!);
         setProposal(r.proposal);
-        return { model: r.model, groundedOn: r.groundedOn };
+        return { groundedOn: r.groundedOn };
       }}
       renderProposal={() => <p className={styles.assistText}>{proposal}</p>}
       onAccept={() => set({ ...state, context: proposal })}
+    />
+  );
+}
+
+/**
+ * Justification — rédaction, ou reprise d'un texte existant.
+ * Le régime est déterminé par le serveur selon l'état du champ.
+ */
+function JustificationAssist({ state, set }: { state: State; set: (s: State) => void }) {
+  const [proposal, setProposal] = useState<string>("");
+  const [mode, setMode] = useState<"redaction" | "reprise">("redaction");
+  const hasText = state.justification.trim().length >= 40;
+
+  return (
+    <AiAssist
+      label={hasText ? "Reprise de votre justification" : "Rédaction assistée de la justification"}
+      description={
+        hasText
+          ? "Le modèle reprend la forme de votre texte — structure, clarté, registre — sans y introduire de fait, de chiffre ni de référence que vous n’auriez pas écrits."
+          : "Pourquoi cette activité, et pourquoi maintenant. S’appuie sur le contexte déjà rédigé et sur le rattachement à la composante."
+      }
+      disabled={!state.tdrId}
+      disabledReason={!state.tdrId ? "Disponible une fois le brouillon ouvert." : undefined}
+      onGenerate={async () => {
+        const r = await tdrApi.assistJustification(state.tdrId!);
+        setProposal(r.proposal);
+        setMode(r.mode);
+        return { groundedOn: r.groundedOn };
+      }}
+      renderProposal={() => (
+        <>
+          {mode === "reprise" && (
+            <p className={styles.assistMode}>Reprise de votre texte, sans ajout de fait.</p>
+          )}
+          <p className={styles.assistText}>{proposal}</p>
+        </>
+      )}
+      onAccept={() => set({ ...state, justification: proposal })}
     />
   );
 }
@@ -890,7 +933,7 @@ function ObjectivesAssist({ state, set }: { state: State; set: (s: State) => voi
       onGenerate={async () => {
         const r = await tdrApi.assistObjectives(state.tdrId!);
         setProposal(r.proposal);
-        return { model: r.model, groundedOn: r.groundedOn };
+        return { groundedOn: r.groundedOn };
       }}
       renderProposal={() => (
         <ul className={styles.assistList}>

@@ -705,6 +705,13 @@ export const tdrApi = {
     api.post<{ proposal: string; model: string; groundedOn: string[] }>(
       `/tdr/${id}/assistance/contexte`,
     ),
+  assistJustification: (id: string) =>
+    api.post<{
+      proposal: string;
+      model: string;
+      groundedOn: string[];
+      mode: "redaction" | "reprise";
+    }>(`/tdr/${id}/assistance/justification`),
   assistObjectives: (id: string) =>
     api.post<{
       proposal: Array<{ title: string; criteria: string }>;

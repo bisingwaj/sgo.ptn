@@ -216,6 +216,55 @@ Attendu : deux à trois paragraphes, 180 à 260 mots au total. Exposez le besoin
   }
 
   /**
+   * Proposition de justification.
+   *
+   * Deux régimes selon l'état du champ. À vide, le modèle rédige. Sur un
+   * texte existant, il le reprend sans y introduire de fait nouveau :
+   * améliorer ne doit pas devenir un moyen détourné d'ajouter des
+   * affirmations que l'auteur n'a pas écrites et ne relira pas.
+   */
+  async proposeJustification(
+    tdrId: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ): Promise<Proposal<string> & { mode: 'redaction' | 'reprise' }> {
+    const tdr = await this.loadContext(tdrId);
+    const { text, grounded } = TdrAssistService.describe(tdr);
+    const live = await this.liveGrounding(tdr);
+
+    const existing = tdr.justification?.trim() ?? '';
+    const mode = existing.length >= 40 ? 'reprise' : 'redaction';
+
+    const contextBlock = tdr.context?.trim()
+      ? `\n\nContexte déjà rédigé pour ce TDR :\n${tdr.context.trim()}`
+      : '';
+
+    const instruction =
+      mode === 'reprise'
+        ? `Reprenez la justification ci-dessous rédigée par l'auteur.
+
+Justification actuelle :
+${existing}
+
+Vous en améliorez la structure, la clarté et le registre. Vous n'ajoutez AUCUN fait, chiffre, référence ou affirmation qui n'y figure pas déjà : votre rôle est de mieux dire ce qui est écrit, pas d'en dire davantage. Si un passage vous paraît appeler une donnée manquante, signalez-le par un repère entre crochets plutôt que de la combler. Conservez la longueur à 20 % près.`
+        : `Rédigez la section « Justification » de ce TDR : pourquoi cette activité, et pourquoi maintenant. Un à deux paragraphes, 120 à 180 mots. Appuyez-vous sur le rattachement à la composante et sur ce que l'absence d'action coûterait. N'y répétez pas le contexte.`;
+
+    const result = await this.ai.generate({
+      system: TdrAssistService.system(tdr.tdrType.requiresPges),
+      maxTokens: 600,
+      user: `${instruction}
+
+Éléments du dossier :
+${text}${live}${contextBlock}
+
+Répondez par le texte seul, sans titre ni commentaire.`,
+    });
+
+    await this.record(tdrId, `justification:${mode}`, result.model, actor, ctx);
+    return { proposal: result.text, model: result.model, groundedOn: grounded, mode };
+  }
+
+  /**
    * Proposition d'objectifs assortis de leur critère de constatation.
    * Le critère est ce qui rend l'objectif vérifiable — sans lui, un TDR
    * ne permet pas de constater l'atteinte du résultat.
