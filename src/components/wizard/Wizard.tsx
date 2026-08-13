@@ -17,7 +17,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckmarkFilled,
-  CheckmarkOutline,
   WarningAltFilled,
 } from "@carbon/icons-react";
 import styles from "./Wizard.module.scss";
@@ -159,51 +158,65 @@ export function Wizard<T>({
         {headerTrailing && <div className={styles.headerTrailing}>{headerTrailing}</div>}
       </header>
 
-      {/* ===== Progress indicator ===== */}
-      <div className={styles.stepperWrap}>
-        <ol className={styles.stepper}>
-          {steps.map((s, i) => {
-            const isDone = done.has(i);
-            const isActive = i === step;
-            const canJump = isDone || i < step;
-            return (
-              <li
-                key={s.num}
-                className={`${styles.stepItem} ${isActive ? styles.active : ""} ${isDone ? styles.done : ""} ${canJump ? styles.clickable : ""}`}
-                onClick={canJump ? () => jumpTo(i) : undefined}
-                aria-current={isActive ? "step" : undefined}
-              >
-                <span className={styles.circle}>
-                  {isDone ? (
-                    <CheckmarkFilled size={16} aria-hidden />
-                  ) : isActive ? (
-                    <span className={`${styles.circleNum} ptn-mono`}>{s.num}</span>
-                  ) : (
-                    <CheckmarkOutline size={16} aria-hidden />
-                  )}
-                </span>
-                <div className={styles.stepMeta}>
-                  <span className={`${styles.stepNum} ptn-mono`}>{s.num}</span>
-                  <span className={styles.stepLabel}>{s.label}</span>
-                  {s.sub && <span className={styles.stepSub}>{s.sub}</span>}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
+      <div className={styles.workspace}>
+        {/* ===== Rail des étapes =====
+            Vertical plutôt qu'horizontal : au-delà de cinq ou six étapes,
+            une rangée écrase les libellés jusqu'à l'illisible. Le numéro
+            n'apparaît qu'une fois — il était auparavant rendu à la fois
+            dans la pastille et sous elle. */}
+        <nav className={styles.rail} aria-label="Étapes du dossier">
+          <span className={styles.railTitle}>Étapes</span>
 
-      {/* ===== Body ===== */}
-      <main className={styles.body}>
-        <div className={styles.bodyHead}>
-          <span className={`${styles.bodyNum} ptn-mono`}>
-            ÉTAPE {step + 1} / {steps.length}
-          </span>
-          <h2 className={styles.bodyTitle}>{currentStep.label}</h2>
-          {currentStep.sub && <p className={styles.bodySub}>{currentStep.sub}</p>}
-        </div>
-        <div className={styles.bodyContent}>{currentStep.render(state, setState)}</div>
-      </main>
+          <ol className={styles.stepper}>
+            {steps.map((s, i) => {
+              const isDone = done.has(i);
+              const isActive = i === step;
+              const canJump = isDone || i < step;
+              return (
+                <li
+                  key={s.num}
+                  className={`${styles.stepItem} ${isActive ? styles.active : ""} ${isDone ? styles.done : ""}`}
+                  aria-current={isActive ? "step" : undefined}
+                >
+                  <button
+                    type="button"
+                    className={styles.stepBtn}
+                    onClick={canJump ? () => jumpTo(i) : undefined}
+                    disabled={!canJump}
+                    aria-label={`Étape ${s.num} — ${s.label}`}
+                  >
+                    <span className={styles.stepMarker} aria-hidden>
+                      {isDone ? (
+                        <CheckmarkFilled size={14} />
+                      ) : (
+                        <span className="ptn-mono">{s.num}</span>
+                      )}
+                    </span>
+                    <span className={styles.stepText}>
+                      <span className={styles.stepLabel}>{s.label}</span>
+                      {s.sub && <span className={styles.stepSub}>{s.sub}</span>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+
+          <p className={styles.railFoot}>
+            Étape <span className="ptn-mono">{step + 1}</span> sur{" "}
+            <span className="ptn-mono">{steps.length}</span>
+          </p>
+        </nav>
+
+        {/* ===== Body ===== */}
+        <main className={styles.body}>
+          <div className={styles.bodyHead}>
+            <h2 className={styles.bodyTitle}>{currentStep.label}</h2>
+            {currentStep.sub && <p className={styles.bodySub}>{currentStep.sub}</p>}
+          </div>
+          <div className={styles.bodyContent}>{currentStep.render(state, setState)}</div>
+        </main>
+      </div>
 
       {/* ===== Footer (sticky) ===== */}
       <footer className={styles.footer}>
