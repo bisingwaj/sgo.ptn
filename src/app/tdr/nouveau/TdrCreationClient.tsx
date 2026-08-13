@@ -1630,11 +1630,12 @@ function ReviewStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.tdrId, state.consentMep, state.consentRgpd]);
 
+  // On transmet l'intention, pas l'horodatage : c'est le serveur qui date
+  // l'attestation. Une date issue du navigateur se règle depuis l'horloge
+  // du poste, et un engagement de conformité ne s'antidate pas.
   const toggleConsent = async (field: "consentMep" | "consentRgpd", value: boolean) => {
     set({ ...state, [field]: value });
-    await persist(state, {
-      [field === "consentMep" ? "consentMepAt" : "consentRgpdAt"]: value ? new Date().toISOString() : null,
-    });
+    await persist(state, { [field]: value });
   };
 
   return (

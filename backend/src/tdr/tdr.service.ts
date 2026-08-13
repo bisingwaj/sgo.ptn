@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { TdrReferentielService } from '../tdr-referentiel/tdr-referentiel.service';
@@ -16,6 +22,8 @@ const ORIGIN_BY_PROFILE: Partial<Record<ProfileKey, TdrOrigin>> = {
 
 @Injectable()
 export class TdrService {
+  private readonly logger = new Logger(TdrService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -147,12 +155,42 @@ export class TdrService {
       }
     }
     if ('startDate' in data) patch.startDate = data.startDate ? new Date(String(data.startDate)) : null;
+
+    // Les deux engagements sont des attestations : ils portent un horodatage
+    // qui vaut preuve. Le client transmet donc une intention — coché ou non —
+    // et c'est le serveur qui date. Accepter la date du navigateur
+    // reviendrait à laisser antidater une attestation de conformité.
+    if ('consentMep' in data) patch.consentMepAt = data.consentMep ? new Date() : null;
+    if ('consentRgpd' in data) patch.consentRgpdAt = data.consentRgpd ? new Date() : null;
     if ('keyProfiles' in data) patch.keyProfiles = data.keyProfiles;
     if ('esRisks' in data) patch.esRisks = data.esRisks;
 
     // Les collections sont remplacées en bloc : le parcours renvoie l'état
     // complet de chaque liste, pas des opérations différentielles.
     const collections = ['objectives', 'deliverables', 'clauses', 'indicators', 'risks'] as const;
+
+    // Un champ absent de la liste blanche est écarté sans bruit : la requête
+    // répond 200, la case reste cochée à l'écran, et rien n'est enregistré.
+    // C'est ainsi que les deux engagements de conformité sont restés
+    // inopérants — le contrôle de complétude les exigeait, l'enregistrement
+    // ne les acceptait pas, et aucun TDR ne pouvait être transmis. On ne
+    // rejette pas, pour ne pas casser un client qui enverrait un champ de
+    // trop, mais on trace.
+    const known = new Set<string>([
+      ...scalar,
+      ...collections,
+      'startDate',
+      'consentMep',
+      'consentRgpd',
+      'keyProfiles',
+      'esRisks',
+    ]);
+    const ignored = Object.keys(data).filter((k) => !known.has(k));
+    if (ignored.length > 0) {
+      this.logger.warn(
+        `TDR ${id} — champs transmis mais non pris en charge : ${ignored.join(', ')}.`,
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       if (Object.keys(patch).length > 0) {
