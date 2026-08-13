@@ -1108,6 +1108,17 @@ function DeliverablesAssist({ state, set }: { state: State; set: (s: State) => v
             : undefined
       }
       onGenerate={async () => {
+        // Les objectifs ne partent en base qu'au changement d'étape. Or les
+        // livrables sont le seul champ assisté qui dépend d'une saisie de la
+        // MÊME étape : sans cet enregistrement préalable, le service lit un
+        // document sans objectif et refuse de proposer quoi que ce soit.
+        // L'enregistrer ici vaut aussi pour les retouches faites à la main
+        // depuis la dernière sauvegarde.
+        await tdrApi.update(state.tdrId!, {
+          objectives: state.objectives
+            .filter((o) => o.title.trim())
+            .map((o) => ({ title: o.title.trim(), criteria: o.criteria.trim() })),
+        });
         const r = await tdrApi.assistDeliverables(state.tdrId!);
         setProposal(r.proposal);
         return { groundedOn: r.groundedOn };
