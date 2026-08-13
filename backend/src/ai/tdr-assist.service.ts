@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AiService } from './ai.service';
+import { buildSystemPrompt } from './project-knowledge';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
@@ -38,20 +39,17 @@ export class TdrAssistService {
     private readonly audit: AuditService,
   ) {}
 
-  private static readonly SYSTEM = `Vous assistez la rédaction de Termes de Référence (TDR) pour le Projet de Transformation Numérique de la République Démocratique du Congo (PTN-RDC, code Banque mondiale P180495), financé par l'IDA et l'AFD.
-
-Cadre à respecter :
-— Manuel d'Exécution du Projet du 23 juin 2025
-— Règlements de Passation des Marchés de la Banque mondiale pour Emprunteurs IPF, édition de février 2025
-— Loi 18/019 de la RDC sur les marchés publics
-— Cadre Environnemental et Social de la Banque mondiale (NES 1 à 10)
-
-Exigences de rédaction :
-— Français institutionnel, sobre, à la voix active. Phrases courtes.
-— Aucun superlatif, aucune formule commerciale.
-— Vous n'inventez JAMAIS de montant, de date, de nom d'organisation, de référence réglementaire ni de statistique. Si une information manque, vous restez général plutôt que de la fabriquer.
-— Vous ne citez un article du MEP ou d'un règlement que si son numéro vous est fourni.
-— Vous produisez un texte à reprendre par un rédacteur humain, pas un document final.`;
+  /**
+   * L'invite système est composée depuis le socle de connaissance
+   * institutionnelle : identité du projet, dotations exactes des
+   * composantes, cadre de résultats, gouvernance, règles de passation,
+   * vocabulaire fermé et interdits. Un modèle qui ignore ces faits les
+   * comblera — la connaissance est la première défense contre la
+   * fabulation, les interdits ne sont que la seconde.
+   */
+  private static system(requiresPges: boolean): string {
+    return buildSystemPrompt({ includeSafeguards: requiresPges });
+  }
 
   private async loadContext(tdrId: string) {
     const tdr = await this.prisma.tdr.findUniqueOrThrow({
@@ -138,6 +136,42 @@ Exigences de rédaction :
     return { text: lines.join('\n'), grounded };
   }
 
+  /**
+   * Ancrage complémentaire tiré de la base : dotation réelle de la
+   * composante et intitulés des clauses déjà disponibles pour ce type.
+   * Le modèle sait ainsi ce qui existe en bibliothèque et n'a pas à
+   * réinventer un dispositif contractuel qui y figure déjà.
+   */
+  private async liveGrounding(
+    tdr: Awaited<ReturnType<TdrAssistService['loadContext']>>,
+  ): Promise<string> {
+    const lines: string[] = [];
+
+    if (tdr.ptbaActivity?.component) {
+      const c = tdr.ptbaActivity.component;
+      lines.push(
+        `Dotation de la composante ${c.code} — ${c.label} : ${Number(c.totalUsdM)} M USD ` +
+          `(IDA ${Number(c.idaUsdM)} / AFD ${Number(c.afdUsdM)}). ` +
+          `Enveloppe de l'activité au PTBA : ${(Number(tdr.ptbaActivity.envelopeUsd) / 1e6).toFixed(2)} M USD.`,
+      );
+    }
+
+    const clauses = await this.prisma.clauseTemplate.findMany({
+      where: { tdrTypeCode: tdr.tdrTypeCode, status: 'PUBLIE' },
+      select: { label: true },
+      orderBy: { label: 'asc' },
+    });
+    if (clauses.length > 0) {
+      lines.push(
+        `Dispositions contractuelles déjà disponibles en bibliothèque pour ce type, que le rédacteur ` +
+          `retiendra à une étape ultérieure — ne les reprenez pas dans votre texte : ` +
+          `${clauses.map((c) => c.label).join(' · ')}.`,
+      );
+    }
+
+    return lines.length > 0 ? `\n\n${lines.join('\n')}` : '';
+  }
+
   private async record(
     tdrId: string,
     kind: string,
@@ -165,12 +199,14 @@ Exigences de rédaction :
     const tdr = await this.loadContext(tdrId);
     const { text, grounded } = TdrAssistService.describe(tdr);
 
+    const live = await this.liveGrounding(tdr);
+
     const result = await this.ai.generate({
-      system: TdrAssistService.SYSTEM,
+      system: TdrAssistService.system(tdr.tdrType.requiresPges),
       maxTokens: 700,
       user: `Rédigez la section « Contexte et justification » de ce TDR.
 
-${text}
+${text}${live}
 
 Attendu : deux à trois paragraphes, 180 à 260 mots au total. Exposez le besoin, son rattachement à la composante du projet, et ce que l'activité doit permettre. N'énumérez pas d'objectifs ni de livrables — ils font l'objet de sections distinctes. Ne concluez pas par une formule d'ouverture. Répondez par le texte seul, sans titre ni commentaire.`,
     });
@@ -196,13 +232,15 @@ Attendu : deux à trois paragraphes, 180 à 260 mots au total. Exposez le besoin
       ? `\n\nContexte déjà rédigé, sur lequel vous devez vous appuyer :\n${tdr.context.trim()}`
       : '';
 
+    const live = await this.liveGrounding(tdr);
+
     const result = await this.ai.generate({
-      system: TdrAssistService.SYSTEM,
+      system: TdrAssistService.system(tdr.tdrType.requiresPges),
       json: true,
       maxTokens: 900,
       user: `Proposez les objectifs de ce TDR.
 
-${text}${contextBlock}
+${text}${live}${contextBlock}
 
 Attendu : trois à cinq objectifs. Chacun commence par un verbe d'action à l'infinitif et s'accompagne d'un critère de constatation vérifiable — une grandeur mesurable et un horizon. Là où une valeur cible dépendrait d'une donnée que vous n'avez pas, écrivez un repère explicite entre crochets, par exemple « [à fixer] », plutôt qu'un chiffre inventé.
 
