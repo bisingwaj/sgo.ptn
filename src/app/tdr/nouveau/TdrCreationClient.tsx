@@ -34,7 +34,7 @@ import {
   type TdrApi,
   type TdrTypeApi,
 } from "@/lib/api";
-import { Add, CheckmarkFilled, Locked, TrashCan, WarningAltFilled } from "@carbon/icons-react";
+import { Add, CheckmarkFilled, Idea, Locked, TrashCan, WarningAltFilled } from "@carbon/icons-react";
 import styles from "./tdr-creation.module.scss";
 
 interface State {
@@ -97,6 +97,84 @@ const ES_LEVELS = [
   { value: "SUBSTANTIEL", label: "Substantiel — EIES allégée + PGES" },
   { value: "ELEVE", label: "Élevé — EIES complète + PGES" },
 ];
+
+/**
+ * Substitue les marqueurs du gabarit de contexte par l'activité rattachée.
+ * Le gabarit est stocké en base avec `{{ptbaCode}}` et `{{ptbaTitle}}`,
+ * pour que le référentiel reste indépendant d'un dossier particulier.
+ */
+function fillTemplate(template: string, activity?: PtbaActivityApi): string {
+  return template
+    .replace(/\{\{ptbaCode\}\}/g, activity?.code ?? "—")
+    .replace(/\{\{ptbaTitle\}\}/g, activity?.title ?? "—");
+}
+
+/**
+ * Rédaction assistée par gabarit.
+ *
+ * L'ancien parcours présentait cette même substitution sous un badge
+ * « ✦ IA ». Aucun modèle n'était appelé : le bouton recopiait le gabarit du
+ * type dans le champ. Le nommer pour ce qu'il est évite de présenter un
+ * texte à valeur contractuelle comme une production d'intelligence
+ * artificielle — et laisse la place nette si une vraie assistance
+ * rédactionnelle est branchée un jour.
+ */
+function TemplateAssist({
+  template,
+  current,
+  onApply,
+}: {
+  template: string;
+  current: string;
+  onApply: (text: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const identical = current.trim() === template.trim();
+
+  return (
+    <aside className={styles.assist}>
+      <div className={styles.assistHead}>
+        <Idea size={16} aria-hidden />
+        <strong>Trame proposée pour ce type d’activité</strong>
+        <button type="button" className={styles.assistToggle} onClick={() => setOpen((v) => !v)}>
+          {open ? "Masquer" : "Voir la trame"}
+        </button>
+      </div>
+
+      <p className={styles.assistHint}>
+        Rédigée d’après le référentiel de passation et les sources du MEP, avec la référence de
+        l’activité PTBA substituée. À reprendre et à adapter — elle n’a pas vocation à être
+        transmise telle quelle.
+      </p>
+
+      {open && <p className={styles.assistPreview}>{template}</p>}
+
+      <div className={styles.assistActions}>
+        <button
+          type="button"
+          className={styles.assistBtn}
+          onClick={() => onApply(template)}
+          disabled={identical}
+        >
+          {identical
+            ? "Trame déjà en place"
+            : current.trim()
+              ? "Remplacer par la trame"
+              : "Insérer la trame"}
+        </button>
+        {current.trim() && !identical && (
+          <button
+            type="button"
+            className={styles.assistBtnGhost}
+            onClick={() => onApply(`${current.trim()}\n\n${template}`)}
+          >
+            Ajouter à la suite
+          </button>
+        )}
+      </div>
+    </aside>
+  );
+}
 
 function isClause(e: LibraryEntry): e is ClauseApi { return "text" in e; }
 function isIndicator(e: LibraryEntry): e is IndicatorApi { return "measure" in e; }
@@ -189,7 +267,10 @@ export function TdrCreationClient() {
           });
           s.tdrId = draft.id;
           s.reference = draft.reference;
-          if (draft.context) s.context = draft.context;
+          if (draft.context) {
+            const activity = activities.find((a) => a.id === s.ptbaActivityId);
+            s.context = fillTemplate(draft.context, activity);
+          }
           await loadLibrary(s.tdrTypeCode);
         },
         render: (s, set) => (
@@ -209,19 +290,30 @@ export function TdrCreationClient() {
             justification: s.justification,
             beneficiaries: s.beneficiaries,
           }),
-        render: (s, set) => (
-          <div className={styles.stack}>
-            <Field label="Contexte" required helper="Pré-rempli depuis le type ; à adapter.">
-              <Textarea rows={7} value={s.context} onChange={(e) => set({ ...s, context: e.target.value })} />
-            </Field>
-            <Field label="Justification" helper="Pourquoi cette activité, maintenant.">
-              <Textarea rows={4} value={s.justification} onChange={(e) => set({ ...s, justification: e.target.value })} />
-            </Field>
-            <Field label="Bénéficiaires">
-              <Textarea rows={3} value={s.beneficiaries} onChange={(e) => set({ ...s, beneficiaries: e.target.value })} />
-            </Field>
-          </div>
-        ),
+        render: (s, set) => {
+          const type = typeOf(s);
+          const activity = activities.find((a) => a.id === s.ptbaActivityId);
+          return (
+            <div className={styles.stack}>
+              {type?.contextTemplate && (
+                <TemplateAssist
+                  template={fillTemplate(type.contextTemplate, activity)}
+                  current={s.context}
+                  onApply={(text) => set({ ...s, context: text })}
+                />
+              )}
+              <Field label="Contexte" required>
+                <Textarea rows={7} value={s.context} onChange={(e) => set({ ...s, context: e.target.value })} />
+              </Field>
+              <Field label="Justification" helper="Pourquoi cette activité, maintenant.">
+                <Textarea rows={4} value={s.justification} onChange={(e) => set({ ...s, justification: e.target.value })} />
+              </Field>
+              <Field label="Bénéficiaires">
+                <Textarea rows={3} value={s.beneficiaries} onChange={(e) => set({ ...s, beneficiaries: e.target.value })} />
+              </Field>
+            </div>
+          );
+        },
       },
 
       // ===== 03 · Objectifs et livrables =====

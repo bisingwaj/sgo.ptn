@@ -505,6 +505,8 @@ export interface TdrTypeApi {
   stepCount: number;
   requiresPges: boolean;
   isActive: boolean;
+  /** Gabarit de contexte, marqueurs {{ptbaCode}} et {{ptbaTitle}} à substituer */
+  contextTemplate: string | null;
 }
 
 export interface ThresholdApi {
