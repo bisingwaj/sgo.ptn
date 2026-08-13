@@ -121,10 +121,10 @@ export class TdrService {
 
     const scalar = [
       'title', 'context', 'justification', 'beneficiaries',
-      'deliverableFormat', 'reportingRhythm',
+      'expectedResults', 'deliverableFormat', 'reportingRhythm',
       'approach', 'methodology', 'constraints',
       'expertise', 'provinceCode', 'esCategory',
-      'ptbaActivityId', 'beneficiaryOrganisationId', 'durationMonths',
+      'ptbaActivityId', 'beneficiaryOrganisationId', 'durationMonths', 'effortDays',
       'budgetTotalUsd', 'budgetIdaUsd', 'budgetAfdUsd', 'budgetGovUsd',
     ] as const;
 
@@ -267,6 +267,17 @@ export class TdrService {
     }
     if (!tdr.methodology?.trim()) {
       warnings.push('La méthodologie attendue n’est pas décrite.');
+    }
+
+    // Trois profils-clés au minimum. La règle existait au parcours partenaire
+    // — « Profils-clés conformes (minimum 3) », statut bloquant — et n'était
+    // vérifiée que dans le navigateur. Une équipe sans chef de mission ni
+    // expert désigné ne s'évalue pas : les critères de notation des offres
+    // portent sur les profils.
+    if (tdr.keyProfiles.length < 3) {
+      blockers.push(
+        `Trois profils-clés au minimum doivent être désignés — ${tdr.keyProfiles.length} à ce jour.`,
+      );
     }
 
     return { blockers, warnings };

@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Wizard, type WizardStep } from "@/components/wizard/Wizard";
-import { Field, Input, Textarea, Select, Note, SelectableTile } from "@/components/wizard/WizardFields";
+import { Field, Input, Textarea, Select, Note, SelectableTile, CheckRow } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import {
   tdrApi,
@@ -66,6 +66,7 @@ interface State {
 
   objectives: { title: string; criteria: string }[];
   deliverables: { title: string; format: string; deadline: string }[];
+  expectedResults: string;
   deliverableFormat: string;
   reportingRhythm: string;
 
@@ -77,6 +78,8 @@ interface State {
   durationMonths: string;
   provinceCode: string;
   expertise: string;
+  effortDays: string;
+  keyProfiles: string[];
 
   budgetTotalUsd: string;
   budgetIdaUsd: string;
@@ -99,9 +102,9 @@ interface State {
 const INITIAL: State = {
   tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", beneficiaryOrganisationId: "", title: "", titleTouched: false,
   context: "", justification: "", beneficiaries: "",
-  objectives: [], deliverables: [], deliverableFormat: "", reportingRhythm: "",
+  objectives: [], deliverables: [], expectedResults: "", deliverableFormat: "", reportingRhythm: "",
   approach: "", methodology: "", constraints: "",
-  startDate: "", durationMonths: "", provinceCode: "", expertise: "",
+  startDate: "", durationMonths: "", provinceCode: "", expertise: "", effortDays: "", keyProfiles: [],
   budgetTotalUsd: "", budgetIdaUsd: "", budgetAfdUsd: "", budgetGovUsd: "",
   clauses: [], indicators: [], risks: [],
   esCategory: "", esRisks: [],
@@ -131,6 +134,45 @@ const DEADLINE_CONVENTION = {
     "Échéances en délai relatif au démarrage du contrat : J+15, S+4, M+6. Jamais de date ferme — le marché n’est pas encore attribué.",
   placeholder: "M+6",
 };
+
+/**
+ * Profils-clés — catalogue du parcours partenaire, repris tel quel.
+ *
+ * Le champ existait déjà en base (`keyProfiles`) sans qu'aucun écran ne
+ * l'expose. La règle des trois minimum était vérifiée dans le navigateur ;
+ * elle est désormais tenue par le contrôle de complétude, côté serveur.
+ */
+const PROFIL_KEYS = [
+  { id: "chef", label: "Chef de mission", description: "Dix ans d’expérience au minimum" },
+  { id: "expert-tech", label: "Expert technique sénior", description: "Domaine principal de la mission" },
+  { id: "expert-junior", label: "Expert technique junior", description: "Appui à la mission" },
+  { id: "expert-es", label: "Expert E&S", description: "Sauvegardes environnementales et sociales" },
+  { id: "expert-genre", label: "Expert genre et inclusion", description: "Activités sensibles" },
+];
+
+/**
+ * Risques E&S du CGES, avec leur niveau. Le parcours partenaire les
+ * présentait ainsi ; la fusion les avait réduits à un champ libre, où ils
+ * ne se recensent ni ne se comparent d'un dossier à l'autre.
+ */
+const ES_RISK_CATALOG: {
+  id: string;
+  title: string;
+  level: { label: string; tone: "green" | "yellow" | "red" };
+}[] = [
+  { id: "deplacement", title: "Déplacement involontaire ou acquisition foncière", level: { label: "Élevé", tone: "red" } },
+  { id: "biodiversite", title: "Biodiversité et aires protégées", level: { label: "Modéré", tone: "yellow" } },
+  { id: "patrimoine", title: "Patrimoine culturel", level: { label: "Faible", tone: "green" } },
+  { id: "travail", title: "Conditions de travail, EAS et HS", level: { label: "Modéré", tone: "yellow" } },
+  { id: "sante", title: "Santé et sécurité communautaire", level: { label: "Faible", tone: "green" } },
+];
+
+const CATALOG_IDS = new Set(ES_RISK_CATALOG.map((r) => r.id));
+
+/** Les entrées qui ne correspondent à aucun identifiant du catalogue. */
+function freeRisks(list: string[]): string[] {
+  return list.filter((x) => !CATALOG_IDS.has(x));
+}
 
 /** Reprises telles quelles du wizard partenaire, seul à les porter. */
 const DELIVERABLE_FORMATS = [
@@ -525,6 +567,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
           persist(s, {
             objectives: s.objectives,
             deliverables: s.deliverables,
+            expectedResults: s.expectedResults || null,
             deliverableFormat: s.deliverableFormat || null,
             reportingRhythm: s.reportingRhythm || null,
           }),
@@ -562,8 +605,10 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
           persist(s, {
             startDate: s.startDate || null,
             durationMonths: s.durationMonths ? Number(s.durationMonths) : null,
+            effortDays: s.effortDays ? Number(s.effortDays) : null,
             provinceCode: s.provinceCode || null,
             expertise: s.expertise,
+            keyProfiles: s.keyProfiles,
           }),
         render: (s, set) => (
           <div className={styles.stack}>
@@ -571,8 +616,14 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
               <Field label="Date de démarrage souhaitée">
                 <Input type="date" value={s.startDate} onChange={(e) => set({ ...s, startDate: e.target.value })} />
               </Field>
-              <Field label="Durée (mois)">
+              <Field label="Durée (mois)" helper="Borne les échéances des livrables.">
                 <Input type="number" min={1} value={s.durationMonths} onChange={(e) => set({ ...s, durationMonths: e.target.value })} />
+              </Field>
+              <Field
+                label="Volume d’effort (jours-homme)"
+                helper="Unité de facturation d’un marché de prestation. La durée calendaire ne s’y substitue pas : 240 jours-homme peuvent s’étaler sur neuf mois."
+              >
+                <Input type="number" min={1} value={s.effortDays} onChange={(e) => set({ ...s, effortDays: e.target.value })} />
               </Field>
             </div>
             <Field label="Province" helper="Laisser vide pour une couverture nationale.">
@@ -586,9 +637,41 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
                 }))}
               />
             </Field>
-            <Field label="Expertise requise" helper="Profils-clés, qualifications, expérience attendue.">
+            <Field label="Expertise requise" helper="Qualifications et expérience attendues de l’institution ou de l’équipe.">
               <Textarea rows={5} value={s.expertise} onChange={(e) => set({ ...s, expertise: e.target.value })} />
             </Field>
+
+            {/* Trois profils au minimum — règle de conformité, tenue par le
+                contrôle de complétude côté serveur. Les critères de notation
+                des offres portent sur ces profils : sans eux, il n'y a rien
+                à évaluer. */}
+            <div>
+              <h3 className={styles.sectionTitle}>
+                Profils-clés exigés <span className={styles.required}>*</span>
+              </h3>
+              <p className={styles.hint}>
+                Trois au minimum. {s.keyProfiles.length} désigné
+                {s.keyProfiles.length > 1 ? "s" : ""} à ce jour.
+              </p>
+              <div className={styles.checkStack}>
+                {PROFIL_KEYS.map((p) => (
+                  <CheckRow
+                    key={p.id}
+                    checked={s.keyProfiles.includes(p.id)}
+                    onChange={(next) =>
+                      set({
+                        ...s,
+                        keyProfiles: next
+                          ? [...s.keyProfiles, p.id]
+                          : s.keyProfiles.filter((k) => k !== p.id),
+                      })
+                    }
+                    title={p.label}
+                    description={p.description}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         ),
       },
@@ -739,11 +822,52 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
                   options={ES_LEVELS}
                 />
               </Field>
-              <Field label="Risques E&S identifiés" helper="Un par ligne.">
+              {/* Le CGES fournit le catalogue : le cocher permet de recenser
+                  et de comparer d’un dossier à l’autre, ce qu’un champ libre
+                  interdit. La saisie libre subsiste pour ce que le catalogue
+                  ne couvre pas — les deux alimentent la même liste, un
+                  identifiant connu valant risque du catalogue. */}
+              <div>
+                <h3 className={styles.sectionTitle}>Risques E&S identifiés</h3>
+                <p className={styles.hint}>
+                  Catalogue du Cadre de Gestion Environnementale et Sociale du projet.
+                </p>
+                <div className={styles.checkStack}>
+                  {ES_RISK_CATALOG.map((r) => (
+                    <CheckRow
+                      key={r.id}
+                      checked={s.esRisks.includes(r.id)}
+                      onChange={(next) =>
+                        set({
+                          ...s,
+                          esRisks: next
+                            ? [...s.esRisks, r.id]
+                            : s.esRisks.filter((x) => x !== r.id),
+                        })
+                      }
+                      title={r.title}
+                      level={r.level}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <Field
+                label="Autres risques propres à ce dossier"
+                helper="Un par ligne. Ce que le catalogue du CGES ne couvre pas."
+              >
                 <Textarea
-                  rows={5}
-                  value={s.esRisks.join("\n")}
-                  onChange={(e) => set({ ...s, esRisks: e.target.value.split("\n").filter(Boolean) })}
+                  rows={3}
+                  value={freeRisks(s.esRisks).join("\n")}
+                  onChange={(e) =>
+                    set({
+                      ...s,
+                      esRisks: [
+                        ...s.esRisks.filter((x) => CATALOG_IDS.has(x)),
+                        ...e.target.value.split("\n").map((l) => l.trim()).filter(Boolean),
+                      ],
+                    })
+                  }
                 />
               </Field>
             </div>
@@ -1217,6 +1341,25 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
           </>
         )}
       />
+
+      {/* Les resultats attendus disent ce qu'on constatera, et quand. Un
+          objectif dit l'intention ; ce n'est pas la meme chose, et le
+          cadre de resultats du projet se nourrit de ceux-ci. Le parcours
+          partenaire les separait ; la fusion avait retenu la version du
+          MDA, qui les confondait. */}
+      <Field
+        label="Résultats attendus"
+        helper="Ce qui sera constaté, avec son horizon — à 6 mois, un an, en fin de mission. Un par ligne. Ces éléments alimentent le cadre de résultats du projet."
+      >
+        <Textarea
+          rows={4}
+          value={state.expectedResults}
+          onChange={(e) => set({ ...state, expectedResults: e.target.value })}
+          placeholder={`R1 · Architecture cible documentée et validée par le COPIL (M+2)
+R2 · Dossier d'appel d'offres publié sans demande de clarification (M+4)
+R3 · 95 % des agents formés certifiés (M+6)`}
+        />
+      </Field>
 
       <DeliverablesAssist state={state} set={set} />
       <ListEditor

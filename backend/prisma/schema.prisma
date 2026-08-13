@@ -857,6 +857,12 @@ model Tdr {
   justification String? @db.Text
   beneficiaries String? @db.Text
 
+  /// Ce que l'on constatera, avec son horizon — distinct des objectifs, qui
+  /// disent l'intention. Le wizard partenaire les séparait et renvoyait au
+  /// cadre de résultats du projet ; la fusion des deux parcours avait retenu
+  /// la version du MDA, qui ne les distinguait pas.
+  expectedResults String? @db.Text
+
   /// Modalités valant pour l'ensemble des livrables — forme de remise et
   /// fréquence des points d'avancement. Contractuelles, elles ne se règlent
   /// pas livrable par livrable : le wizard partenaire les portait déjà,
@@ -872,6 +878,9 @@ model Tdr {
   // --- Calendrier et expertise ---
   startDate      DateTime?
   durationMonths Int?
+  /// Volume d'effort en jours-homme. Pour un marché de consultants, c'est
+  /// l'unité de facturation : la durée calendaire ne s'y substitue pas.
+  effortDays     Int?
   provinceCode   String?
   province       Province? @relation(fields: [provinceCode], references: [code])
   expertise      String?   @db.Text

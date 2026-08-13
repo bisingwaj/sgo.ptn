@@ -168,6 +168,14 @@
   }
 }
 
+/* Empilement de cases à cocher — profils-clés, risques E&S. */
+.checkStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: var(--ptn-space-03);
+}
+
 /* ===== Sélection dans les bibliothèques ===== */
 
 .picker {
