@@ -110,6 +110,23 @@ const DEV_USERS: DevUser[] = [
     ],
   },
   {
+    // Responsable de composante — le seul profil UGP habilité à rédiger.
+    // Sans lui, aucun compte de démonstration ne peut ouvrir un TDR de
+    // travaux ou de fournitures, types fermés aux autres origines.
+    email: 'rc2@ptn-rdc.gov.cd',
+    firstName: 'Emmanuel',
+    lastName: 'Bofenda',
+    assignments: [
+      {
+        subroleCode: 'UGP_RC2',
+        organisationCode: 'UGP-PTN',
+        profile: 'UGP',
+        isPrimary: true,
+        componentCode: 'C2',
+      },
+    ],
+  },
+  {
     email: 'pointfocal@mptn.gov.cd',
     firstName: 'Thérèse',
     lastName: 'Kalala',
