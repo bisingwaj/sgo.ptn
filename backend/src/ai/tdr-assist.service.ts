@@ -31,6 +31,27 @@ export interface Proposal<T> {
  * Aucun montant n'est jamais demandé au modèle : les valeurs fiduciaires
  * ne se génèrent pas.
  */
+/**
+ * Ce sur quoi porte réellement chaque type de TDR.
+ *
+ * Sans cette précision, le modèle traite l'activité PTBA qui englobe le
+ * dossier plutôt que le dossier lui-même : un TDR de mission rattaché à
+ * une activité de plateforme se met à décrire la plateforme.
+ */
+const TYPE_NATURE: Record<string, string> = {
+  'TDR-TX': "des travaux à réaliser : ouvrages, aménagements, normes techniques et modalités de réception",
+  'TDR-FN': "l'acquisition de biens et d'équipements : spécifications techniques, normes, garantie et service après-vente",
+  'TDR-CS': "une mission de conseil confiée à une firme : expertise attendue, méthodologie, profils-clés et livrables d'étude",
+  'TDR-SN': "une prestation de services non intellectuels : niveaux de service attendus, indicateurs de qualité et modalités de facturation",
+  'TDR-AT': "l'organisation d'un atelier ou d'un séminaire : objectifs de la rencontre, public visé, programme, logistique",
+  'TDR-FO': "un cycle de formation : curriculum, public cible, modalités pédagogiques, évaluation des acquis",
+  'TDR-MI': "le déplacement d'une délégation à un événement international ou en voyage d'études : ce que la délégation va observer, auprès de qui, et ce qu'elle en rapportera. Ce n'est PAS la réalisation du projet auquel la mission se rattache",
+  'TDR-ET': "une étude, un diagnostic ou une évaluation : question posée, méthodologie, échantillonnage, livrable analytique",
+  'TDR-CO': "une action de communication ou de sensibilisation : messages, publics, canaux, plan média",
+  'TDR-SB': "une subvention basée sur la performance à un sous-projet : jalons, critères de décaissement, vérification",
+  'TDR-AU': "une mission d'audit ou de contrôle : périmètre, référentiel, échantillonnage, forme du rapport",
+};
+
 @Injectable()
 export class TdrAssistService {
   constructor(
@@ -79,11 +100,22 @@ export class TdrAssistService {
     const grounded: string[] = [];
     const lines: string[] = [];
 
-    lines.push(`Intitulé de l'activité : ${tdr.title}`);
+    const nature = TYPE_NATURE[tdr.tdrTypeCode];
+    lines.push(
+      `OBJET DU PRÉSENT TDR — c'est de cela, et de cela seulement, que votre texte doit traiter.`,
+    );
+    lines.push(`Intitulé : ${tdr.title}`);
+    lines.push(`Type : ${tdr.tdrType.name} (${tdr.tdrType.code}), famille « ${tdr.tdrType.familyLabel} »`);
+    if (nature) {
+      lines.push(`Un TDR de ce type porte sur ${nature}.`);
+    }
     grounded.push(`Intitulé — ${tdr.title}`);
-
-    lines.push(`Type de TDR : ${tdr.tdrType.name} (${tdr.tdrType.code}), famille « ${tdr.tdrType.familyLabel} »`);
     grounded.push(`Type — ${tdr.tdrType.name}`);
+
+    lines.push('');
+    lines.push(
+      `CADRE DE RATTACHEMENT — éléments de situation. Ils situent le dossier, ils n'en sont pas l'objet.`,
+    );
 
     if (tdr.tdrType.defaultMethod) {
       lines.push(`Méthode de passation usuelle pour ce type : ${tdr.tdrType.defaultMethod.label} (${tdr.tdrType.defaultMethod.code})`);
@@ -92,7 +124,7 @@ export class TdrAssistService {
     if (tdr.ptbaActivity) {
       const a = tdr.ptbaActivity;
       lines.push(
-        `Activité du Plan de Travail et Budget Annuel : code ${a.code}, « ${a.title} », composante ${a.componentCode} — ${a.component.label}${a.subComponent ? `, sous-composante ${a.subComponent}` : ''}`,
+        `Activité du Plan de Travail et Budget Annuel à laquelle ce TDR se rattache : code ${a.code}, « ${a.title} », composante ${a.componentCode} — ${a.component.label}${a.subComponent ? `, sous-composante ${a.subComponent}` : ''}. Cette activité est le cadre budgétaire du dossier ; le TDR n'en couvre qu'une part.`,
       );
       grounded.push(`Activité PTBA — ${a.code} · ${a.title}`);
       grounded.push(`Composante — ${a.componentCode}`);
@@ -106,7 +138,9 @@ export class TdrAssistService {
       lines.push('Couverture géographique : nationale.');
     }
 
-    lines.push(`Entité qui rédige : ${tdr.organisation.fullName}`);
+    lines.push(
+      `Entité qui rédige : ${tdr.organisation.fullName}. C'est la seule institution partie prenante connue de ce dossier ; n'en impliquez aucune autre.`,
+    );
     grounded.push(`Organisation — ${tdr.organisation.name}`);
 
     if (tdr.durationMonths) {
@@ -125,11 +159,10 @@ export class TdrAssistService {
       lines.push(`Justification déjà rédigée : ${tdr.justification.trim()}`);
     }
 
-    // Le montant est communiqué à titre d'ordre de grandeur, jamais
-    // demandé en retour : aucune valeur fiduciaire ne se génère.
+    // Chiffre vérifié : le citer est légitime, le recalculer ne l'est pas.
     if (tdr.budgetTotalUsd) {
       lines.push(
-        `Ordre de grandeur budgétaire, pour calibrer l'ambition du texte : ${(Number(tdr.budgetTotalUsd) / 1e6).toFixed(2)} millions USD. Ne reprenez ce montant nulle part dans votre réponse.`,
+        `Budget envisagé pour ce TDR : ${(Number(tdr.budgetTotalUsd) / 1e6).toFixed(2)} millions USD. Vous pouvez citer ce chiffre tel quel ; vous ne le décomposez ni ne l'extrapolez.`,
       );
     }
 
@@ -208,7 +241,11 @@ export class TdrAssistService {
 
 ${text}${live}
 
-Attendu : deux à trois paragraphes, 180 à 260 mots au total. Exposez le besoin, son rattachement à la composante du projet, et ce que l'activité doit permettre. N'énumérez pas d'objectifs ni de livrables — ils font l'objet de sections distinctes. Ne concluez pas par une formule d'ouverture. Répondez par le texte seul, sans titre ni commentaire.`,
+Attendu : deux à trois paragraphes, 180 à 260 mots au total.
+
+Le premier paragraphe situe le besoin dans le cadre du projet. Les suivants traitent de l'objet du présent TDR tel que défini plus haut — pas de l'activité PTBA dans son ensemble, qui le dépasse.
+
+N'énumérez ni objectifs ni livrables : ils font l'objet de sections distinctes. Ne concluez pas par une formule d'ouverture. Répondez par le texte seul, sans titre ni commentaire.`,
     });
 
     await this.record(tdrId, 'contexte', result.model, actor, ctx);
@@ -247,7 +284,9 @@ Justification actuelle :
 ${existing}
 
 Vous en améliorez la structure, la clarté et le registre. Vous n'ajoutez AUCUN fait, chiffre, référence ou affirmation qui n'y figure pas déjà : votre rôle est de mieux dire ce qui est écrit, pas d'en dire davantage. Si un passage vous paraît appeler une donnée manquante, signalez-le par un repère entre crochets plutôt que de la combler. Conservez la longueur à 20 % près.`
-        : `Rédigez la section « Justification » de ce TDR : pourquoi cette activité, et pourquoi maintenant. Un à deux paragraphes, 120 à 180 mots. Appuyez-vous sur le rattachement à la composante et sur ce que l'absence d'action coûterait. N'y répétez pas le contexte.`;
+        : `Rédigez la section « Justification » de ce TDR : pourquoi cette action, et pourquoi maintenant. Un à deux paragraphes, 120 à 180 mots.
+
+La section « Contexte » précède celle-ci dans le document et a déjà exposé la situation, le rattachement à la composante et les enjeux. Ne les redites pas. Vous répondez à une autre question : qu'est-ce qui rend cette action nécessaire maintenant, et que coûterait son report ? Ne recitez ni le code de l'activité, ni les montants, ni les indicateurs déjà mentionnés au contexte — le lecteur vient de les lire.`;
 
     const result = await this.ai.generate({
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
