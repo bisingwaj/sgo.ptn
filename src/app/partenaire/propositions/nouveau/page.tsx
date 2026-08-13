@@ -1,7 +1,10 @@
-import { TdrWizardClient } from "./TdrWizardClient";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Nouvelle proposition TDR · Espace partenaire · PTN-RDC" };
-
-export default function NouvellePropositionPage() {
-  return <TdrWizardClient />;
+/**
+ * Ancien parcours de rédaction, remplacé par le parcours unique
+ * `/tdr/nouveau`. Il coexistait avec celui du MDA, avec un modèle de
+ * données incompatible, et n'enregistrait rien.
+ */
+export default function LegacyRedirect() {
+  redirect("/tdr/nouveau");
 }

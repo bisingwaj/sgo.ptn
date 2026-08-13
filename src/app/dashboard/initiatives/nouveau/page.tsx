@@ -1,14 +1,10 @@
-import { Suspense } from "react";
-import { ProposalWizardClient } from "./ProposalWizardClient";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Proposer une initiative · PTN-RDC",
-};
-
-export default function NewInitiativePage() {
-  return (
-    <Suspense>
-      <ProposalWizardClient />
-    </Suspense>
-  );
+/**
+ * Ancien parcours de rédaction, remplacé par le parcours unique
+ * `/tdr/nouveau`. Il coexistait avec celui du partenaire, avec un modèle de
+ * données incompatible, et n'enregistrait rien.
+ */
+export default function LegacyRedirect() {
+  redirect("/tdr/nouveau");
 }

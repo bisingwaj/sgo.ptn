@@ -194,8 +194,10 @@ export function TdrSelectorClient({ origin = "partner" }: TdrSelectorClientProps
 
   const handleContinue = () => {
     if (!selectedType) return;
-    const params = new URLSearchParams({ origin, type: selectedType.slug });
-    router.push(`/dashboard/initiatives/nouveau?${params.toString()}`);
+    // L'origine n'est plus transmise : elle est déduite de la session côté
+    // serveur. La passer en paramètre d'URL permettait de la falsifier pour
+    // atteindre un type réservé.
+    router.push(`/tdr/nouveau?type=${selectedType.code}`);
   };
 
   const types1 = TYPES.filter((t) => t.family === 1);

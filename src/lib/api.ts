@@ -619,3 +619,78 @@ export const ptbaApi = {
     api.post<PtbaActivityApi>(`/ptba/exercices/${year}/activites`, payload),
   deactivate: (id: string) => api.post<{ id: string }>(`/ptba/activites/${id}/retirer`),
 };
+
+
+// ============================================================
+// Termes de référence
+// ============================================================
+
+export type TdrStatusApi =
+  | "BROUILLON" | "SOUMIS_UGP" | "REVUE_UGP" | "RETOURNE"
+  | "VALIDE_UGP" | "ANO_EN_COURS" | "ANO_OBTENU" | "ANO_REFUSE" | "ARCHIVE";
+
+export interface TdrObjectiveApi { title: string; criteria: string }
+export interface TdrDeliverableApi { title: string; format?: string | null; deadline?: string | null }
+export interface TdrClauseApi {
+  sourceFamilyKey?: string | null;
+  sourceVersion?: number | null;
+  category: "REG" | "TECH" | "CONF" | "SAFE" | "GOV";
+  label: string;
+  text: string;
+}
+export interface TdrIndicatorApi { sourceFamilyKey?: string | null; label: string; measure: string; target: string }
+export interface TdrRiskApi {
+  sourceFamilyKey?: string | null;
+  label: string;
+  description: string;
+  mitigation: string;
+  level: "FAIBLE" | "MODERE" | "SUBSTANTIEL" | "ELEVE";
+}
+
+export interface TdrApi {
+  id: string;
+  reference: string;
+  title: string;
+  status: TdrStatusApi;
+  origin: string;
+  tdrTypeCode: string;
+  tdrType?: { code: string; name: string; requiresPges: boolean; stepCount: number };
+  ptbaActivityId: string | null;
+  ptbaActivity?: { code: string; title: string; envelopeUsd: string; componentCode: string } | null;
+  context: string | null;
+  justification: string | null;
+  beneficiaries: string | null;
+  approach: string | null;
+  methodology: string | null;
+  constraints: string | null;
+  startDate: string | null;
+  durationMonths: number | null;
+  provinceCode: string | null;
+  expertise: string | null;
+  keyProfiles: string[];
+  budgetTotalUsd: string | null;
+  budgetIdaUsd: string | null;
+  budgetAfdUsd: string | null;
+  budgetGovUsd: string | null;
+  procurementMethodCode: string | null;
+  reviewType: "PRIOR" | "POST" | null;
+  esCategory: "FAIBLE" | "MODERE" | "SUBSTANTIEL" | "ELEVE" | null;
+  esRisks: string[];
+  objectives: TdrObjectiveApi[];
+  deliverables: TdrDeliverableApi[];
+  clauses: TdrClauseApi[];
+  indicators: TdrIndicatorApi[];
+  risks: TdrRiskApi[];
+}
+
+export const tdrApi = {
+  list: (statut?: string) => api.get<TdrApi[]>(`/tdr${statut ? `?statut=${statut}` : ""}`),
+  get: (id: string) => api.get<TdrApi>(`/tdr/${id}`),
+  completeness: (id: string) =>
+    api.get<{ blockers: string[]; warnings: string[] }>(`/tdr/${id}/completude`),
+  createDraft: (payload: { tdrTypeCode: string; title: string; ptbaActivityId?: string }) =>
+    api.post<TdrApi>("/tdr", payload),
+  update: (id: string, patch: Record<string, unknown>) =>
+    request<TdrApi>(`/tdr/${id}`, { method: "PUT", body: patch }),
+  submit: (id: string) => api.post<TdrApi>(`/tdr/${id}/soumettre`),
+};
