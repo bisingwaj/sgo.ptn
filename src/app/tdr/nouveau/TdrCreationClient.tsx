@@ -567,29 +567,55 @@ function TypeStep({
         </Note>
       )}
 
-      <Field label="Type d’activité" required helper="Seuls les types ouverts à votre profil sont proposés.">
-        {families.map((f) => (
-          <div key={f} className={styles.familyBlock}>
-            <span className={styles.familyLabel}>{types.find((t) => t.family === f)?.familyLabel}</span>
-            <div className={styles.tileGrid}>
-              {types.filter((t) => t.family === f).map((t) => (
-                <SelectableTile
-                  key={t.code}
-                  selected={state.tdrTypeCode === t.code}
-                  onClick={() => set({ ...state, tdrTypeCode: t.code })}
-                  disabled={Boolean(state.tdrId)}
-                  tag={t.code}
-                  title={t.name}
-                  description={
-                    t.defaultMethod ? `Méthode par défaut ${t.defaultMethod.code}` : undefined
-                  }
-                  metrics={t.requiresPges ? <span>PGES requis</span> : undefined}
-                />
-              ))}
+      {/* Rendu hors `Field` : celui-ci enveloppe ses enfants dans un
+          conteneur en ligne, muni d'un fond de champ et d'un soulignement,
+          conçu pour un seul input — une grille de tuiles s'y écrase. Un
+          `<button>` dans son `<label>` poserait en outre un second
+          déclencheur au clic. */}
+      <fieldset className={styles.typeFieldset}>
+        <legend className={styles.typeLegend}>
+          Type d’activité <span className={styles.required}>*</span>
+        </legend>
+        <p className={styles.typeHint}>
+          {state.tdrId
+            ? "Le type est figé : il détermine les bibliothèques et le parcours de ce brouillon."
+            : "Seuls les types ouverts à votre profil sont proposés."}
+        </p>
+
+        {types.length === 0 ? (
+          <p className={styles.hint}>Aucun type disponible.</p>
+        ) : (
+          families.map((f) => (
+            <div key={f} className={styles.familyBlock}>
+              <span className={styles.familyLabel}>
+                {types.find((t) => t.family === f)?.familyLabel}
+              </span>
+              <div className={styles.tileGrid}>
+                {types
+                  .filter((t) => t.family === f)
+                  .map((t) => (
+                    <SelectableTile
+                      key={t.code}
+                      selected={state.tdrTypeCode === t.code}
+                      onClick={() => set({ ...state, tdrTypeCode: t.code })}
+                      disabled={Boolean(state.tdrId)}
+                      tag={t.code}
+                      title={t.name}
+                      description={
+                        t.defaultMethod ? `Méthode par défaut ${t.defaultMethod.code}` : undefined
+                      }
+                      metrics={
+                        t.requiresPges ? (
+                          <span className={styles.tilePges}>PGES requis</span>
+                        ) : undefined
+                      }
+                    />
+                  ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </Field>
+          ))
+        )}
+      </fieldset>
 
       <Field label="Intitulé" required>
         <Input
