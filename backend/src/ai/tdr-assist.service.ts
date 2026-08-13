@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AiService } from './ai.service';
@@ -54,6 +54,25 @@ const TYPE_NATURE: Record<string, string> = {
 
 @Injectable()
 export class TdrAssistService {
+  private readonly logger = new Logger(TdrAssistService.name);
+
+  /**
+   * Isole l'objet JSON d'une reponse.
+   *
+   * `response_format: json_object` n'est pas honore par tous les modeles
+   * servis par OpenRouter : ceux d'Anthropic ne connaissent pas ce parametre
+   * et repondent volontiers par une phrase d'introduction, ou par un bloc
+   * encadre de triples accents graves. Le texte reste bon ; seul son
+   * emballage change. On decoupe donc du premier { a la derniere } plutot
+   * que d'echouer sur une difference de forme.
+   */
+  static extractJson(raw: string): string {
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    if (start === -1 || end === -1 || end <= start) return raw;
+    return raw.slice(start, end + 1);
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly ai: AiService,
@@ -345,7 +364,7 @@ Répondez par le texte seul, sans titre ni commentaire.`,
     const result = await this.ai.generate({
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
       json: true,
-      maxTokens: 900,
+      maxTokens: 1600,
       user: `Proposez les objectifs de ce TDR.
 
 ${text}${live}${contextBlock}
@@ -358,13 +377,24 @@ Répondez par un objet JSON de la forme :
 
     let parsed: Array<{ title: string; criteria: string }> = [];
     try {
-      const json = JSON.parse(result.text) as { objectives?: Array<{ title?: string; criteria?: string }> };
+      const json = JSON.parse(TdrAssistService.extractJson(result.text)) as {
+        objectives?: Array<{ title?: string; criteria?: string }>;
+      };
       parsed = (json.objectives ?? [])
         .filter((o) => o.title?.trim())
         .map((o) => ({ title: String(o.title).trim(), criteria: String(o.criteria ?? '').trim() }));
     } catch {
+      // Sans trace, un échec de lecture est indiagnosticable : le texte du
+      // modèle n'est vu par personne. On journalise de quoi trancher entre
+      // une réponse coupée et une réponse mal formée.
+      this.logger.warn(
+        `Objectifs illisibles — finish_reason=${result.finishReason ?? 'inconnu'}, ` +
+          `${result.text.length} caractères, fin du texte : ${JSON.stringify(result.text.slice(-160))}`,
+      );
       throw new BadRequestException(
-        'La réponse du modèle n’a pas pu être interprétée. Réessayez, ou saisissez les objectifs manuellement.',
+        result.finishReason === 'length'
+          ? 'La proposition a été coupée avant sa fin. Relancez : le texte sera plus court.'
+          : 'La réponse du modèle n’a pas pu être interprétée. Réessayez, ou saisissez les objectifs manuellement.',
       );
     }
 

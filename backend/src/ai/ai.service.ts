@@ -13,6 +13,13 @@ export interface GenerationRequest {
 export interface GenerationResult {
   text: string;
   model: string;
+  /**
+   * Motif d'arret renvoye par le fournisseur. « length » signale une reponse
+   * coupee au plafond de jetons : distinguer ce cas d'une reponse mal formee
+   * evite de renvoyer « illisible » a l'auteur quand le texte etait bon mais
+   * incomplet.
+   */
+  finishReason?: string;
   /** Jetons consommés, quand le fournisseur les renvoie */
   usage?: { prompt: number; completion: number };
 }
@@ -87,7 +94,7 @@ export class AiService {
       }
 
       const payload = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
+        choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
         usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
 
@@ -99,6 +106,7 @@ export class AiService {
       return {
         text,
         model,
+        finishReason: payload.choices?.[0]?.finish_reason,
         usage: payload.usage
           ? {
               prompt: payload.usage.prompt_tokens ?? 0,

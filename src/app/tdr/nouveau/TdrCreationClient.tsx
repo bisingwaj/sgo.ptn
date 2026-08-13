@@ -211,6 +211,14 @@ function AiAssist({
   onAccept,
   disabled,
   disabledReason,
+  // Les libelles par defaut parlent de redaction : c'est le cas des champs
+  // libres. Une liste d'objectifs ne se « redige » pas et ne se « reprend »
+  // pas — elle s'ajoute a l'existante. Un bouton qui decrit mal son effet
+  // est un bouton sur lequel on n'ose pas cliquer.
+  idleLabel = "Proposer une rédaction",
+  againLabel = "Proposer autre chose",
+  busyLabel = "Rédaction en cours…",
+  acceptLabel = "Reprendre dans le formulaire",
 }: {
   label: string;
   description: string;
@@ -219,6 +227,10 @@ function AiAssist({
   onAccept: () => void;
   disabled?: boolean;
   disabledReason?: string;
+  idleLabel?: string;
+  againLabel?: string;
+  busyLabel?: string;
+  acceptLabel?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [meta, setMeta] = useState<{ groundedOn: string[] } | null>(null);
@@ -274,7 +286,7 @@ function AiAssist({
           disabled={busy || disabled}
           title={disabled ? disabledReason : undefined}
         >
-          {busy ? "Rédaction en cours…" : meta ? "Proposer autre chose" : "Proposer une rédaction"}
+          {busy ? busyLabel : meta ? againLabel : idleLabel}
         </button>
         {meta && (
           <button
@@ -285,7 +297,7 @@ function AiAssist({
               setMeta(null);
             }}
           >
-            Reprendre dans le formulaire
+            {acceptLabel}
           </button>
         )}
       </div>
@@ -1058,6 +1070,14 @@ function ObjectivesAssist({ state, set }: { state: State; set: (s: State) => voi
       )}
       onAccept={() =>
         set({ ...state, objectives: [...state.objectives, ...proposal] })
+      }
+      idleLabel="Proposer des objectifs"
+      againLabel="Proposer d’autres objectifs"
+      busyLabel="Analyse du contexte…"
+      acceptLabel={
+        state.objectives.length > 0
+          ? "Ajouter à la liste"
+          : "Reprendre ces objectifs"
       }
     />
   );
