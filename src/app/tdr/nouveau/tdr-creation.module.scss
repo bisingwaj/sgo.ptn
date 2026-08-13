@@ -135,6 +135,21 @@
   min-width: 0;
 }
 
+/* Repère L1, L2… — le document produit s'y réfère, et les clauses qui
+   conditionnent un décaissement à un livrable intermédiaire supposent
+   qu'on puisse le désigner. Chiffres tabulaires : la colonne reste droite
+   quand on passe de L9 à L10. */
+.editorRank {
+  flex-shrink: 0;
+  min-width: 2.25rem;
+  padding-top: 8px;
+  font-family: var(--ptn-font-mono, 'IBM Plex Mono', monospace);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--cds-text-secondary, #525252);
+}
+
 .remove {
   flex-shrink: 0;
   padding: 8px;

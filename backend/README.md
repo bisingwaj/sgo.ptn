@@ -64,6 +64,23 @@ locale, qu'il peut réinitialiser sans jamais gêner l'autre.
 Les deux bases redeviennent alors bit à bit identiques — mêmes tables, mêmes
 lignes, **mêmes identifiants**.
 
+### Un champ ajouté qui reste `undefined`
+
+Symptôme : la colonne existe en base, la migration est marquée appliquée,
+l'API renvoie quand même `undefined` pour ce champ et n'enregistre rien.
+
+`prisma migrate dev` ne régénère pas toujours le client. Le serveur tourne
+alors avec un client qui ignore la colonne : Prisma ne l'inclut ni dans le
+`SELECT` ni dans le `UPDATE`, **sans lever d'erreur**. C'est ce silence qui
+rend le défaut coûteux à diagnostiquer — tout paraît en ordre.
+
+```bash
+npx prisma generate   # puis relancer le serveur : le client est en mémoire
+```
+
+Le rechargement à chaud ne suffit pas. Le client généré vit hors du champ
+surveillé par `nest start --watch`.
+
 ### Pourquoi les identifiants sont identiques
 
 Les UUID du seed ne sont pas aléatoires : ils sont dérivés du code métier par

@@ -121,6 +121,7 @@ export class TdrService {
 
     const scalar = [
       'title', 'context', 'justification', 'beneficiaries',
+      'deliverableFormat', 'reportingRhythm',
       'approach', 'methodology', 'constraints',
       'expertise', 'provinceCode', 'esCategory',
       'ptbaActivityId', 'beneficiaryOrganisationId', 'durationMonths',

@@ -662,6 +662,8 @@ export interface TdrApi {
   ptbaActivityId: string | null;
   ptbaActivity?: { code: string; title: string; envelopeUsd: string; componentCode: string } | null;
   beneficiaryOrganisationId: string | null;
+  deliverableFormat: string | null;
+  reportingRhythm: string | null;
   beneficiaryOrganisation?: { code: string; name: string; fullName: string } | null;
   context: string | null;
   justification: string | null;

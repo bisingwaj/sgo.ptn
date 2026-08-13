@@ -483,7 +483,7 @@ Attendu : trois à six livrables, dans l’ordre où ils sont remis. Chacun port
 — un format, en QUELQUES MOTS : « PDF, 30 à 40 pages », « procès-verbal contradictoire », « plans tous corps d’état », « code source et guide d’exploitation ». C’est une forme et un volume, pas un sommaire — le contenu attendu se dit dans l’intitulé, jamais ici. Une phrase entière à cet endroit est une erreur ;
 — une échéance.
 
-L’échéance s’exprime UNIQUEMENT en délai relatif au démarrage du contrat, sous la forme « M+3 » pour le troisième mois ou « S+2 » pour la deuxième semaine. N’écrivez jamais de date, de trimestre, de semestre ni de nom de mois : un échéancier inventé engage contractuellement le projet.
+L’échéance s’exprime UNIQUEMENT en délai relatif au démarrage du contrat : « J+15 » pour le quinzième jour, « S+4 » pour la quatrième semaine, « M+6 » pour le sixième mois. Choisissez l’unité qui convient à la durée du marché. N’écrivez jamais de date, de trimestre, de semestre ni de nom de mois : un échéancier inventé engage contractuellement le projet.
 
 Répondez par un objet JSON de la forme :
 {"deliverables":[{"title":"…","format":"…","deadline":"…"}]}`,

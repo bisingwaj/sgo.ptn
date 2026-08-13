@@ -857,6 +857,13 @@ model Tdr {
   justification String? @db.Text
   beneficiaries String? @db.Text
 
+  /// Modalités valant pour l'ensemble des livrables — forme de remise et
+  /// fréquence des points d'avancement. Contractuelles, elles ne se règlent
+  /// pas livrable par livrable : le wizard partenaire les portait déjà,
+  /// celui du MDA les avait omises.
+  deliverableFormat String?
+  reportingRhythm   String?
+
   // --- Méthodologie ---
   approach    String? @db.Text
   methodology String? @db.Text

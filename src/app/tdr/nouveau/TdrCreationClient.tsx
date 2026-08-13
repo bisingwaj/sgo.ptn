@@ -66,6 +66,8 @@ interface State {
 
   objectives: { title: string; criteria: string }[];
   deliverables: { title: string; format: string; deadline: string }[];
+  deliverableFormat: string;
+  reportingRhythm: string;
 
   approach: string;
   methodology: string;
@@ -97,7 +99,7 @@ interface State {
 const INITIAL: State = {
   tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", beneficiaryOrganisationId: "", title: "", titleTouched: false,
   context: "", justification: "", beneficiaries: "",
-  objectives: [], deliverables: [],
+  objectives: [], deliverables: [], deliverableFormat: "", reportingRhythm: "",
   approach: "", methodology: "", constraints: "",
   startDate: "", durationMonths: "", provinceCode: "", expertise: "",
   budgetTotalUsd: "", budgetIdaUsd: "", budgetAfdUsd: "", budgetGovUsd: "",
@@ -112,6 +114,37 @@ const ES_LEVELS = [
   { value: "MODERE", label: "Modéré — NIES + PGES allégé" },
   { value: "SUBSTANTIEL", label: "Substantiel — EIES allégée + PGES" },
   { value: "ELEVE", label: "Élevé — EIES complète + PGES" },
+];
+
+/**
+ * Convention d'échéance des livrables.
+ *
+ * Les deux anciens parcours n'en disaient pas la même chose : le wizard
+ * MDA annonçait « S+N · M+N », celui du partenaire et le document produit
+ * écrivaient « J+N ». Un même dossier pouvait donc porter deux
+ * conventions selon l'écran qui l'avait rempli. La grammaire est ici
+ * unique et couvre les trois unités — c'est l'union de ce qui existait,
+ * énoncée une fois.
+ */
+const DEADLINE_CONVENTION = {
+  helper:
+    "Échéances en délai relatif au démarrage du contrat : J+15, S+4, M+6. Jamais de date ferme — le marché n’est pas encore attribué.",
+  placeholder: "M+6",
+};
+
+/** Reprises telles quelles du wizard partenaire, seul à les porter. */
+const DELIVERABLE_FORMATS = [
+  { value: "docx-pdf", label: "DOCX éditable + PDF signé — standard UGP" },
+  { value: "pdf", label: "PDF signé uniquement — lecture seule" },
+  { value: "structured", label: "Données structurées + PDF" },
+  { value: "mixed", label: "Mixte, selon le livrable" },
+];
+
+const REPORTING_RHYTHMS = [
+  { value: "weekly", label: "Hebdomadaire — missions courtes" },
+  { value: "biweekly", label: "Bimensuel" },
+  { value: "monthly", label: "Mensuel — au-delà de six mois" },
+  { value: "milestone", label: "À chaque jalon, sans périodicité fixe" },
 ];
 
 /**
@@ -489,7 +522,12 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
           return null;
         },
         commit: (s) =>
-          persist(s, { objectives: s.objectives, deliverables: s.deliverables }),
+          persist(s, {
+            objectives: s.objectives,
+            deliverables: s.deliverables,
+            deliverableFormat: s.deliverableFormat || null,
+            reportingRhythm: s.reportingRhythm || null,
+          }),
         render: (s, set) => <OutcomesStep state={s} set={set} />,
       },
 
@@ -1152,6 +1190,7 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
       <ObjectivesAssist state={state} set={set} />
       <ListEditor
         title="Objectifs"
+        prefix="O"
         items={state.objectives}
         onAdd={() => set({ ...state, objectives: [...state.objectives, { title: "", criteria: "" }] })}
         onRemove={(i) => set({ ...state, objectives: state.objectives.filter((_, x) => x !== i) })}
@@ -1182,6 +1221,7 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
       <DeliverablesAssist state={state} set={set} />
       <ListEditor
         title="Livrables"
+        prefix="L"
         items={state.deliverables}
         onAdd={() =>
           set({ ...state, deliverables: [...state.deliverables, { title: "", format: "", deadline: "" }] })
@@ -1214,23 +1254,60 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
                 next[i] = { ...d, deadline: e.target.value };
                 set({ ...state, deliverables: next });
               }}
-              placeholder="Échéance"
+              placeholder={DEADLINE_CONVENTION.placeholder}
             />
           </>
         )}
       />
+      <p className={styles.hint}>{DEADLINE_CONVENTION.helper}</p>
+
+      {/* Modalités valant pour tout le marché, et non livrable par livrable.
+          Le wizard partenaire les portait ; celui du MDA les avait omises,
+          et la fusion avait retenu la version la plus pauvre. */}
+      <div className={styles.row2}>
+        <Field
+          label="Format de remise"
+          helper="Forme sous laquelle les pièces sont remises et validées."
+        >
+          <Select
+            value={state.deliverableFormat}
+            onChange={(e) => set({ ...state, deliverableFormat: e.target.value })}
+            placeholder="Sélectionner le format"
+            options={DELIVERABLE_FORMATS}
+          />
+        </Field>
+        <Field
+          label="Rythme de reporting"
+          helper="Fréquence des points d’avancement avec l’UGP."
+        >
+          <Select
+            value={state.reportingRhythm}
+            onChange={(e) => set({ ...state, reportingRhythm: e.target.value })}
+            placeholder="Sélectionner le rythme"
+            options={REPORTING_RHYTHMS}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
 
 function ListEditor<T>({
-  title, items, onAdd, onRemove, render,
+  title, items, onAdd, onRemove, render, prefix,
 }: {
   title: string;
   items: T[];
   onAdd: () => void;
   onRemove: (i: number) => void;
   render: (item: T, i: number) => React.ReactNode;
+  /**
+   * Lettre de reperage — « O » pour les objectifs, « L » pour les
+   * livrables. Les deux anciens parcours numerotaient ainsi, et le
+   * document produit s'y referait : une clause qui conditionne un
+   * decaissement a un livrable intermediaire suppose qu'on puisse le
+   * designer. La position existait deja en base, rien ne l'affichait.
+   */
+  prefix?: string;
 }) {
   return (
     <div>
@@ -1246,6 +1323,12 @@ function ListEditor<T>({
         <ul className={styles.editorList}>
           {items.map((item, i) => (
             <li key={i}>
+              {prefix && (
+                <span className={styles.editorRank} aria-hidden>
+                  {prefix}
+                  {i + 1}
+                </span>
+              )}
               <div className={styles.editorFields}>{render(item, i)}</div>
               <button type="button" className={styles.remove} onClick={() => onRemove(i)} aria-label="Retirer">
                 <TrashCan size={14} aria-hidden />
