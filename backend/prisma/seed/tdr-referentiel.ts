@@ -99,6 +99,13 @@ export interface TdrTypeMeta {
   stepCount: number;
   requiresPges?: boolean;
   displayOrder: number;
+  /**
+   * Convention de denomination du marche. Le tiret plutot qu'une preposition :
+   * un gabarit « Travaux de {{ptbaTitle}} » produit « Travaux de SOC national »
+   * la ou il faudrait « du ». L'elision francaise ne se resout pas par
+   * concatenation, et l'intitule doit rester juste quel que soit le libelle.
+   */
+  titleTemplate: string;
 }
 
 const FAMILY_LABELS: Record<number, string> = {
@@ -109,19 +116,19 @@ const FAMILY_LABELS: Record<number, string> = {
 
 /** Métadonnées des 11 types officiels. `generic` est ignoré : ce n'est pas un type du MEP. */
 export const TDR_TYPE_META: Record<string, TdrTypeMeta> = {
-  travaux: { slug: 'travaux', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP'], stepCount: 5, requiresPges: true, displayOrder: 1 },
-  fournitures: { slug: 'fournitures', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 2 },
-  'services-consultants': { slug: 'services-consultants', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 3 },
-  'services-non-consultants': { slug: 'services-non-consultants', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 4 },
+  travaux: { slug: 'travaux', titleTemplate: 'Travaux — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP'], stepCount: 5, requiresPges: true, displayOrder: 1 },
+  fournitures: { slug: 'fournitures', titleTemplate: 'Fourniture et installation — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 2 },
+  'services-consultants': { slug: 'services-consultants', titleTemplate: 'Services de consultants — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 3 },
+  'services-non-consultants': { slug: 'services-non-consultants', titleTemplate: 'Services non intellectuels — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 4 },
 
-  atelier: { slug: 'atelier', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 5 },
-  formation: { slug: 'formation', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 6 },
-  mission: { slug: 'mission', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 4, displayOrder: 7 },
-  etude: { slug: 'etude', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 8 },
-  communication: { slug: 'communication', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 4, displayOrder: 9 },
+  atelier: { slug: 'atelier', titleTemplate: 'Atelier — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 5 },
+  formation: { slug: 'formation', titleTemplate: 'Formation — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 6 },
+  mission: { slug: 'mission', titleTemplate: 'Mission internationale — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 4, displayOrder: 7 },
+  etude: { slug: 'etude', titleTemplate: 'Étude — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 8 },
+  communication: { slug: 'communication', titleTemplate: 'Communication et sensibilisation — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 4, displayOrder: 9 },
 
-  sbp: { slug: 'sbp', familyLabel: FAMILY_LABELS[3], allowedOrigins: ['UGP', 'SBP', 'PARTENAIRE'], stepCount: 6, displayOrder: 10 },
-  audit: { slug: 'audit', familyLabel: FAMILY_LABELS[3], allowedOrigins: ['UGP'], stepCount: 5, displayOrder: 11 },
+  sbp: { slug: 'sbp', titleTemplate: 'Sous-projet SBP — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[3], allowedOrigins: ['UGP', 'SBP', 'PARTENAIRE'], stepCount: 6, displayOrder: 10 },
+  audit: { slug: 'audit', titleTemplate: 'Audit — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[3], allowedOrigins: ['UGP'], stepCount: 5, displayOrder: 11 },
 };
 
 // ============================================================

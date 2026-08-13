@@ -643,6 +643,11 @@ model TdrType {
 
   /// Amorce de contexte pré-remplie, avec substitution {{ptbaCode}} et {{ptbaTitle}}
   contextTemplate String? @db.Text
+
+  /// Convention de dénomination du marché, même substitution que contextTemplate.
+  /// La nature du contrat ouvre l'intitulé — c'est l'usage en passation, et
+  /// c'est ce qui rend une liste de TDR lisible sans l'ouvrir.
+  titleTemplate String?
   /// Un PGES est-il requis pour ce type ?
   requiresPges Boolean @default(false)
 

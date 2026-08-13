@@ -507,6 +507,8 @@ export interface TdrTypeApi {
   isActive: boolean;
   /** Gabarit de contexte, marqueurs {{ptbaCode}} et {{ptbaTitle}} à substituer */
   contextTemplate: string | null;
+  /** Convention de dénomination du marché, mêmes marqueurs */
+  titleTemplate: string | null;
 }
 
 export interface ThresholdApi {

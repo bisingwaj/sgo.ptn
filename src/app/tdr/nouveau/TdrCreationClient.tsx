@@ -53,6 +53,12 @@ interface State {
   ptbaActivityId: string;
   beneficiaryOrganisationId: string;
   title: string;
+  /**
+   * L'auteur a-t-il ecrit l'intitule lui-meme ? Tant que non, changer de
+   * type ou d'activite le recompose. Ce drapeau ne part pas en base : il ne
+   * decrit pas le dossier, seulement l'etat de la saisie.
+   */
+  titleTouched: boolean;
 
   context: string;
   justification: string;
@@ -89,7 +95,7 @@ interface State {
 }
 
 const INITIAL: State = {
-  tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", beneficiaryOrganisationId: "", title: "",
+  tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", beneficiaryOrganisationId: "", title: "", titleTouched: false,
   context: "", justification: "", beneficiaries: "",
   objectives: [], deliverables: [],
   approach: "", methodology: "", constraints: "",
@@ -796,6 +802,35 @@ function TypeStep({
 }) {
   const families = [...new Set(types.map((t) => t.family))].sort();
 
+  /**
+   * Intitulé composé depuis la convention du type et le libellé de
+   * l'activité. Le référentiel porte le gabarit, l'écran ne fait que le
+   * substituer : la convention de dénomination reste une donnée, modifiable
+   * sans redéploiement, comme le gabarit de contexte dont elle reprend les
+   * marqueurs.
+   */
+  const composed = useMemo(() => {
+    const type = types.find((t) => t.code === state.tdrTypeCode);
+    const activity = activities.find((a) => a.id === state.ptbaActivityId);
+    if (!type?.titleTemplate || !activity) return "";
+    return fillTemplate(type.titleTemplate, activity);
+  }, [types, activities, state.tdrTypeCode, state.ptbaActivityId]);
+
+  /**
+   * Recompose tant que l'auteur n'a pas écrit lui-même. Changer de type
+   * après coup doit corriger l'intitulé, sinon un TDR de travaux resterait
+   * annoncé comme une étude — mais jamais au prix d'une saisie effacée.
+   */
+  function withComposedTitle(next: State): State {
+    if (next.titleTouched) return next;
+    const type = types.find((t) => t.code === next.tdrTypeCode);
+    const activity = activities.find((a) => a.id === next.ptbaActivityId);
+    if (!type?.titleTemplate || !activity) return next;
+    return { ...next, title: fillTemplate(type.titleTemplate, activity) };
+  }
+
+  const stillGeneric = composed !== "" && state.title.trim() === composed;
+
   return (
     <div className={styles.stack}>
       {state.reference && (
@@ -834,7 +869,7 @@ function TypeStep({
                     <SelectableTile
                       key={t.code}
                       selected={state.tdrTypeCode === t.code}
-                      onClick={() => set({ ...state, tdrTypeCode: t.code })}
+                      onClick={() => set(withComposedTitle({ ...state, tdrTypeCode: t.code }))}
                       disabled={Boolean(state.tdrId)}
                       tag={t.code}
                       title={t.name}
@@ -854,14 +889,6 @@ function TypeStep({
         )}
       </fieldset>
 
-      <Field label="Intitulé" required>
-        <Input
-          value={state.title}
-          onChange={(e) => set({ ...state, title: e.target.value })}
-          placeholder="AMOA plateforme nationale d’identité numérique"
-        />
-      </Field>
-
       <Field
         label="Activité PTBA de rattachement"
         required
@@ -873,7 +900,7 @@ function TypeStep({
       >
         <Select
           value={state.ptbaActivityId}
-          onChange={(e) => set({ ...state, ptbaActivityId: e.target.value })}
+          onChange={(e) => set(withComposedTitle({ ...state, ptbaActivityId: e.target.value }))}
           placeholder="Sélectionner une activité"
           options={activities.map((a) => ({
             value: a.id,
@@ -881,6 +908,42 @@ function TypeStep({
           }))}
         />
       </Field>
+
+      {/* L'intitulé suit l'activité, et non l'inverse : il se compose de ce
+          qui précède. Le placer avant reviendrait à demander de nommer un
+          marché dont ni la nature ni l'objet ne sont encore choisis. */}
+      <Field
+        label="Intitulé du marché"
+        required
+        helper={
+          composed
+            ? "Composé depuis le type et l’activité. Remplacez le libellé de l’activité par l’objet précis du marché."
+            : "Choisissez le type et l’activité : un intitulé conforme à la convention vous sera proposé."
+        }
+      >
+        <Input
+          value={state.title}
+          onChange={(e) =>
+            // Vider le champ rend la main à la composition : l'auteur qui
+            // efface veut repartir de la proposition, pas d'un champ mort.
+            set({
+              ...state,
+              title: e.target.value,
+              titleTouched: e.target.value.trim().length > 0,
+            })
+          }
+          placeholder="Travaux — aménagement du centre des opérations de sécurité"
+        />
+      </Field>
+
+      {stillGeneric && (
+        <Note tone="warning" title="Cet intitulé reprend le libellé de l’activité">
+          Une activité du PTBA porte souvent plusieurs marchés — travaux, puis
+          fournitures, puis supervision. S’ils partagent tous le même intitulé,
+          ni le plan de passation ni les avis de la Banque ne les distinguent.
+          Nommez ce que ce marché achète.
+        </Note>
+      )}
 
       {/* Maîtrise d'ouvrage bénéficiaire — distincte de l'organisation qui
           rédige, et distincte des bénéficiaires visés, qui sont des
