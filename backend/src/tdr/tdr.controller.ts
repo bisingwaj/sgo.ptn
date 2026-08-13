@@ -16,6 +16,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import type { Request } from 'express';
 import { TdrService } from './tdr.service';
+import { TdrAssistService } from '../ai/tdr-assist.service';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -53,7 +54,10 @@ export class CreateDraftDto {
 @ApiBearerAuth()
 @Controller('tdr')
 export class TdrController {
-  constructor(private readonly tdr: TdrService) {}
+  constructor(
+    private readonly tdr: TdrService,
+    private readonly assist: TdrAssistService,
+  ) {}
 
   @Get()
   @RequirePermissions('tdr:read')
@@ -112,6 +116,38 @@ export class TdrController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.tdr.updateDraft(id, body, actor);
+  }
+
+  @Post(':id/assistance/contexte')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Proposer une rédaction du contexte',
+    description:
+      'Le modèle reçoit l’activité PTBA, la composante, le type et la couverture — jamais de donnée personnelle ni de contenu EAS/HS. Il renvoie une proposition : rien n’est enregistré tant que l’auteur ne l’a pas reprise.',
+  })
+  assistContext(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.assist.proposeContext(id, actor, contextOf(req));
+  }
+
+  @Post(':id/assistance/objectifs')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Proposer des objectifs assortis de leur critère de constatation',
+    description:
+      'S’appuie sur le contexte déjà rédigé. Les valeurs cibles manquantes sont laissées entre crochets plutôt qu’inventées.',
+  })
+  assistObjectives(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.assist.proposeObjectives(id, actor, contextOf(req));
   }
 
   @Post(':id/soumettre')

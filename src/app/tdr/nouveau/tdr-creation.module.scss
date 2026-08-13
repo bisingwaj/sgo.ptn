@@ -475,3 +475,63 @@
     background: var(--ptn-accent-surface);
   }
 }
+
+/* ===== Assistance rédactionnelle ===== */
+
+.assistError {
+  margin-top: var(--ptn-space-03);
+  padding: var(--ptn-space-03);
+  border-left: 3px solid var(--ptn-status-warning);
+  background: var(--ptn-status-warning-surface);
+  color: var(--ptn-status-warning-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.assistProposal {
+  margin-top: var(--ptn-space-03);
+  padding: var(--ptn-space-04);
+  background: var(--cds-background, #fff);
+  border-left: 2px solid var(--ptn-status-ai);
+}
+
+.assistText {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cds-text-primary, #161616);
+  white-space: pre-wrap;
+}
+
+.assistList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-03);
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  span {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--cds-text-secondary, #525252);
+  }
+}
+
+.assistProvenance {
+  margin-top: var(--ptn-space-02);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--cds-text-helper, #6f6f6f);
+}

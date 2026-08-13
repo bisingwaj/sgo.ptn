@@ -8,7 +8,10 @@
  *  - MEP § 9 (passation) et § 15.4 (sélecteur de TDR)
  *
  * Le contenu des bibliothèques provient de `data/tdr-referentiel.json`,
- * extrait du registre frontend par `extract-tdr-content.ts`.
+ * extrait une fois pour toutes du registre qui vivait côté frontend. Ce
+ * fichier fige le contenu initial ; les évolutions passent désormais par
+ * le panneau d'administration, qui versionne chaque clause. Il n'est donc
+ * pas destiné à être régénéré.
  */
 
 import { readFileSync } from 'node:fs';

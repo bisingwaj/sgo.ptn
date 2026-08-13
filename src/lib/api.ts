@@ -695,4 +695,20 @@ export const tdrApi = {
   update: (id: string, patch: Record<string, unknown>) =>
     request<TdrApi>(`/tdr/${id}`, { method: "PUT", body: patch }),
   submit: (id: string) => api.post<TdrApi>(`/tdr/${id}/soumettre`),
+
+  /**
+   * Assistance rédactionnelle. Renvoie une proposition : rien n'est
+   * enregistré tant que l'auteur ne l'a pas reprise. Répond 503 si aucune
+   * clé n'est configurée côté serveur — le parcours reste utilisable.
+   */
+  assistContext: (id: string) =>
+    api.post<{ proposal: string; model: string; groundedOn: string[] }>(
+      `/tdr/${id}/assistance/contexte`,
+    ),
+  assistObjectives: (id: string) =>
+    api.post<{
+      proposal: Array<{ title: string; criteria: string }>;
+      model: string;
+      groundedOn: string[];
+    }>(`/tdr/${id}/assistance/objectifs`),
 };

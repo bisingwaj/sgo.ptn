@@ -34,7 +34,15 @@ import {
   type TdrApi,
   type TdrTypeApi,
 } from "@/lib/api";
-import { Add, CheckmarkFilled, Idea, Locked, TrashCan, WarningAltFilled } from "@carbon/icons-react";
+import {
+  Add,
+  AiGenerate,
+  CheckmarkFilled,
+  Idea,
+  Locked,
+  TrashCan,
+  WarningAltFilled,
+} from "@carbon/icons-react";
 import styles from "./tdr-creation.module.scss";
 
 interface State {
@@ -176,6 +184,106 @@ function TemplateAssist({
   );
 }
 
+/**
+ * Assistance rédactionnelle.
+ *
+ * Trois principes tenus à l'écran :
+ *  — la proposition est affichée à part, jamais versée d'office dans le
+ *    champ ; c'est l'auteur qui la reprend ;
+ *  — le modèle et les éléments du dossier transmis sont nommés, pour que
+ *    l'auteur sache sur quoi la proposition repose ;
+ *  — l'indisponibilité du service n'entrave rien : le champ reste
+ *    saisissable à la main.
+ */
+function AiAssist({
+  label,
+  description,
+  onGenerate,
+  renderProposal,
+  onAccept,
+  disabled,
+  disabledReason,
+}: {
+  label: string;
+  description: string;
+  onGenerate: () => Promise<{ model: string; groundedOn: string[] }>;
+  renderProposal: () => React.ReactNode;
+  onAccept: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [meta, setMeta] = useState<{ model: string; groundedOn: string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setMeta(await onGenerate());
+    } catch (e) {
+      setError(
+        e instanceof ApiError && e.status === 503
+          ? "Assistance non configurée sur ce serveur. Le champ reste à remplir à la main."
+          : e instanceof Error
+            ? e.message
+            : "La génération a échoué.",
+      );
+      setMeta(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <aside className={styles.assist}>
+      <div className={styles.assistHead}>
+        <AiGenerate size={16} aria-hidden />
+        <strong>{label}</strong>
+      </div>
+      <p className={styles.assistHint}>{description}</p>
+
+      {error && <p className={styles.assistError}>{error}</p>}
+
+      {meta && (
+        <>
+          <div className={styles.assistProposal}>{renderProposal()}</div>
+          <p className={styles.assistProvenance}>
+            Proposition produite par <span className="ptn-mono">{meta.model}</span>, à partir de :{" "}
+            {meta.groundedOn.join(" · ")}. À relire et adapter avant transmission.
+          </p>
+        </>
+      )}
+
+      <div className={styles.assistActions}>
+        <button
+          type="button"
+          className={styles.assistBtn}
+          onClick={() => void run()}
+          disabled={busy || disabled}
+          title={disabled ? disabledReason : undefined}
+        >
+          {busy ? "Rédaction en cours…" : meta ? "Proposer autre chose" : "Proposer une rédaction"}
+        </button>
+        {meta && (
+          <button
+            type="button"
+            className={styles.assistBtnGhost}
+            onClick={() => {
+              onAccept();
+              setMeta(null);
+            }}
+          >
+            Reprendre dans le formulaire
+          </button>
+        )}
+      </div>
+
+      {disabled && disabledReason && <p className={styles.assistHint}>{disabledReason}</p>}
+    </aside>
+  );
+}
+
 function isClause(e: LibraryEntry): e is ClauseApi { return "text" in e; }
 function isIndicator(e: LibraryEntry): e is IndicatorApi { return "measure" in e; }
 function isRisk(e: LibraryEntry): e is RiskApi { return "mitigation" in e; }
@@ -302,6 +410,8 @@ export function TdrCreationClient() {
                   onApply={(text) => set({ ...s, context: text })}
                 />
               )}
+
+              <ContextAssist state={s} set={set} />
               <Field label="Contexte" required>
                 <Textarea rows={7} value={s.context} onChange={(e) => set({ ...s, context: e.target.value })} />
               </Field>
@@ -740,9 +850,69 @@ function TypeStep({
   );
 }
 
+/** Rédaction du contexte, ancrée sur l'activité PTBA du dossier. */
+function ContextAssist({ state, set }: { state: State; set: (s: State) => void }) {
+  const [proposal, setProposal] = useState<string>("");
+
+  return (
+    <AiAssist
+      label="Rédaction assistée du contexte"
+      description="Le modèle reçoit l’activité PTBA, la composante, le type et la couverture géographique de ce dossier — aucune donnée personnelle. Il ne produit ni montant ni référence réglementaire qui ne lui aurait été fournie."
+      disabled={!state.tdrId}
+      disabledReason={!state.tdrId ? "Disponible une fois le brouillon ouvert." : undefined}
+      onGenerate={async () => {
+        const r = await tdrApi.assistContext(state.tdrId!);
+        setProposal(r.proposal);
+        return { model: r.model, groundedOn: r.groundedOn };
+      }}
+      renderProposal={() => <p className={styles.assistText}>{proposal}</p>}
+      onAccept={() => set({ ...state, context: proposal })}
+    />
+  );
+}
+
+/** Objectifs assortis de leur critère de constatation. */
+function ObjectivesAssist({ state, set }: { state: State; set: (s: State) => void }) {
+  const [proposal, setProposal] = useState<{ title: string; criteria: string }[]>([]);
+
+  return (
+    <AiAssist
+      label="Proposition d’objectifs"
+      description="S’appuie sur le contexte déjà rédigé. Chaque objectif est assorti d’un critère vérifiable ; les valeurs cibles qui dépendent d’une donnée absente du dossier sont laissées entre crochets plutôt qu’inventées."
+      disabled={!state.tdrId || state.context.trim().length < 30}
+      disabledReason={
+        !state.tdrId
+          ? "Disponible une fois le brouillon ouvert."
+          : state.context.trim().length < 30
+            ? "Rédigez d’abord le contexte : les objectifs en découlent."
+            : undefined
+      }
+      onGenerate={async () => {
+        const r = await tdrApi.assistObjectives(state.tdrId!);
+        setProposal(r.proposal);
+        return { model: r.model, groundedOn: r.groundedOn };
+      }}
+      renderProposal={() => (
+        <ul className={styles.assistList}>
+          {proposal.map((o) => (
+            <li key={o.title}>
+              <strong>{o.title}</strong>
+              <span>{o.criteria}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      onAccept={() =>
+        set({ ...state, objectives: [...state.objectives, ...proposal] })
+      }
+    />
+  );
+}
+
 function OutcomesStep({ state, set }: { state: State; set: (s: State) => void }) {
   return (
     <div className={styles.stack}>
+      <ObjectivesAssist state={state} set={set} />
       <ListEditor
         title="Objectifs"
         items={state.objectives}
