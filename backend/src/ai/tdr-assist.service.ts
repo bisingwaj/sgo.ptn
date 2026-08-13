@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { AiService } from './ai.service';
+import { AiService, type GenerationResult } from './ai.service';
 import { buildSystemPrompt } from './project-knowledge';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -57,20 +57,61 @@ export class TdrAssistService {
   private readonly logger = new Logger(TdrAssistService.name);
 
   /**
-   * Isole l'objet JSON d'une reponse.
+   * Isole l'objet JSON d'une réponse.
    *
-   * `response_format: json_object` n'est pas honore par tous les modeles
-   * servis par OpenRouter : ceux d'Anthropic ne connaissent pas ce parametre
-   * et repondent volontiers par une phrase d'introduction, ou par un bloc
-   * encadre de triples accents graves. Le texte reste bon ; seul son
-   * emballage change. On decoupe donc du premier { a la derniere } plutot
-   * que d'echouer sur une difference de forme.
+   * `response_format: json_object` n'est pas honoré par tous les modèles
+   * servis par OpenRouter : ceux d'Anthropic ne connaissent pas ce paramètre
+   * et répondent volontiers par une phrase d'introduction, ou par un bloc
+   * encadré de triples accents graves. Le texte reste bon ; seul son
+   * emballage change. On découpe donc du premier { à la dernière } plutôt
+   * que d'échouer sur une différence de forme.
    */
   static extractJson(raw: string): string {
     const start = raw.indexOf('{');
     const end = raw.lastIndexOf('}');
     if (start === -1 || end === -1 || end <= start) return raw;
     return raw.slice(start, end + 1);
+  }
+
+  /**
+   * Lit une liste d'objets depuis une réponse JSON du modèle.
+   *
+   * Mutualise ce qui, sinon, se recopie à chaque champ structuré : la
+   * tolérance à l'emballage, le rejet des lignes vides, et surtout la
+   * distinction entre une réponse coupée au plafond de jetons et une
+   * réponse mal formée. Les deux se présentaient comme « illisible », ce
+   * qui envoyait l'auteur relancer une génération qui échouerait pareil.
+   */
+  private readList<T>(
+    result: GenerationResult,
+    key: string,
+    noun: string,
+    map: (row: Record<string, unknown>) => T | null,
+  ): T[] {
+    let rows: Array<Record<string, unknown>>;
+    try {
+      const json = JSON.parse(TdrAssistService.extractJson(result.text)) as Record<string, unknown>;
+      rows = (json[key] as Array<Record<string, unknown>>) ?? [];
+      if (!Array.isArray(rows)) throw new Error('forme inattendue');
+    } catch {
+      // Sans trace, un échec de lecture est indiagnosticable : le texte du
+      // modèle n'est vu par personne.
+      this.logger.warn(
+        `Réponse illisible pour « ${noun} » — finish_reason=${result.finishReason ?? 'inconnu'}, ` +
+          `${result.text.length} caractères, fin du texte : ${JSON.stringify(result.text.slice(-160))}`,
+      );
+      throw new BadRequestException(
+        result.finishReason === 'length'
+          ? 'La proposition a été coupée avant sa fin. Relancez : le texte sera plus court.'
+          : `La réponse du modèle n’a pas pu être interprétée. Réessayez, ou saisissez les ${noun} manuellement.`,
+      );
+    }
+
+    const parsed = rows.map(map).filter((r): r is T => r !== null);
+    if (parsed.length === 0) {
+      throw new BadRequestException(`Le modèle n’a proposé aucun élément exploitable pour les ${noun}.`);
+    }
+    return parsed;
   }
 
   constructor(
@@ -375,34 +416,93 @@ Répondez par un objet JSON de la forme :
 {"objectives":[{"title":"…","criteria":"…"}]}`,
     });
 
-    let parsed: Array<{ title: string; criteria: string }> = [];
-    try {
-      const json = JSON.parse(TdrAssistService.extractJson(result.text)) as {
-        objectives?: Array<{ title?: string; criteria?: string }>;
-      };
-      parsed = (json.objectives ?? [])
-        .filter((o) => o.title?.trim())
-        .map((o) => ({ title: String(o.title).trim(), criteria: String(o.criteria ?? '').trim() }));
-    } catch {
-      // Sans trace, un échec de lecture est indiagnosticable : le texte du
-      // modèle n'est vu par personne. On journalise de quoi trancher entre
-      // une réponse coupée et une réponse mal formée.
-      this.logger.warn(
-        `Objectifs illisibles — finish_reason=${result.finishReason ?? 'inconnu'}, ` +
-          `${result.text.length} caractères, fin du texte : ${JSON.stringify(result.text.slice(-160))}`,
-      );
-      throw new BadRequestException(
-        result.finishReason === 'length'
-          ? 'La proposition a été coupée avant sa fin. Relancez : le texte sera plus court.'
-          : 'La réponse du modèle n’a pas pu être interprétée. Réessayez, ou saisissez les objectifs manuellement.',
-      );
-    }
-
-    if (parsed.length === 0) {
-      throw new BadRequestException('Le modèle n’a proposé aucun objectif exploitable.');
-    }
+    const parsed = this.readList(result, 'objectives', 'objectifs', (row) => {
+      const title = String(row.title ?? '').trim();
+      if (!title) return null;
+      return { title, criteria: String(row.criteria ?? '').trim() };
+    });
 
     await this.record(tdrId, 'objectifs', result.model, actor, ctx);
+    return { proposal: parsed, model: result.model, groundedOn: grounded };
+  }
+  /**
+   * Propose les livrables du marché.
+   *
+   * Ils découlent des objectifs, et non du contexte : un objectif sans
+   * livrable qui l'atteste n'est pas vérifiable, un livrable qui ne sert
+   * aucun objectif n'a pas à être commandé. La génération est donc refusée
+   * tant qu'aucun objectif n'est posé — proposer des pièces à remettre sans
+   * savoir ce qu'elles doivent établir reviendrait à inventer le marché.
+   *
+   * L'échéancier est le point sensible. Une date engage contractuellement,
+   * et les prohibitions du socle interdisent d'en inventer. On n'autorise
+   * donc que des délais relatifs au démarrage, bornés par la durée du
+   * marché lorsqu'elle est déjà saisie ; à défaut, le modèle doit écrire
+   * un repère explicite plutôt qu'un chiffre.
+   */
+  async proposeDeliverables(
+    tdrId: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ): Promise<Proposal<Array<{ title: string; format: string; deadline: string }>>> {
+    const tdr = await this.loadContext(tdrId);
+
+    if (tdr.objectives.length === 0) {
+      throw new BadRequestException(
+        'Définissez d’abord au moins un objectif : les livrables sont les pièces qui en attestent l’atteinte.',
+      );
+    }
+
+    const { text, grounded } = TdrAssistService.describe(tdr);
+    const live = await this.liveGrounding(tdr);
+
+    const objectivesBlock = [
+      '',
+      '',
+      'Objectifs déjà arrêtés, que les livrables doivent servir :',
+      ...tdr.objectives.map(
+        (o, i) => `${i + 1}. ${o.title}${o.criteria ? ` — constaté par : ${o.criteria}` : ''}`,
+      ),
+    ].join('\n');
+    grounded.push('objectifs du dossier');
+
+    const durationBlock = tdr.durationMonths
+      ? `\n\nDurée du marché : ${tdr.durationMonths} mois. Aucune échéance ne peut la dépasser.`
+      : '\n\nLa durée du marché n’est PAS fixée dans ce dossier. Toutes les échéances doivent donc valoir « [à fixer] » : vous n’avez aucun élément pour les situer.';
+
+    const result = await this.ai.generate({
+      system: TdrAssistService.system(tdr.tdrType.requiresPges),
+      json: true,
+      maxTokens: 1600,
+      user: `Proposez les livrables de ce TDR.
+
+${text}${live}${objectivesBlock}${durationBlock}
+
+Attendu : trois à six livrables, dans l’ordre où ils sont remis. Chacun porte trois éléments :
+— un intitulé, qui nomme la pièce remise et non l’activité qui la produit ;
+— un format, en QUELQUES MOTS : « PDF, 30 à 40 pages », « procès-verbal contradictoire », « plans tous corps d’état », « code source et guide d’exploitation ». C’est une forme et un volume, pas un sommaire — le contenu attendu se dit dans l’intitulé, jamais ici. Une phrase entière à cet endroit est une erreur ;
+— une échéance.
+
+L’échéance s’exprime UNIQUEMENT en délai relatif au démarrage du contrat, sous la forme « M+3 » pour le troisième mois ou « S+2 » pour la deuxième semaine. N’écrivez jamais de date, de trimestre, de semestre ni de nom de mois : un échéancier inventé engage contractuellement le projet.
+
+Répondez par un objet JSON de la forme :
+{"deliverables":[{"title":"…","format":"…","deadline":"…"}]}`,
+    });
+
+    const parsed = this.readList(result, 'deliverables', 'livrables', (row) => {
+      const title = String(row.title ?? '').trim();
+      if (!title) return null;
+      return {
+        title,
+        format: String(row.format ?? '').trim(),
+        // Dernier filet : la durée n'est pas connue, donc aucune échéance
+        // ne peut l'être. Le modèle a beau être instruit, c'est ici que la
+        // règle est tenue.
+        deadline: tdr.durationMonths ? String(row.deadline ?? '').trim() : '[à fixer]',
+      };
+    });
+
+    await this.record(tdrId, 'livrables', result.model, actor, ctx);
     return { proposal: parsed, model: result.model, groundedOn: grounded };
   }
 }

@@ -1083,6 +1083,58 @@ function ObjectivesAssist({ state, set }: { state: State; set: (s: State) => voi
   );
 }
 
+/**
+ * Les livrables découlent des objectifs, pas du contexte : le bouton reste
+ * fermé tant qu'aucun objectif n'est posé. Proposer les pièces à remettre
+ * sans savoir ce qu'elles doivent établir reviendrait à inventer le marché.
+ */
+function DeliverablesAssist({ state, set }: { state: State; set: (s: State) => void }) {
+  const [proposal, setProposal] = useState<
+    { title: string; format: string; deadline: string }[]
+  >([]);
+
+  const noObjective = state.objectives.filter((o) => o.title.trim()).length === 0;
+
+  return (
+    <AiAssist
+      label="Proposition de livrables"
+      description="Découle des objectifs déjà arrêtés. Les échéances sont des délais relatifs au démarrage du contrat ; tant que la durée du marché n’est pas saisie, elles restent à fixer — une date engage contractuellement."
+      disabled={!state.tdrId || noObjective}
+      disabledReason={
+        !state.tdrId
+          ? "Disponible une fois le brouillon ouvert."
+          : noObjective
+            ? "Posez d’abord un objectif : un livrable est la pièce qui atteste son atteinte."
+            : undefined
+      }
+      onGenerate={async () => {
+        const r = await tdrApi.assistDeliverables(state.tdrId!);
+        setProposal(r.proposal);
+        return { groundedOn: r.groundedOn };
+      }}
+      renderProposal={() => (
+        <ul className={styles.assistList}>
+          {proposal.map((d) => (
+            <li key={d.title}>
+              <strong>{d.title}</strong>
+              <span>
+                {[d.format, d.deadline].filter(Boolean).join(" · ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      onAccept={() => set({ ...state, deliverables: [...state.deliverables, ...proposal] })}
+      idleLabel="Proposer des livrables"
+      againLabel="Proposer d’autres livrables"
+      busyLabel="Lecture des objectifs…"
+      acceptLabel={
+        state.deliverables.length > 0 ? "Ajouter à la liste" : "Reprendre ces livrables"
+      }
+    />
+  );
+}
+
 function OutcomesStep({ state, set }: { state: State; set: (s: State) => void }) {
   return (
     <div className={styles.stack}>
@@ -1116,6 +1168,7 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
         )}
       />
 
+      <DeliverablesAssist state={state} set={set} />
       <ListEditor
         title="Livrables"
         items={state.deliverables}

@@ -166,6 +166,22 @@ export class TdrController {
     return this.assist.proposeObjectives(id, actor, contextOf(req));
   }
 
+  @Post(':id/assistance/livrables')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Proposer les livrables attendus',
+    description:
+      'Découle des objectifs déjà arrêtés, et non du contexte : un livrable qui ne sert aucun objectif n’a pas à être commandé. Les échéances restent des délais relatifs au démarrage, et valent « [à fixer] » tant que la durée du marché n’est pas saisie — une date engage contractuellement.',
+  })
+  assistDeliverables(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.assist.proposeDeliverables(id, actor, contextOf(req));
+  }
+
   @Post(':id/soumettre')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions('tdr:author')

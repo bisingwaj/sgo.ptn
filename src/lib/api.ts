@@ -722,4 +722,10 @@ export const tdrApi = {
       model: string;
       groundedOn: string[];
     }>(`/tdr/${id}/assistance/objectifs`),
+  assistDeliverables: (id: string) =>
+    api.post<{
+      proposal: Array<{ title: string; format: string; deadline: string }>;
+      model: string;
+      groundedOn: string[];
+    }>(`/tdr/${id}/assistance/livrables`),
 };
