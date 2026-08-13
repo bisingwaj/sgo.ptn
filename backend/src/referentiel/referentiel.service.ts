@@ -49,7 +49,7 @@ const PROFILE_LABELS: Record<
     short: 'Bailleur',
     readOnly: false,
     restrictions: [
-      'Vous ne rédigez jamais de termes de référence — consultation et émission d’ANO uniquement (MEP § 15.4).',
+      'Vous ne rédigez jamais de termes de référence — consultation et émission d’ANO uniquement (présentation UGPTN § 15.4).',
       'Vous n’intervenez pas dans la constitution des commissions d’évaluation.',
     ],
   },

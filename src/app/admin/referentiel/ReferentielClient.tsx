@@ -263,7 +263,7 @@ export function ReferentielClient() {
           <div className={styles.footNote}>
             <DocumentBlank size={14} aria-hidden />
             Le bailleur n’apparaît dans aucune origine : il consulte et émet des ANO, il ne rédige
-            jamais de TDR (MEP § 15.4).
+            jamais de TDR (présentation UGPTN § 15.4).
           </div>
         </Card>
       )}

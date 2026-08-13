@@ -5,7 +5,7 @@
  *
  * Page accessible SANS connexion. Indicateur ODP officiel : 100 % des griefs traités en ≤ 30 jours.
  *
- * Conformité MEP § 8.6.7-8 :
+ * Conformité MEP-8 :
  * - 4 modes de dépôt (web, SMS numéro vert, email, point focal)
  * - 5 catégories : technique, fiduciaire, E&S, conduite du personnel, autre
  * - Catégorie EAS/HS bascule vers canal confidentiel séparé (page distincte sécurisée)

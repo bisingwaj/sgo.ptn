@@ -2,7 +2,7 @@
 
 /**
  * Sélecteur de langue.
- * 6 langues per MEP § 7 (communications publiques) :
+ * 6 langues per MEP (communications publiques) :
  * FR (défaut) · EN · Lingala · Swahili · Tshiluba · Kikongo.
  */
 

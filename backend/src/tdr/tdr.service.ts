@@ -34,7 +34,7 @@ export class TdrService {
    * Origine de rédaction, déduite du profil.
    *
    * Un bailleur et un auditeur n'y figurent pas : ils consultent et, pour
-   * le premier, émettent des ANO — ils ne rédigent jamais (MEP § 15.4).
+   * le premier, émettent des ANO — ils ne rédigent jamais (présentation UGPTN § 15.4).
    * Cette déduction remplace le paramètre d'URL `?origin=` de l'ancien
    * sélecteur, qu'un utilisateur pouvait modifier à sa guise.
    */
@@ -76,6 +76,20 @@ export class TdrService {
 
     const reference = await this.nextReference(new Date().getFullYear());
 
+    // Le gabarit du type porte {{ptbaCode}} et {{ptbaTitle}}. Le commentaire
+    // annonçait la substitution sans que le code la fasse : un brouillon
+    // naissait avec les accolades littérales, et un TDR transmis sans repasser
+    // par l'étape de cadrage les emportait dans son instantané figé.
+    const activity = data.ptbaActivityId
+      ? await this.prisma.ptbaActivity.findUnique({
+          where: { id: data.ptbaActivityId },
+          select: { code: true, title: true },
+        })
+      : null;
+    const context = (type.contextTemplate ?? '')
+      .replace(/\{\{ptbaCode\}\}/g, activity?.code ?? '—')
+      .replace(/\{\{ptbaTitle\}\}/g, activity?.title ?? '—');
+
     const tdr = await this.prisma.tdr.create({
       data: {
         reference,
@@ -85,9 +99,7 @@ export class TdrService {
         organisationId: actor.organisationId,
         title: data.title.trim(),
         ptbaActivityId: data.ptbaActivityId ?? null,
-        // Amorce de contexte pré-remplie depuis le type, marqueurs
-        // substitués si une activité PTBA est déjà rattachée.
-        context: type.contextTemplate,
+        context: context || null,
       },
     });
 
@@ -309,10 +321,17 @@ export class TdrService {
 
     // Trois profils-clés au minimum. La règle existait au parcours partenaire
     // — « Profils-clés conformes (minimum 3) », statut bloquant — et n'était
-    // vérifiée que dans le navigateur. Une équipe sans chef de mission ni
-    // expert désigné ne s'évalue pas : les critères de notation des offres
-    // portent sur les profils.
-    if (tdr.keyProfiles.length < 3) {
+    // vérifiée que dans le navigateur.
+    //
+    // Elle ne vaut que pour les marchés de prestation intellectuelle, où une
+    // équipe nommée est l'objet même de ce qui est commandé. L'appliquer aux
+    // onze types revenait à exiger trois experts d'un bénéficiaire demandant
+    // une subvention de sous-projet, ou d'un organisateur d'atelier — aucune
+    // source ne l'établit.
+    if (
+      tdr.tdrType.procurementCategory === 'SERVICES_CONSULTANTS' &&
+      tdr.keyProfiles.length < 3
+    ) {
       blockers.push(
         `Trois profils-clés au minimum doivent être désignés — ${tdr.keyProfiles.length} à ce jour.`,
       );
@@ -341,7 +360,7 @@ export class TdrService {
       include: TdrService.FULL_INCLUDE,
     });
 
-    const category = TdrService.categoryOf(full.tdrType.family, full.tdrTypeCode);
+    const category = full.tdrType.procurementCategory;
     const resolved = category
       ? await this.referentiel.resolveMethod(category, Number(full.budgetTotalUsd ?? 0))
       : null;
@@ -392,17 +411,6 @@ export class TdrService {
   }
 
   /** Catégorie de passation correspondant au type, pour la déduction de méthode. */
-  private static categoryOf(family: number, typeCode: string): string | null {
-    if (typeCode === 'TDR-TX') return 'TRAVAUX';
-    if (typeCode === 'TDR-FN') return 'FOURNITURES';
-    if (typeCode === 'TDR-CS' || typeCode === 'TDR-ET' || typeCode === 'TDR-AU') {
-      return 'SERVICES_CONSULTANTS';
-    }
-    if (typeCode === 'TDR-SN') return 'SERVICES_NON_CONSULTANTS';
-    // Les activités opérationnelles (ateliers, formations, missions) et les
-    // subventions ne relèvent pas d'une méthode de passation classique.
-    return family === 1 ? 'FOURNITURES' : null;
-  }
 
   async findOne(id: string, actor: AuthenticatedUser) {
     const tdr = await this.prisma.tdr.findUnique({ where: { id }, include: TdrService.FULL_INCLUDE });

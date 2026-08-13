@@ -489,7 +489,7 @@ function AttachmentStep({
       <Field
         label="Organisation de rattachement"
         required
-        helper="Glossaire officiel des MDA et parties prenantes (MEP § 13.1)."
+        helper="Glossaire officiel des MDA et parties prenantes (présentation UGPTN § 13.1)."
       >
         <DropdownPicker
           value={state.organisationId}

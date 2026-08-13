@@ -47,11 +47,14 @@ export class TdrReferentielService {
    */
   async resolveMethod(category: string, amountUsd: number) {
     const thresholds = await this.prisma.procurementThreshold.findMany({
-      // Les méthodes d'exception — gré à gré, source unique, accord-cadre —
-      // sont écartées : elles ne se déduisent pas d'un montant, elles se
-      // justifient. Sans ce filtre, leurs bornes ouvertes captureraient
-      // n'importe quelle somme et un marché de 20 M USD basculerait en
-      // gré à gré faute d'un autre seuil correspondant.
+      // Trois méthodes ne se déduisent pas d'un montant et sont écartées de la
+      // résolution : le marché direct et la source unique, qui se justifient,
+      // et l'accord-cadre, qui se choisit sur un cas d'emploi — besoins
+      // répétitifs, préqualification puis tirage. Sans ce filtre, leurs bornes
+      // ouvertes captureraient n'importe quelle somme et un marché de 20 M USD
+      // basculerait en gré à gré faute d'un autre seuil correspondant.
+      // L'accord-cadre reste donc sélectionnable à la main, jamais proposé
+      // d'office — c'est le rédacteur qui établit le caractère répétitif.
       where: { category: category as never, method: { isException: false, isActive: true } },
       include: { method: true },
     });

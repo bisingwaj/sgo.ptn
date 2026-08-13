@@ -127,7 +127,7 @@ export interface OrganisationDef {
 }
 
 /**
- * Glossaire officiel des MDA et parties prenantes — MEP § 13.1,
+ * Glossaire officiel des MDA et parties prenantes — présentation UGPTN § 13.1,
  * complété par l'UGP elle-même et les deux bailleurs.
  * Aucun acronyme hors de ce glossaire ne doit être introduit.
  */

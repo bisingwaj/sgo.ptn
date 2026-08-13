@@ -31,7 +31,7 @@ function contextOf(req: Request): RequestContext {
 /**
  * Administration des comptes.
  *
- * Réservé au sous-rôle UGP « IT » (poste n°18 du MEP § 6.1), via la
+ * Réservé au sous-rôle UGP « IT » (poste n°18 du présentation UGPTN § 6.1), via la
  * permission `admin:users`. Aucun rôle technique hors manuel n'a été
  * introduit pour cette fonction.
  */

@@ -702,7 +702,12 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
             budgetGovUsd: s.budgetGovUsd ? Number(s.budgetGovUsd) : null,
           }),
         render: (s, set) => (
-          <BudgetStep state={s} set={set} activity={activities.find((a) => a.id === s.ptbaActivityId)} />
+          <BudgetStep
+            state={s}
+            set={set}
+            activity={activities.find((a) => a.id === s.ptbaActivityId)}
+            type={typeOf(s)}
+          />
         ),
       },
 
@@ -899,7 +904,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
         <h1>Rédaction non ouverte à votre profil</h1>
         <p>
           Les bailleurs et les auditeurs consultent les termes de référence et, pour les premiers,
-          émettent des avis de non-objection — ils n’en rédigent jamais (MEP § 15.4).
+          émettent des avis de non-objection — ils n’en rédigent jamais (présentation UGPTN § 15.4).
         </p>
         {!user && <Link href="/login" className={styles.gateLink}>Aller à la connexion</Link>}
       </div>
@@ -1485,27 +1490,32 @@ function ListEditor<T>({
 }
 
 function BudgetStep({
-  state, set, activity,
+  state, set, activity, type,
 }: {
   state: State;
   set: (s: State) => void;
   activity?: PtbaActivityApi;
+  type?: TdrTypeApi;
 }) {
   const [method, setMethod] = useState<{ code: string; review: string } | null>(null);
   const total = Number(state.budgetTotalUsd);
 
+  // La catégorie vient du référentiel, comme côté serveur. Elle était figée
+  // ici sur SERVICES_CONSULTANTS : un TDR de travaux à 20 M USD annonçait
+  // SFQC quand la transmission figeait AOI, et les types opérationnels — qui
+  // ne relèvent d'aucune méthode — s'en voyaient attribuer une.
+  const category = type?.procurementCategory ?? null;
+
   useEffect(() => {
-    if (!total || total <= 0) {
+    if (!total || total <= 0 || !category) {
       setMethod(null);
       return;
     }
-    // La méthode se déduit du montant côté serveur : dupliquer les seuils
-    // ici les ferait dériver.
     tdrReferentielApi
-      .resolveMethod("SERVICES_CONSULTANTS", total)
+      .resolveMethod(category, total)
       .then((r) => setMethod(r ? { code: r.method.code, review: r.reviewType } : null))
       .catch(() => setMethod(null));
-  }, [total]);
+  }, [total, category]);
 
   return (
     <div className={styles.stack}>
@@ -1530,7 +1540,8 @@ function BudgetStep({
           Méthode déduite : <strong>{method.code}</strong> · revue{" "}
           <strong>{method.review === "PRIOR" ? "préalable" : "postérieure"}</strong>
           <span className={styles.hint}>
-            Figée définitivement au moment de la transmission, depuis les seuils alors en vigueur.
+            Indicative. La méthode retenue est arrêtée à la transmission, depuis les seuils
+            alors en vigueur et le montant alors saisi.
           </span>
         </div>
       )}

@@ -125,7 +125,7 @@ async function seedOrganisations(): Promise<void> {
       },
     });
   }
-  log('Organisations', `${ORGANISATIONS.length} (glossaire MEP § 13.1 + UGP + bailleurs)`);
+  log('Organisations', `${ORGANISATIONS.length} (glossaire présentation UGPTN § 13.1 + UGP + bailleurs)`);
 }
 
 async function seedPermissions(): Promise<void> {
@@ -258,6 +258,7 @@ async function seedTdrTypes(content: ReturnType<typeof loadExtractedContent>): P
         stepCount: meta.stepCount,
         contextTemplate: type.contextTemplate,
         titleTemplate: meta.titleTemplate,
+        procurementCategory: meta.procurementCategory ?? null,
         requiresPges: meta.requiresPges ?? false,
         displayOrder: meta.displayOrder,
       },
@@ -272,6 +273,7 @@ async function seedTdrTypes(content: ReturnType<typeof loadExtractedContent>): P
         stepCount: meta.stepCount,
         contextTemplate: type.contextTemplate,
         titleTemplate: meta.titleTemplate,
+        procurementCategory: meta.procurementCategory ?? null,
         requiresPges: meta.requiresPges ?? false,
         displayOrder: meta.displayOrder,
       },
@@ -279,11 +281,11 @@ async function seedTdrTypes(content: ReturnType<typeof loadExtractedContent>): P
     count += 1;
   }
 
-  // Garde-fou MEP § 15.4 : le bailleur ne rédige jamais.
+  // Garde-fou présentation UGPTN § 15.4 : le bailleur ne rédige jamais.
   const offending = await prisma.tdrType.findFirst({ where: { allowedOrigins: { has: 'BAILLEUR' } } });
   if (offending) {
     throw new Error(
-      `Le type « ${offending.name} » autorise l'origine BAILLEUR : un bailleur ne rédige jamais de TDR (MEP § 15.4).`,
+      `Le type « ${offending.name} » autorise l'origine BAILLEUR : un bailleur ne rédige jamais de TDR (présentation UGPTN § 15.4).`,
     );
   }
 

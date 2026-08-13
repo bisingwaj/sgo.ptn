@@ -42,7 +42,7 @@ const TYPE_NATURE: Record<string, string> = {
   'TDR-TX': "des travaux à réaliser : ouvrages, aménagements, normes techniques et modalités de réception",
   'TDR-FN': "l'acquisition de biens et d'équipements : spécifications techniques, normes, garantie et service après-vente",
   'TDR-CS': "une mission de conseil confiée à une firme : expertise attendue, méthodologie, profils-clés et livrables d'étude",
-  'TDR-SN': "une prestation de services non intellectuels : niveaux de service attendus, indicateurs de qualité et modalités de facturation",
+  'TDR-SN': "une prestation de services non-consultants : niveaux de service attendus, indicateurs de qualité et modalités de facturation",
   'TDR-AT': "l'organisation d'un atelier ou d'un séminaire : objectifs de la rencontre, public visé, programme, logistique",
   'TDR-FO': "un cycle de formation : curriculum, public cible, modalités pédagogiques, évaluation des acquis",
   'TDR-MI': "le déplacement d'une délégation à un événement international ou en voyage d'études : ce que la délégation va observer, auprès de qui, et ce qu'elle en rapportera. Ce n'est PAS la réalisation du projet auquel la mission se rattache",
@@ -178,14 +178,10 @@ export class TdrAssistService {
       `CADRE DE RATTACHEMENT — éléments de situation. Ils situent le dossier, ils n'en sont pas l'objet.`,
     );
 
-    if (tdr.tdrType.defaultMethod) {
-      lines.push(`Méthode de passation usuelle pour ce type : ${tdr.tdrType.defaultMethod.label} (${tdr.tdrType.defaultMethod.code})`);
-    }
-
     if (tdr.ptbaActivity) {
       const a = tdr.ptbaActivity;
       lines.push(
-        `Activité du Plan de Travail et Budget Annuel à laquelle ce TDR se rattache : code ${a.code}, « ${a.title} », composante ${a.componentCode} — ${a.component.label}${a.subComponent ? `, sous-composante ${a.subComponent}` : ''}. Cette activité est le cadre budgétaire du dossier ; le TDR n'en couvre qu'une part.`,
+        `Activité du Plan de Travail et Budget Annuel à laquelle ce TDR se rattache : code ${a.code}, « ${a.title} », composante ${a.componentCode} — ${a.component.label}${a.subComponent ? `, sous-composante ${a.subComponent}` : ''}. Cette activité est le cadre budgétaire du dossier.`,
       );
       grounded.push(`Activité PTBA — ${a.code} · ${a.title}`);
       grounded.push(`Composante — ${a.componentCode}`);
@@ -267,6 +263,15 @@ export class TdrAssistService {
           `(IDA ${Number(c.idaUsdM)} / AFD ${Number(c.afdUsdM)}). ` +
           `Enveloppe de l'activité au PTBA : ${(Number(tdr.ptbaActivity.envelopeUsd) / 1e6).toFixed(2)} M USD.`,
       );
+      // Le MEP et le PAD divergent sur plusieurs dotations, et le corpus
+      // impose que tout affichage du montant signale la réconciliation. Le
+      // socle statique la portait ; ce chemin-ci la perdait, et poussait le
+      // chiffre nu sous une consigne autorisant à le citer tel quel.
+      if (c.reconciliation) {
+        lines.push(
+          `Réserve attachée à ce montant : ${c.reconciliation} Si vous citez cette dotation, mentionnez la réserve.`,
+        );
+      }
     }
 
     const clauses = await this.prisma.clauseTemplate.findMany({

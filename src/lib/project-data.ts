@@ -27,7 +27,7 @@ export const PROJECT = {
     afdDisbursementDeadline: "2029-03-06",
   },
 
-  /** Risques officiels (per MEP § 2.2.5) */
+  /** Risques officiels (per MEP § 2.2.4) */
   risks: {
     environmentalSocial: "Substantiel",
     sea_sh: "Substantiel",

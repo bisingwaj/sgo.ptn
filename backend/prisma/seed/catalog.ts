@@ -66,7 +66,7 @@ export const PERMISSIONS: PermissionDef[] = [
 
   // --- TDR ---
   { code: 'tdr:read', label: 'Consulter les TDR', category: 'passation' },
-  // Jamais accordée aux profils BAILLEUR et AUDITEUR (MEP § 15.4)
+  // Jamais accordée aux profils BAILLEUR et AUDITEUR (présentation UGPTN § 15.4)
   { code: 'tdr:author', label: 'Rédiger des TDR', category: 'passation', isWrite: true },
   { code: 'tdr:review', label: 'Réviser les TDR', category: 'passation', isWrite: true },
   { code: 'tdr:validate', label: 'Valider les TDR avant ANO', category: 'passation', isWrite: true },
@@ -74,7 +74,7 @@ export const PERMISSIONS: PermissionDef[] = [
   // --- ANO ---
   { code: 'ano:read', label: 'Consulter les ANO', category: 'passation' },
   { code: 'ano:submit', label: 'Soumettre une demande d’ANO', category: 'passation', isWrite: true },
-  // Prérogative exclusive des bailleurs — MEP § 9.2
+  // Prérogative exclusive des bailleurs — présentation UGPTN § 9.2
   {
     code: 'ano:decide',
     label: 'Émettre une décision d’ANO',
@@ -171,7 +171,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { code: 'kyc:write', label: 'Renseigner le dossier KYC', category: 'marche', isWrite: true },
 
   // --- Administration de la plateforme ---
-  // Portées par le sous-rôle UGP « IT » (MEP § 6.1, poste n°18).
+  // Portées par le sous-rôle UGP « IT » (présentation UGPTN § 6.1, poste n°18).
   { code: 'admin:users', label: 'Créer et gérer les comptes', category: 'admin', isWrite: true, isSensitive: true },
   { code: 'admin:roles', label: 'Gérer les habilitations', category: 'admin', isWrite: true, isSensitive: true },
   { code: 'admin:audit_read', label: 'Consulter le journal d’administration', category: 'admin' },
@@ -240,7 +240,7 @@ const OPERATIONNELS = [
 
 export const SUBROLES: SubroleDef[] = [
   // ==========================================================
-  // UGP — 19 sous-rôles opérationnels (MEP § 6.1)
+  // UGP — 19 sous-rôles opérationnels (présentation UGPTN § 6.1)
   // ==========================================================
   {
     code: 'UGP_COORDONNATEUR',
@@ -447,7 +447,7 @@ export const SUBROLES: SubroleDef[] = [
     label: 'Responsable Informatique (IT)',
     profile: 'UGP',
     isUnique: true,
-    // Administrateur de la plateforme — poste n°18 du MEP § 6.1.
+    // Administrateur de la plateforme — poste n°18 du présentation UGPTN § 6.1.
     // Aucun rôle technique inventé hors du manuel.
     isSensitive: true,
     permissions: [...BASE, 'admin:users', 'admin:roles', 'admin:audit_read', 'audit:trail_read'],
@@ -482,7 +482,7 @@ export const SUBROLES: SubroleDef[] = [
   // ==========================================================
   // BAILLEUR — BM / AFD
   // Prérogative d'ANO, mais jamais `tdr:author` : « Bailleurs :
-  // consultation et émission d'ANO uniquement » (MEP § 15.4).
+  // consultation et émission d'ANO uniquement » (présentation UGPTN § 15.4).
   // ==========================================================
   {
     code: 'BAILLEUR_TTL_BM',
@@ -536,7 +536,7 @@ export const SUBROLES: SubroleDef[] = [
   { code: 'AUD_IGF', label: 'IGF (Inspection Générale des Finances)', profile: 'AUDITEUR', requiresMission: true, permissions: [...BASE, 'audit:read_all', 'audit:trail_read', 'fiduciaire:read'] },
 
   // ==========================================================
-  // GOUVERNANCE — COPIL / CTP (postes 19 et 20 du MEP § 6.1)
+  // GOUVERNANCE — COPIL / CTP (postes 19 et 20 du présentation UGPTN § 6.1)
   // Cloisonnement mutuel des délibérations.
   // ==========================================================
   { code: 'GOUV_MEMBRE_COPIL', label: 'Membre COPIL', profile: 'GOUVERNANCE', permissions: [...BASE, 'gouvernance:copil', 'indicateur:read', 'fiduciaire:read', 'ptba:read'] },
@@ -565,7 +565,7 @@ export function assertCatalogIntegrity(): void {
   const violations: string[] = [];
   for (const subrole of SUBROLES) {
     if (subrole.profile === 'BAILLEUR' && subrole.permissions.includes('tdr:author')) {
-      violations.push(`${subrole.code} : un bailleur ne rédige jamais de TDR (MEP § 15.4)`);
+      violations.push(`${subrole.code} : un bailleur ne rédige jamais de TDR (présentation UGPTN § 15.4)`);
     }
     if (subrole.profile === 'AUDITEUR' && subrole.permissions.includes('tdr:author')) {
       violations.push(`${subrole.code} : un auditeur ne rédige jamais de TDR`);
@@ -575,7 +575,7 @@ export function assertCatalogIntegrity(): void {
       violations.push(`${subrole.code} : le canal EAS/HS est réservé au Spécialiste VBG/EAS`);
     }
     if (subrole.profile !== 'BAILLEUR' && subrole.permissions.includes('ano:decide')) {
-      violations.push(`${subrole.code} : seuls les bailleurs émettent un ANO (MEP § 9.2)`);
+      violations.push(`${subrole.code} : seuls les bailleurs émettent un ANO (présentation UGPTN § 9.2)`);
     }
   }
   if (violations.length > 0) {

@@ -23,7 +23,7 @@ export class ReferentielController {
   }
 
   @Get('organisations')
-  @ApiOperation({ summary: 'Organisations du glossaire MEP § 13.1' })
+  @ApiOperation({ summary: 'Organisations du glossaire présentation UGPTN § 13.1' })
   organisations() {
     return this.referentiel.organisations();
   }

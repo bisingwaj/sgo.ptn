@@ -202,7 +202,7 @@ export function SideNav() {
   const { can } = useAuth();
 
   // L'entrée Administration n'apparaît que pour les habilitations qui la
-  // portent — le sous-rôle UGP « IT » (MEP § 6.1, poste n°18). En mode
+  // portent — le sous-rôle UGP « IT » (présentation UGPTN § 6.1, poste n°18). En mode
   // démonstration, aucune session n'est ouverte : elle reste masquée.
   const groups = [...navFor(profile)];
 

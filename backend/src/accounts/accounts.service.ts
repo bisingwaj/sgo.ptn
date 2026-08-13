@@ -110,7 +110,7 @@ export class AccountsService {
       blockers.push({ code: 'ORG_INACTIVE', message: `L’organisation ${organisation.name} est inactive.` });
     }
 
-    // --- Unicité du poste (MEP § 6.1) ---
+    // --- Unicité du poste (présentation UGPTN § 6.1) ---
     // Il y a un Coordonnateur, un RAF, un Auditeur Interne, un RPM.
     if (subrole.isUnique) {
       const holder = await this.prisma.assignment.findFirst({

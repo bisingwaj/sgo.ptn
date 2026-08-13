@@ -135,7 +135,7 @@ export interface DecisionOutcome {
 /**
  * Applique une décision de bailleur sur une demande d'ANO.
  *
- * Les règles ci-dessous découlent du MEP § 15.5 et du Règlement de passation
+ * Les règles ci-dessous découlent du présentation UGPTN § 15.5 et du Règlement de passation
  * des marchés de la Banque mondiale (février 2025). Elles sont volontairement
  * appliquées ici, côté serveur, et pas seulement en désactivant un bouton :
  * une interdiction qui n'existe que dans l'interface n'est pas une règle, c'est
@@ -158,7 +158,7 @@ export function decideAno(
       code: "ANO_DECISION_RESERVEE_BAILLEUR",
       message:
         "Seul un bailleur peut se prononcer sur une demande de non-objection.",
-      reference: "MEP § 15.5",
+      reference: "présentation UGPTN § 15.5",
     });
   }
 

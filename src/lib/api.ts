@@ -502,6 +502,8 @@ export interface TdrTypeApi {
   defaultMethodCode: string | null;
   defaultMethod: { code: string; label: string } | null;
   allowedOrigins: string[];
+  /** Catégorie de passation, ou null si le type n'en relève pas */
+  procurementCategory: string | null;
   stepCount: number;
   requiresPges: boolean;
   isActive: boolean;

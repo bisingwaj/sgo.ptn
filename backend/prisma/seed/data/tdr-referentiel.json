@@ -7,7 +7,7 @@
       "name": "Services consultants",
       "family": 1,
       "defaultMethod": "SFQC",
-      "contextTemplate": "Dans le cadre du PTN-RDC (PTBA {{ptbaCode}} — « {{ptbaTitle}} »), il est requis de mobiliser une firme de consultants pour appuyer la mise en œuvre de l'activité. La mission s'inscrit dans la stratégie de transformation numérique de la République Démocratique du Congo et contribue aux objectifs sectoriels du Ministère bénéficiaire. Le présent TDR définit l'objet, la méthodologie attendue, les profils-clés requis, les livrables et les critères d'évaluation conformément aux Règles de Passation de la Banque mondiale (édition 2024) et à la Loi 18/019 RDC.",
+      "contextTemplate": "Dans le cadre du PTN-RDC (PTBA {{ptbaCode}} — « {{ptbaTitle}} »), il est requis de mobiliser une firme de consultants pour appuyer la mise en œuvre de l'activité. La mission s'inscrit dans la stratégie de transformation numérique de la République Démocratique du Congo et contribue aux objectifs sectoriels du Ministère bénéficiaire. Le présent TDR définit l'objet, la méthodologie attendue, les profils-clés requis, les livrables et les critères d'évaluation conformément aux Règles de Passation de la Banque mondiale (édition de février 2025) et à la Loi 18/019 RDC.",
       "clauses": [
         {
           "label": "Méthode SFQC 80/20",
@@ -103,7 +103,7 @@
       "name": "Travaux",
       "family": 1,
       "defaultMethod": "AOI",
-      "contextTemplate": "Dans le cadre du PTN-RDC (PTBA {{ptbaCode}} — « {{ptbaTitle}} »), il est nécessaire de réaliser des travaux d'aménagement / construction pour soutenir la mise en œuvre de la composante. Le présent TDR détaille la nature des travaux, les normes techniques applicables, les exigences environnementales et sociales, ainsi que les modalités de suivi et de réception. La passation suivra une procédure d'Appel d'Offres International conformément aux Règles de Passation BM 2024 et à la Loi 18/019 RDC.",
+      "contextTemplate": "Dans le cadre du PTN-RDC (PTBA {{ptbaCode}} — « {{ptbaTitle}} »), il est nécessaire de réaliser des travaux d'aménagement / construction pour soutenir la mise en œuvre de la composante. Le présent TDR détaille la nature des travaux, les normes techniques applicables, les exigences environnementales et sociales, ainsi que les modalités de suivi et de réception. La méthode de passation sera déterminée par le montant estimé, selon les seuils en vigueur conformément aux Règlements de Passation des Marchés de la Banque mondiale, édition de février 2025, et à la Loi 18/019 RDC.",
       "clauses": [
         {
           "label": "PGES NES 1-6",
@@ -199,7 +199,7 @@
       "name": "Fournitures",
       "family": 1,
       "defaultMethod": "AOI",
-      "contextTemplate": "Dans le cadre du PTN-RDC (PTBA {{ptbaCode}} — « {{ptbaTitle}} »), il est nécessaire d'acquérir des équipements et fournitures pour la mise en œuvre de la composante. Le présent TDR précise les spécifications techniques attendues, les normes applicables, les exigences de SAV et les modalités de réception. La passation suivra les Règles de Passation BM 2024.",
+      "contextTemplate": "Dans le cadre du PTN-RDC (PTBA {{ptbaCode}} — « {{ptbaTitle}} »), il est nécessaire d'acquérir des équipements et fournitures pour la mise en œuvre de la composante. Le présent TDR précise les spécifications techniques attendues, les normes applicables, les exigences de SAV et les modalités de réception. La passation suivra les Règlements de Passation des Marchés de la Banque mondiale, édition de février 2025,.",
       "clauses": [
         {
           "label": "BoQ détaillé chiffré",

@@ -5,7 +5,7 @@
  *  - Règlements de Passation des Marchés BM pour Emprunteurs IPF,
  *    édition de février 2025
  *  - PPSD du PTN-RDC
- *  - MEP § 9 (passation) et § 15.4 (sélecteur de TDR)
+ *  - MEP (passation) et § 15.4 (sélecteur de TDR)
  *
  * Le contenu des bibliothèques provient de `data/tdr-referentiel.json`,
  * extrait une fois pour toutes du registre qui vivait côté frontend. Ce
@@ -29,10 +29,17 @@ export interface MethodDef {
   category: ProcurementCategoryName;
   description: string;
   /** Méthode d'exception : ne se déduit jamais d'un montant */
+  /**
+   * Methode qui ne se deduit pas d'un montant. Le marche direct et la source
+   * unique se justifient ; l'accord-cadre se choisit sur un cas d'emploi —
+   * besoins repetitifs, prequalification puis tirage. Aucune des trois ne
+   * peut sortir d'une resolution par seuil, mais seules les deux premieres
+   * sont des exceptions au sens du corpus.
+   */
   isException?: boolean;
 }
 
-/** Méthodes de passation — MEP § 9.1. */
+/** Méthodes de passation — présentation UGPTN § 9.1. */
 export const PROCUREMENT_METHODS: MethodDef[] = [
   // Travaux, fournitures, services non-consultants
   { code: 'AOI', label: 'Appel d’Offres International', category: 'TRAVAUX', description: 'Concurrence internationale ouverte. Revue préalable systématique.' },
@@ -93,10 +100,16 @@ export interface TdrTypeMeta {
   familyLabel: string;
   /**
    * Origines autorisées à rédiger. BAILLEUR n'apparaît nulle part :
-   * « Bailleurs : consultation et émission d'ANO uniquement » (MEP § 15.4).
+   * « Bailleurs : consultation et émission d'ANO uniquement » (présentation UGPTN § 15.4).
    */
   allowedOrigins: OriginName[];
   stepCount: number;
+  /**
+   * Categorie de passation, et donc table de seuils applicable. Absente pour
+   * les activites operationnelles et les subventions : elles ne relevent
+   * d'aucune methode classique.
+   */
+  procurementCategory?: 'TRAVAUX' | 'FOURNITURES' | 'SERVICES_CONSULTANTS' | 'SERVICES_NON_CONSULTANTS';
   requiresPges?: boolean;
   displayOrder: number;
   /**
@@ -116,19 +129,19 @@ const FAMILY_LABELS: Record<number, string> = {
 
 /** Métadonnées des 11 types officiels. `generic` est ignoré : ce n'est pas un type du MEP. */
 export const TDR_TYPE_META: Record<string, TdrTypeMeta> = {
-  travaux: { slug: 'travaux', titleTemplate: 'Travaux — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP'], stepCount: 5, requiresPges: true, displayOrder: 1 },
-  fournitures: { slug: 'fournitures', titleTemplate: 'Fourniture et installation — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 2 },
-  'services-consultants': { slug: 'services-consultants', titleTemplate: 'Services de consultants — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 3 },
-  'services-non-consultants': { slug: 'services-non-consultants', titleTemplate: 'Services non intellectuels — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 4 },
+  travaux: { slug: 'travaux', titleTemplate: 'Travaux — {{ptbaTitle}}', procurementCategory: 'TRAVAUX', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP'], stepCount: 5, requiresPges: true, displayOrder: 1 },
+  fournitures: { slug: 'fournitures', titleTemplate: 'Fournitures — {{ptbaTitle}}', procurementCategory: 'FOURNITURES', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 2 },
+  'services-consultants': { slug: 'services-consultants', titleTemplate: 'Services de consultants — {{ptbaTitle}}', procurementCategory: 'SERVICES_CONSULTANTS', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 3 },
+  'services-non-consultants': { slug: 'services-non-consultants', titleTemplate: 'Services non-consultants — {{ptbaTitle}}', procurementCategory: 'SERVICES_NON_CONSULTANTS', familyLabel: FAMILY_LABELS[1], allowedOrigins: ['UGP', 'PARTENAIRE'], stepCount: 5, displayOrder: 4 },
 
   atelier: { slug: 'atelier', titleTemplate: 'Atelier — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 5 },
   formation: { slug: 'formation', titleTemplate: 'Formation — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 6 },
   mission: { slug: 'mission', titleTemplate: 'Mission internationale — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 4, displayOrder: 7 },
-  etude: { slug: 'etude', titleTemplate: 'Étude — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 8 },
+  etude: { slug: 'etude', titleTemplate: 'Étude — {{ptbaTitle}}', procurementCategory: 'SERVICES_CONSULTANTS', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 5, displayOrder: 8 },
   communication: { slug: 'communication', titleTemplate: 'Communication et sensibilisation — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[2], allowedOrigins: ['UGP', 'PARTENAIRE', 'SBP'], stepCount: 4, displayOrder: 9 },
 
   sbp: { slug: 'sbp', titleTemplate: 'Sous-projet SBP — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[3], allowedOrigins: ['UGP', 'SBP', 'PARTENAIRE'], stepCount: 6, displayOrder: 10 },
-  audit: { slug: 'audit', titleTemplate: 'Audit — {{ptbaTitle}}', familyLabel: FAMILY_LABELS[3], allowedOrigins: ['UGP'], stepCount: 5, displayOrder: 11 },
+  audit: { slug: 'audit', titleTemplate: 'Audit — {{ptbaTitle}}', procurementCategory: 'SERVICES_CONSULTANTS', familyLabel: FAMILY_LABELS[3], allowedOrigins: ['UGP'], stepCount: 5, displayOrder: 11 },
 };
 
 // ============================================================

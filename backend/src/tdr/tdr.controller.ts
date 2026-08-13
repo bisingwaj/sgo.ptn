@@ -47,7 +47,7 @@ export class CreateDraftDto {
  * Termes de référence.
  *
  * L'origine de rédaction découle du profil de la session : un bailleur et
- * un auditeur ne rédigent jamais (MEP § 15.4). C'est `tdr:author` qui
+ * un auditeur ne rédigent jamais (présentation UGPTN § 15.4). C'est `tdr:author` qui
  * ouvre la rédaction, et cette permission ne leur est pas accordée.
  */
 @ApiTags('TDR')

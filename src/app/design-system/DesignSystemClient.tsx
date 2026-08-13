@@ -347,7 +347,7 @@ export function DesignSystemClient() {
                 lowContrast
                 hideCloseButton
                 title="Habilitation insuffisante"
-                subtitle="Les bailleurs ne rédigent pas de TDR (MEP § 15.5)."
+                subtitle="Les bailleurs ne rédigent pas de TDR (présentation UGPTN § 15.5)."
                 className="max-w-none"
               />
 

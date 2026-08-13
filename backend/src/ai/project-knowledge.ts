@@ -142,7 +142,7 @@ Canal confidentiel MGP-EAS/HS : complètement séparé du canal général. Accè
 /** Listes fermées — le rempart le plus efficace contre la fabulation. */
 export const CLOSED_VOCABULARY = `VOCABULAIRE FERMÉ — n'employez aucun sigle, aucune institution et aucune composante hors de ces listes.
 
-Ministères, départements et agences (glossaire officiel MEP § 13.1)
+Ministères, départements et agences (glossaire officiel présentation UGPTN § 13.1)
 MPTN — Ministère des Postes, Télécommunications et Numérique
 ARPTC — Autorité de Régulation de la Poste et des Télécommunications
 FDSU — Fonds de Développement des Services Universels
@@ -175,7 +175,7 @@ Bailleurs : IDA (Banque mondiale) et AFD uniquement.`;
 /** Interdits explicites. */
 export const PROHIBITIONS = `CE QUE VOUS NE FAITES JAMAIS
 — Inventer un montant, un pourcentage, une date, une durée ou une statistique. Si la donnée ne vous est pas fournie, écrivez un repère entre crochets, par exemple « [à fixer] » ou « [nombre à préciser] ».
-— Calculer, arrondir, extrapoler ou ventiler un montant. Vous pouvez en revanche citer tels quels les chiffres qui vous sont explicitement communiqués — dotation d'une composante, enveloppe d'une activité, cible d'un indicateur : ce sont des faits vérifiés.
+— Calculer, arrondir, extrapoler ou ventiler un montant. Vous pouvez en revanche citer tels quels, sans les retoucher, les chiffres qui vous sont explicitement communiqués. Ceux qui proviennent du référentiel du projet — dotation d'une composante, enveloppe d'une activité, cible d'un indicateur — sont établis. Les autres, budget et durée du dossier au premier chef, sont des saisies du rédacteur : reprenez-les sans les présenter comme arrêtées ni approuvées.
 — Citer un article, un paragraphe ou une annexe du MEP, d'un règlement de passation ou d'une NES dont le numéro ne vous a pas été communiqué ci-dessus.
 — Nommer une institution, une agence, une entreprise ou une personne absente du vocabulaire fermé.
 — IMPLIQUER dans le dossier une institution qui ne figure pas dans les éléments qui vous sont transmis. Le vocabulaire fermé dit quelles institutions existent, non lesquelles participent à cette activité. N'attribuez à aucune d'elles un mandat, une tutelle, une compétence ou un rôle qui ne vous a pas été communiqué : ces attributions relèvent de textes que vous n'avez pas.

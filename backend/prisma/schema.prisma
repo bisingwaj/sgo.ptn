@@ -29,7 +29,7 @@ datasource db {
 // ÉNUMÉRATIONS
 // ============================================================
 
-/// Les 8 profils utilisateurs — MEP § 15.2.
+/// Les 8 profils utilisateurs — présentation UGPTN § 15.2.
 /// Aligné sur src/lib/profiles.ts côté frontend.
 enum ProfileKey {
   UGP
@@ -156,7 +156,7 @@ model Province {
 
 model Organisation {
   id       String           @id @default(uuid()) @db.Uuid
-  /// Sigle officiel — MPTN, ARPTC, ONIP… (glossaire MEP § 13.1)
+  /// Sigle officiel — MPTN, ARPTC, ONIP… (glossaire présentation UGPTN § 13.1)
   code     String           @unique
   name     String
   fullName String
@@ -195,7 +195,7 @@ model Organisation {
 // SOUS-RÔLES & PERMISSIONS
 // ============================================================
 
-/// Sous-rôles officiels — 21 pour l'UGP (MEP § 6.1), plus ceux des
+/// Sous-rôles officiels — 21 pour l'UGP (présentation UGPTN § 6.1), plus ceux des
 /// 7 autres profils. Les contraintes institutionnelles (unicité,
 /// séparation des tâches, sensibilité) sont portées ici pour que les
 /// garde-fous du formulaire de création soient dirigés par la donnée.
@@ -569,7 +569,7 @@ enum ReviewType {
   POST
 }
 
-/// Origines de rédaction d'un TDR — MEP § 15.4.
+/// Origines de rédaction d'un TDR — présentation UGPTN § 15.4.
 enum TdrOrigin {
   UGP
   PARTENAIRE
@@ -624,7 +624,7 @@ model ProcurementThreshold {
   @@map("procurement_thresholds")
 }
 
-/// Les 11 types de TDR — MEP § 15.4.
+/// Les 11 types de TDR — présentation UGPTN § 15.4.
 model TdrType {
   code   String @id
   slug   String @unique
@@ -635,6 +635,16 @@ model TdrType {
 
   defaultMethodCode String?
   defaultMethod     ProcurementMethod? @relation(fields: [defaultMethodCode], references: [code])
+
+  /// Catégorie de passation dont relève ce type, et donc table de seuils
+  /// applicable. Null pour les activités opérationnelles et les subventions,
+  /// qui ne relèvent d'aucune méthode de passation classique.
+  ///
+  /// Portée par le référentiel plutôt que déduite en code : la déduction
+  /// existait en double — côté serveur depuis le type, côté écran figée sur
+  /// SERVICES_CONSULTANTS — et les deux annonçaient des méthodes différentes
+  /// pour un même dossier.
+  procurementCategory ProcurementCategory?
 
   /// Origines autorisées à rédiger ce type
   allowedOrigins TdrOrigin[]
@@ -832,7 +842,7 @@ model Tdr {
   tdrType     TdrType @relation(fields: [tdrTypeCode], references: [code])
 
   /// Origine de rédaction. Déduite de la session, jamais déclarée par
-  /// l'auteur : un bailleur ne rédige jamais de TDR (MEP § 15.4).
+  /// l'auteur : un bailleur ne rédige jamais de TDR (présentation UGPTN § 15.4).
   origin TdrOrigin
 
   authorId       String       @db.Uuid
