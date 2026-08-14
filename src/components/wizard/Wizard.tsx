@@ -108,10 +108,6 @@ export function Wizard<T>({
     onDraftChange?.(next, step);
   };
 
-  /**
-   * Changer d'étape est aussi un évènement pour qui écoute : un panneau
-   * latéral doit savoir où en est l'auteur, même s'il n'a rien saisi.
-   */
   // Appliqué hors du rendu : une écriture venue du panneau ne doit pas
   // écraser une saisie en cours dans un autre champ, d'où la forme
   // fonctionnelle.
@@ -120,8 +116,16 @@ export function Wizard<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patch?.nonce]);
 
+  /**
+   * Seul chemin pour changer d'étape.
+   *
+   * Changer d'étape est aussi un évènement pour qui écoute : un panneau
+   * latéral doit savoir où en est l'auteur, même s'il n'a rien saisi. Les
+   * trois sites de navigation — suivant, précédent, et le rail des étapes —
+   * passent par ici.
+   */
   const allerA = (n: number) => {
-    allerA(n);
+    setStep(n);
     onDraftChange?.(state, n);
   };
 
@@ -175,7 +179,7 @@ export function Wizard<T>({
 
   const jumpTo = (n: number) => {
     if (n < step || done.has(n)) {
-      setStep(n);
+      allerA(n);
       setError(null);
     }
   };
