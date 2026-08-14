@@ -696,7 +696,8 @@ export interface TdrApi {
   constraints: string | null;
   startDate: string | null;
   durationMonths: number | null;
-  provinceCode: string | null;
+  /** Couverture géographique — plusieurs provinces possibles */
+  provinces: Array<{ provinceCode: string; province: { code: string; label: string; isPriorityCpf: boolean } }>;
   expertise: string | null;
   keyProfiles: string[];
   budgetTotalUsd: string | null;

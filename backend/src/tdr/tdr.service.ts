@@ -143,7 +143,7 @@ export class TdrService {
       'title', 'context', 'justification', 'beneficiaries',
       'expectedResults', 'deliverableFormat', 'reportingRhythm',
       'approach', 'methodology', 'constraints',
-      'expertise', 'provinceCode', 'esCategory',
+      'expertise', 'esCategory',
       'ptbaActivityId', 'beneficiaryOrganisationId', 'durationMonths', 'effortDays',
       'budgetTotalUsd', 'budgetIdaUsd', 'budgetAfdUsd', 'budgetGovUsd',
     ] as const;
@@ -181,6 +181,29 @@ export class TdrService {
     // complet de chaque liste, pas des opérations différentielles.
     const collections = ['objectives', 'deliverables', 'clauses', 'indicators', 'risks'] as const;
 
+    // La couverture geographique est une liste de codes, non d'objets : elle
+    // ne suit pas la meme forme que les collections ci-dessus.
+    const couverture =
+      'provinceCodes' in data && Array.isArray(data.provinceCodes)
+        ? [...new Set((data.provinceCodes as unknown[]).map(String).filter(Boolean))]
+        : null;
+
+    // Un code inconnu remonterait en violation de clé étrangère, donc en
+    // erreur serveur. Le contrôle vaut mieux ici : le référentiel des
+    // 26 provinces est fermé, et une faute de frappe se dit.
+    if (couverture && couverture.length > 0) {
+      const connues = await this.prisma.province.findMany({
+        where: { code: { in: couverture } },
+        select: { code: true },
+      });
+      const inconnues = couverture.filter((c) => !connues.some((p) => p.code === c));
+      if (inconnues.length > 0) {
+        throw new BadRequestException(
+          `Province inconnue au référentiel : ${inconnues.join(', ')}.`,
+        );
+      }
+    }
+
     // Un champ absent de la liste blanche est écarté sans bruit : la requête
     // répond 200, la case reste cochée à l'écran, et rien n'est enregistré.
     // C'est ainsi que les deux engagements de conformité sont restés
@@ -191,6 +214,7 @@ export class TdrService {
     const known = new Set<string>([
       ...scalar,
       ...collections,
+      'provinceCodes',
       'startDate',
       'consentMep',
       'consentRgpd',
@@ -207,6 +231,15 @@ export class TdrService {
     return this.prisma.$transaction(async (tx) => {
       if (Object.keys(patch).length > 0) {
         await tx.tdr.update({ where: { id }, data: patch });
+      }
+
+      if (couverture) {
+        await tx.tdrProvince.deleteMany({ where: { tdrId: id } });
+        if (couverture.length > 0) {
+          await tx.tdrProvince.createMany({
+            data: couverture.map((provinceCode) => ({ tdrId: id, provinceCode })),
+          });
+        }
       }
 
       for (const name of collections) {
@@ -266,6 +299,7 @@ export class TdrService {
     clauses: { orderBy: { position: 'asc' } },
     indicators: { orderBy: { position: 'asc' } },
     risks: { orderBy: { position: 'asc' } },
+    provinces: { include: { province: true } },
   } as const;
 
   /**

@@ -676,3 +676,92 @@
   flex-direction: column;
   gap: 3px;
 }
+
+/* ===== Couverture géographique =====
+   Vingt-six provinces : une grille dense plutôt qu'une colonne, et les
+   prioritaires CPF remontées en tête. */
+
+.couvertureBarre {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-03);
+  margin-bottom: var(--ptn-space-03);
+}
+
+.couvertureFiltre {
+  flex: 1;
+  min-width: 0;
+  max-width: 280px;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 10px;
+  background: var(--cds-field, #f4f4f4);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong, #8d8d8d);
+  color: var(--cds-text-primary, #161616);
+
+  &:focus {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+.couvertureGrille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 2px;
+}
+
+.province {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  background: var(--cds-layer, #f4f4f4);
+  border: 1px solid transparent;
+  color: var(--cds-text-primary, #161616);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover, #e8e8e8);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+.provinceOn {
+  border-color: var(--ptn-accent);
+  background: var(--ptn-accent-surface);
+}
+
+.provinceCase {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--cds-border-strong, #8d8d8d);
+  background: var(--cds-background, #fff);
+  color: var(--ptn-accent);
+}
+
+.provinceLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Province prioritaire du Cadre de Partenariat-Pays : le repère est discret
+   mais il oriente le choix. */
+.provinceCpf {
+  font-size: 9px;
+  letter-spacing: 0.24px;
+  padding: 1px 4px;
+  border: 1px solid var(--ptn-accent);
+  color: var(--ptn-accent);
+}

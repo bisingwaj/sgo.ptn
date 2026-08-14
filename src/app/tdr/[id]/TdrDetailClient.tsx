@@ -238,7 +238,14 @@ export function TdrDetailClient({ id }: { id: string }) {
             cle="Volume d’effort"
             val={tdr.effortDays ? `${tdr.effortDays} jours-homme` : "—"}
           />
-          <Ligne cle="Couverture" val={tdr.provinceCode ?? "Nationale"} />
+          <Ligne
+            cle="Couverture"
+            val={
+              tdr.provinces.length
+                ? tdr.provinces.map((c) => c.province.label).join(", ")
+                : "Nationale"
+            }
+          />
           <Prose cle="Expertise requise" val={tdr.expertise} />
           <Liste cle="Profils-clés" items={tdr.keyProfiles} />
         </Bloc>

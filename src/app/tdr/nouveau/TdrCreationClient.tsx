@@ -96,7 +96,8 @@ interface State {
 
   startDate: string;
   durationMonths: string;
-  provinceCode: string;
+  /** Couverture geographique : une ou plusieurs provinces, ou aucune */
+  provinceCodes: string[];
   expertise: string;
   effortDays: string;
   keyProfiles: string[];
@@ -126,7 +127,7 @@ const INITIAL: State = {
   context: "", justification: "", beneficiaries: "",
   objectives: [], deliverables: [], expectedResults: "", deliverableFormat: "", reportingRhythm: "",
   approach: "", methodology: "", constraints: "",
-  startDate: "", durationMonths: "", provinceCode: "", expertise: "", effortDays: "", keyProfiles: [],
+  startDate: "", durationMonths: "", provinceCodes: [], expertise: "", effortDays: "", keyProfiles: [],
   budgetTotalUsd: "", budgetIdaUsd: "", budgetAfdUsd: "", budgetGovUsd: "",
   clauses: [], indicators: [], risks: [],
   esCategory: "", esRisks: [], aiAssistedFields: [],
@@ -316,7 +317,7 @@ function hydrate(
 
     startDate: tdr.startDate ? tdr.startDate.slice(0, 10) : "",
     durationMonths: tdr.durationMonths ? String(tdr.durationMonths) : "",
-    provinceCode: tdr.provinceCode ?? "",
+    provinceCodes: tdr.provinces.map((c) => c.provinceCode),
     expertise: tdr.expertise ?? "",
     effortDays: tdr.effortDays ? String(tdr.effortDays) : "",
     keyProfiles: tdr.keyProfiles ?? [],
@@ -847,7 +848,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
             startDate: s.startDate || null,
             durationMonths: s.durationMonths ? Number(s.durationMonths) : null,
             effortDays: s.effortDays ? Number(s.effortDays) : null,
-            provinceCode: s.provinceCode || null,
+            provinceCodes: s.provinceCodes,
             expertise: s.expertise,
             keyProfiles: s.keyProfiles,
           }),
@@ -867,17 +868,15 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
                 <Input type="number" min={1} value={s.effortDays} onChange={(e) => set({ ...s, effortDays: e.target.value })} />
               </Field>
             </div>
-            <Field label="Province" helper="Laisser vide pour une couverture nationale.">
-              <Select
-                value={s.provinceCode}
-                onChange={(e) => set({ ...s, provinceCode: e.target.value })}
-                placeholder="Couverture nationale"
-                options={provinces.map((p) => ({
-                  value: p.code,
-                  label: p.isPriorityCpf ? `${p.label} · prioritaire CPF` : p.label,
-                }))}
-              />
-            </Field>
+            {/* Un marché porte souvent sur plusieurs provinces — un backbone
+                en traverse trois, une formation en dessert dix. Le choix
+                unique obligeait à n'en retenir qu'une, ou à déclarer
+                « national » un marché qui ne l'était pas. */}
+            <CouvertureStep
+              provinces={provinces}
+              retenues={s.provinceCodes}
+              onChange={(codes) => set({ ...s, provinceCodes: codes })}
+            />
             <Field label="Expertise requise" helper="Qualifications et expérience attendues de l’institution ou de l’équipe.">
               <Textarea rows={5} value={s.expertise} onChange={(e) => set({ ...s, expertise: e.target.value })} />
             </Field>
@@ -1875,6 +1874,95 @@ function FrameworkStep({
   );
 }
 
+/**
+ * Couverture géographique du marché.
+ *
+ * Vingt-six provinces ne tiennent pas dans une liste à cocher lisible : on
+ * les range par ordre alphabétique, on remonte les dix provinces
+ * prioritaires du Cadre de Partenariat-Pays, et un filtre de saisie
+ * évite de parcourir la liste entière pour en trouver une.
+ *
+ * Aucune sélection vaut couverture nationale, et l'écran le dit — c'est un
+ * cas fréquent, pas un oubli.
+ */
+function CouvertureStep({
+  provinces, retenues, onChange,
+}: {
+  provinces: ProvinceApi[];
+  retenues: string[];
+  onChange: (codes: string[]) => void;
+}) {
+  const [filtre, setFiltre] = useState("");
+
+  const visibles = useMemo(() => {
+    const q = filtre.trim().toLowerCase();
+    return provinces
+      .filter((p) => !q || p.label.toLowerCase().includes(q))
+      .sort((a, b) => {
+        if (a.isPriorityCpf !== b.isPriorityCpf) return a.isPriorityCpf ? -1 : 1;
+        return a.label.localeCompare(b.label, "fr");
+      });
+  }, [provinces, filtre]);
+
+  const basculer = (code: string) =>
+    onChange(retenues.includes(code) ? retenues.filter((c) => c !== code) : [...retenues, code]);
+
+  const prioritaires = retenues.filter(
+    (c) => provinces.find((p) => p.code === c)?.isPriorityCpf,
+  ).length;
+
+  return (
+    <div>
+      <h3 className={styles.sectionTitle}>Couverture géographique</h3>
+      <p className={styles.hint}>
+        {retenues.length === 0
+          ? "Aucune province retenue : le marché est réputé de couverture nationale."
+          : `${retenues.length} province${retenues.length > 1 ? "s" : ""} retenue${retenues.length > 1 ? "s" : ""}` +
+            (prioritaires
+              ? `, dont ${prioritaires} prioritaire${prioritaires > 1 ? "s" : ""} au Cadre de Partenariat-Pays.`
+              : ".")}
+      </p>
+
+      <div className={styles.couvertureBarre}>
+        <input
+          className={styles.couvertureFiltre}
+          value={filtre}
+          onChange={(e) => setFiltre(e.target.value)}
+          placeholder="Filtrer les provinces"
+          aria-label="Filtrer les provinces"
+        />
+        {retenues.length > 0 && (
+          <button type="button" className={styles.btnGhost} onClick={() => onChange([])}>
+            Tout retirer
+          </button>
+        )}
+      </div>
+
+      <div className={styles.couvertureGrille}>
+        {visibles.map((p) => {
+          const on = retenues.includes(p.code);
+          return (
+            <button
+              key={p.code}
+              type="button"
+              className={`${styles.province} ${on ? styles.provinceOn : ""}`}
+              onClick={() => basculer(p.code)}
+              aria-pressed={on}
+            >
+              <span className={styles.provinceCase} aria-hidden>
+                {on && <CheckmarkFilled size={12} />}
+              </span>
+              <span className={styles.provinceLabel}>{p.label}</span>
+              {p.isPriorityCpf && <span className={styles.provinceCpf}>CPF</span>}
+            </button>
+          );
+        })}
+      </div>
+      {visibles.length === 0 && <p className={styles.hint}>Aucune province ne correspond.</p>}
+    </div>
+  );
+}
+
 function ListEditor<T>({
   title, items, onAdd, onRemove, render, prefix,
 }: {
@@ -2068,7 +2156,9 @@ function Recap({
 }) {
   const type = types.find((t) => t.code === state.tdrTypeCode);
   const activity = activities.find((a) => a.id === state.ptbaActivityId);
-  const province = provinces.find((p) => p.code === state.provinceCode);
+  const couverture = state.provinceCodes
+    .map((c) => provinces.find((p) => p.code === c)?.label ?? c)
+    .join(', ');
   const usd = (v: string) => (v ? `${(Number(v) / 1e6).toFixed(2)} M USD` : "—");
   const vide = (v: string) => (v.trim() ? v : null);
 
@@ -2126,7 +2216,7 @@ function Recap({
           cle="Volume d’effort"
           val={state.effortDays ? `${state.effortDays} jours-homme` : "—"}
         />
-        <RecapLigne cle="Couverture" val={province ? province.label : "Nationale"} />
+        <RecapLigne cle="Couverture" val={couverture || "Nationale"} />
         <RecapListe
           cle="Profils-clés"
           items={state.keyProfiles.map(

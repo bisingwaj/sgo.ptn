@@ -213,7 +213,7 @@ export class TdrAgentService {
         },
         organisation: { select: { name: true, fullName: true } },
         beneficiaryOrganisation: { select: { name: true, fullName: true } },
-        province: true,
+        provinces: { include: { province: true } },
         objectives: { orderBy: { position: 'asc' } },
         deliverables: { orderBy: { position: 'asc' } },
       },

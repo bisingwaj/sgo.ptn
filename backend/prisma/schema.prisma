@@ -145,7 +145,7 @@ model Province {
   organisations  Organisation[]
   assignments    Assignment[]
   ptbaActivities PtbaActivity[]
-  tdrs           Tdr[]
+  tdrCoverage    TdrProvince[]
 
   @@map("provinces")
 }
@@ -998,8 +998,15 @@ model Tdr {
   /// Volume d'effort en jours-homme. Pour un marché de consultants, c'est
   /// l'unité de facturation : la durée calendaire ne s'y substitue pas.
   effortDays     Int?
-  provinceCode   String?
-  province       Province? @relation(fields: [provinceCode], references: [code])
+  /// Couverture geographique. Un marche porte souvent sur plusieurs
+  /// provinces — un backbone en traverse trois, une formation en dessert
+  /// dix. Une cle unique obligeait a n'en retenir qu'une, ou a ecrire
+  /// « national » pour un marche qui ne l'est pas.
+  ///
+  /// Table de liaison plutot qu'un tableau de codes : le referentiel des
+  /// 26 provinces est une source de verite, et une chaine libre s'en
+  /// ecarterait au premier faute de frappe.
+  provinces      TdrProvince[]
   expertise      String?   @db.Text
   keyProfiles    String[]  @default([])
 
@@ -1042,6 +1049,18 @@ model Tdr {
   @@index([authorId])
   @@index([organisationId])
   @@map("tdrs")
+}
+
+/// Couverture geographique d'un TDR — une ligne par province retenue.
+model TdrProvince {
+  tdrId        String   @db.Uuid
+  tdr          Tdr      @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+  provinceCode String
+  province     Province @relation(fields: [provinceCode], references: [code])
+
+  @@id([tdrId, provinceCode])
+  @@index([provinceCode])
+  @@map("tdr_provinces")
 }
 
 model TdrObjective {

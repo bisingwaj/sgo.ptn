@@ -140,7 +140,7 @@ export class TdrAssistService {
         ptbaActivity: { include: { component: true, province: true } },
         organisation: { select: { name: true, fullName: true, type: true } },
         beneficiaryOrganisation: { select: { name: true, fullName: true } },
-        province: true,
+        provinces: { include: { province: true } },
         objectives: { orderBy: { position: 'asc' } },
       },
     });
@@ -187,10 +187,22 @@ export class TdrAssistService {
       grounded.push(`Composante — ${a.componentCode}`);
     }
 
-    const province = tdr.province ?? tdr.ptbaActivity?.province;
-    if (province) {
-      lines.push(`Couverture géographique : province du ${province.label}${province.isPriorityCpf ? ' (province prioritaire du Cadre de Partenariat-Pays)' : ''}`);
-      grounded.push(`Province — ${province.label}`);
+    // La couverture peut porter sur plusieurs provinces ; à défaut, celle de
+    // l'activité du plan sert de repère.
+    const provinces = tdr.provinces.length
+      ? tdr.provinces.map((c) => c.province)
+      : tdr.ptbaActivity?.province
+        ? [tdr.ptbaActivity.province]
+        : [];
+    if (provinces.length > 0) {
+      const prioritaires = provinces.filter((p) => p.isPriorityCpf).length;
+      lines.push(
+        `Couverture géographique : ${provinces.map((p) => p.label).join(', ')}` +
+          (prioritaires
+            ? ` — dont ${prioritaires} province${prioritaires > 1 ? 's' : ''} prioritaire${prioritaires > 1 ? 's' : ''} du Cadre de Partenariat-Pays`
+            : ''),
+      );
+      grounded.push(`Couverture — ${provinces.map((p) => p.label).join(', ')}`);
     } else {
       lines.push('Couverture géographique : nationale.');
     }
