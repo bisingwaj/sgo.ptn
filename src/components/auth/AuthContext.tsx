@@ -88,6 +88,8 @@ interface AuthContextValue {
   refresh: () => Promise<void>;
   /** Vérifie une permission de l'affectation active */
   can: (permission: string) => boolean;
+  /** Une session existait et n'a pas pu être restaurée. */
+  sessionEnded: boolean;
 }
 
 const Ctx = createContext<AuthContextValue | null>(null);
@@ -98,8 +100,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  /**
+   * Un jeton était stocké mais le serveur l'a refusé.
+   *
+   * Distingué de « pas de jeton du tout » : le premier cas mérite un message,
+   * le second non.
+   *
+   * NOTE — une cause de refus tient à la rotation des jetons de
+   * rafraîchissement côté serveur. Chaque appel à /auth/refresh consomme
+   * l'ancien jeton et en renvoie un nouveau. Si la page se décharge pendant
+   * cet aller-retour, la réponse est perdue alors que l'ancien jeton est déjà
+   * consommé : au chargement suivant, le jeton stocké est refusé et la session
+   * tombe. La fenêtre est étroite, mais elle existe.
+   *
+   * Le frontend ne peut pas la refermer — seul le serveur le peut, en
+   * accordant un court délai de grâce au jeton précédent (pratique courante,
+   * 30 à 60 secondes). À signaler à l'équipe backend.
+   */
+  const [sessionEnded, setSessionEnded] = useState(false);
   const [idleWarningSeconds, setIdleWarningSeconds] = useState<number | null>(null);
-  const lastActivityRef = useRef(Date.now());
+  /**
+   * Horodatage de la dernière action, armé au premier rendu de l'effet.
+   *
+   * `useRef(Date.now())` évaluait l'horloge PENDANT le rendu : React 19 le
+   * refuse, et à raison — un rendu doit produire le même résultat à chaque
+   * appel. La valeur est donc posée dans l'effet, quand la surveillance
+   * démarre réellement.
+   */
+  const lastActivityRef = useRef<number | null>(null);
 
   const applySession = useCallback(
     (session: { user: SessionUser; availableAssignments: AssignmentSummary[] }) => {
@@ -115,6 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function restore() {
+      // Aucun jeton : première visite ou déconnexion volontaire. Rien à
+      // restaurer, et surtout rien à signaler — annoncer « session expirée »
+      // à quelqu'un qui n'en a jamais ouvert serait un contresens.
       if (!getRefreshToken()) {
         setLoading(false);
         return;
@@ -122,15 +153,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { api } = await import("@/lib/api");
         const renewed = await api.refresh();
-        if (!renewed || cancelled) {
+        if (!renewed) {
+          // Un jeton était stocké et le serveur l'a refusé : expiré, révoqué,
+          // habilitation retirée — ou rotation interrompue (voir plus bas).
+          // Dans tous les cas la session est bel et bien terminée, et la
+          // personne doit l'apprendre autrement que par un formulaire vierge.
+          if (!cancelled) setSessionEnded(true);
           setLoading(false);
           return;
         }
+        if (cancelled) return;
         const session = await authApi.me();
         if (!cancelled) applySession(session);
       } catch {
         setAccessToken(null);
         setRefreshToken(null);
+        if (!cancelled) setSessionEnded(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -180,6 +218,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
+    // Armement au démarrage de la surveillance : le compte à rebours part du
+    // moment où la session devient active, pas d'un instant figé au rendu.
+    lastActivityRef.current = Date.now();
+
     const registerActivity = () => {
       lastActivityRef.current = Date.now();
       setIdleWarningSeconds((current) => (current === null ? null : null));
@@ -190,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const interval = window.setInterval(() => {
-      const idleFor = Date.now() - lastActivityRef.current;
+      const idleFor = Date.now() - (lastActivityRef.current ?? Date.now());
       if (idleFor >= IDLE_MS) {
         void logout("inactivite");
       } else if (idleFor >= IDLE_MS - WARNING_BEFORE_MS) {
@@ -260,8 +302,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       switchAssignment,
       refresh,
       can,
+      sessionEnded,
     }),
-    [user, assignments, loading, login, logout, changePassword, switchAssignment, refresh, can],
+    [user, assignments, loading, login, logout, changePassword, switchAssignment, refresh, can, sessionEnded],
   );
 
   return (

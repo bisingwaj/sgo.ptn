@@ -15,7 +15,7 @@
  * renvoyés par l'API — ils ne se choisissent pas ici.
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, InlineNotification, PasswordInput, TextInput } from "@carbon/react";
@@ -80,11 +80,13 @@ interface FieldErrors {
 interface LoginClientProps {
   /** Résolu côté serveur depuis la chaîne de requête (voir page.tsx). */
   sessionEnded: "expiree" | "inactivite" | null;
+  /** Destination voulue avant le renvoi vers la connexion, déjà validée. */
+  next: string | null;
 }
 
-export function LoginClient({ sessionEnded }: LoginClientProps) {
+export function LoginClient({ sessionEnded, next }: LoginClientProps) {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
 
   const [family, setFamily] = useState<FamilyKey>("UGP_GOUV");
   const [email, setEmail] = useState("");
@@ -95,6 +97,27 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Session déjà ouverte : on ne présente pas un formulaire de connexion à
+   * quelqu'un qui est connecté.
+   *
+   * Le cas se produit dès qu'on revient sur /login par l'historique, un
+   * signet ou un lien. Sans ce renvoi, la personne ressaisit ses
+   * identifiants pour arriver là où elle était déjà.
+   *
+   * `submitting` exclu : pendant l'envoi, c'est `handleSubmit` qui conduit la
+   * navigation, y compris vers /activation. Deux redirections concurrentes se
+   * disputeraient la destination.
+   */
+  useEffect(() => {
+    if (authLoading || submitting || !user) return;
+    if (user.mustChangePassword || !user.onboardingCompleted) {
+      router.replace("/activation");
+      return;
+    }
+    router.replace(next ?? PROFILES[toProfileKey(user.profile)].homePath);
+  }, [user, authLoading, submitting, next, router]);
 
   /**
    * Validation au moment de l'envoi, jamais à la frappe.
@@ -144,7 +167,8 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
         return;
       }
 
-      router.push(PROFILES[toProfileKey(result.user.profile)].homePath);
+      // Retour à la page demandée avant le renvoi, à défaut l'accueil du profil.
+      router.push(next ?? PROFILES[toProfileKey(result.user.profile)].homePath);
     } catch (err) {
       // Message neutralisé — voir auth-errors.ts.
       setFormError(loginErrorMessage(err));
