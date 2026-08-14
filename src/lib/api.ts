@@ -707,6 +707,8 @@ export interface TdrApi {
   reviewType: "PRIOR" | "POST" | null;
   esCategory: "FAIBLE" | "MODERE" | "SUBSTANTIEL" | "ELEVE" | null;
   esRisks: string[];
+  /** Champs auxquels l'assistant a contribué */
+  aiAssistedFields: string[];
   objectives: TdrObjectiveApi[];
   deliverables: TdrDeliverableApi[];
   clauses: TdrClauseApi[];

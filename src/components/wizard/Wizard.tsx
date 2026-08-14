@@ -11,7 +11,7 @@
  * - Support clavier complet
  */
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -57,6 +57,23 @@ export interface WizardProps<T = unknown> {
   finishLabel?: string;
   onFinish?: (state: T) => Promise<void> | void;
   onDraftChange?: (state: T, currentStep: number) => void;
+  /**
+   * Panneau latéral persistant — l'assistant du dossier.
+   *
+   * Troisième colonne de l'espace de travail plutôt que fenêtre flottante :
+   * il suit l'auteur d'étape en étape sans masquer le formulaire, et le
+   * corps se contracte au lieu de passer dessous.
+   */
+  aside?: ReactNode;
+  asideOpen?: boolean;
+  /**
+   * Modification poussée de l'extérieur.
+   *
+   * Le Wizard détient l'état du dossier ; un panneau latéral qui écrit en
+   * base doit pouvoir aligner le formulaire dessus. `nonce` déclenche
+   * l'application — une fonction seule ne dit pas quand elle a changé.
+   */
+  patch?: { nonce: number; fn: (state: T) => T };
 }
 
 export function Wizard<T>({
@@ -68,6 +85,9 @@ export function Wizard<T>({
   initialState,
   cancelHref = "/login",
   finishLabel = "Accéder à mon tableau de bord",
+  aside,
+  asideOpen = false,
+  patch,
   onFinish,
   onDraftChange,
 }: WizardProps<T>) {
@@ -86,6 +106,23 @@ export function Wizard<T>({
     setStateInternal(next);
     setError(null);
     onDraftChange?.(next, step);
+  };
+
+  /**
+   * Changer d'étape est aussi un évènement pour qui écoute : un panneau
+   * latéral doit savoir où en est l'auteur, même s'il n'a rien saisi.
+   */
+  // Appliqué hors du rendu : une écriture venue du panneau ne doit pas
+  // écraser une saisie en cours dans un autre champ, d'où la forme
+  // fonctionnelle.
+  useEffect(() => {
+    if (patch) setStateInternal((s) => patch.fn(s));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patch?.nonce]);
+
+  const allerA = (n: number) => {
+    allerA(n);
+    onDraftChange?.(state, n);
   };
 
   const goNext = async () => {
@@ -111,7 +148,7 @@ export function Wizard<T>({
 
     if (step < steps.length - 1) {
       setDone((d) => new Set(d).add(step));
-      setStep(step + 1);
+      allerA(step + 1);
       return;
     }
 
@@ -131,7 +168,7 @@ export function Wizard<T>({
 
   const goPrev = () => {
     if (step > 0) {
-      setStep(step - 1);
+      allerA(step - 1);
       setError(null);
     }
   };
@@ -158,7 +195,7 @@ export function Wizard<T>({
         {headerTrailing && <div className={styles.headerTrailing}>{headerTrailing}</div>}
       </header>
 
-      <div className={styles.workspace}>
+      <div className={styles.workspace} data-aside={aside ? (asideOpen ? "ouvert" : "replie") : undefined}>
         {/* ===== Rail des étapes =====
             Vertical plutôt qu'horizontal : au-delà de cinq ou six étapes,
             une rangée écrase les libellés jusqu'à l'illisible. Le numéro
@@ -216,6 +253,8 @@ export function Wizard<T>({
           </div>
           <div className={styles.bodyContent}>{currentStep.render(state, setState)}</div>
         </main>
+
+        {aside}
       </div>
 
       {/* ===== Footer (sticky) ===== */}

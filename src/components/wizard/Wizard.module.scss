@@ -15,9 +15,28 @@
 // de déborder sous la largeur intrinsèque de son contenu.
 .workspace {
   display: grid;
-  grid-template-columns: 288px minmax(0, 1fr);
+  grid-template-columns: 288px minmax(0, 1fr) var(--ptn-aside, 0px);
   min-height: 0;
   overflow: hidden;
+  transition: grid-template-columns var(--ptn-motion-fast-02, 110ms);
+}
+
+// Le corps est protege par minmax(0, 1fr) : il se contracte quand le
+// panneau s'ouvre, sans deborder ni passer dessous.
+.workspace[data-aside='replie'] {
+  --ptn-aside: 44px;
+}
+
+.workspace[data-aside='ouvert'] {
+  --ptn-aside: 380px;
+}
+
+// Sous 1312 px, le panneau se superpose plutot que de comprimer un
+// formulaire deja etroit.
+@media (max-width: 1312px) {
+  .workspace[data-aside='ouvert'] {
+    --ptn-aside: 44px;
+  }
 }
 
 // ===== Header =====

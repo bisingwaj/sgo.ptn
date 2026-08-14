@@ -56,6 +56,7 @@ import {
   TrashCan,
   WarningAltFilled,
 } from "@carbon/icons-react";
+import { AgentPanel, type Ecriture } from "./AgentPanel";
 import styles from "./tdr-creation.module.scss";
 
 interface State {
@@ -111,6 +112,8 @@ interface State {
 
   esCategory: string;
   esRisks: string[];
+  /** Champs auxquels l'assistant a contribue — marque persistante */
+  aiAssistedFields: string[];
 
   consentMep: boolean;
   consentRgpd: boolean;
@@ -126,7 +129,7 @@ const INITIAL: State = {
   startDate: "", durationMonths: "", provinceCode: "", expertise: "", effortDays: "", keyProfiles: [],
   budgetTotalUsd: "", budgetIdaUsd: "", budgetAfdUsd: "", budgetGovUsd: "",
   clauses: [], indicators: [], risks: [],
-  esCategory: "", esRisks: [],
+  esCategory: "", esRisks: [], aiAssistedFields: [],
   consentMep: false, consentRgpd: false,
   blockers: [],
 };
@@ -327,6 +330,7 @@ function hydrate(
 
     esCategory: tdr.esCategory ?? "",
     esRisks: tdr.esRisks ?? [],
+    aiAssistedFields: tdr.aiAssistedFields ?? [],
   };
 }
 
@@ -551,6 +555,43 @@ export function TdrCreationClient() {
   const [resume, setResume] = useState<State | null>(null);
   const [resuming, setResuming] = useState(Boolean(draftId));
   const [resumeError, setResumeError] = useState<string | null>(null);
+
+  // L'assistant est replié par défaut : il s'ouvre quand on l'appelle, et
+  // suit ensuite d'étape en étape.
+  const [agentOuvert, setAgentOuvert] = useState(false);
+  const [etatCourant, setEtatCourant] = useState<State | null>(null);
+  const [etapeCourante, setEtapeCourante] = useState('');
+  /**
+   * Ce que l'assistant vient d'écrire, poussé dans le formulaire.
+   *
+   * On relit la base plutôt que de recopier ce que l'agent annonce : le
+   * service normalise, tronque et refuse, et c'est sa version qui fait foi.
+   * Recopier l'annonce ferait diverger l'écran et le dossier.
+   */
+  const [patch, setPatch] = useState<{ nonce: number; fn: (s: State) => State } | undefined>();
+
+  const alignerSurLaBase = useCallback(async (tdrId: string) => {
+    const t = await tdrApi.get(tdrId);
+    setPatch({
+      nonce: Date.now(),
+      fn: (s) => ({
+        ...s,
+        context: t.context ?? "",
+        justification: t.justification ?? "",
+        beneficiaries: t.beneficiaries ?? "",
+        expectedResults: t.expectedResults ?? "",
+        approach: t.approach ?? "",
+        methodology: t.methodology ?? "",
+        constraints: t.constraints ?? "",
+        expertise: t.expertise ?? "",
+        objectives: t.objectives.map((o) => ({ title: o.title, criteria: o.criteria })),
+        deliverables: t.deliverables.map((d) => ({
+          title: d.title, format: d.format ?? "", deadline: d.deadline ?? "",
+        })),
+        aiAssistedFields: t.aiAssistedFields ?? [],
+      }),
+    });
+  }, []);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -1113,6 +1154,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
   const preselected = params.get("type") ?? "";
 
+
   return (
     <Wizard<State>
       eyebrow="RÉDACTION · TERMES DE RÉFÉRENCE"
@@ -1122,6 +1164,33 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
       initialState={resume ?? { ...INITIAL, tdrTypeCode: preselected }}
       cancelHref="/tdr"
       finishLabel="Transmettre à l’UGP"
+      asideOpen={agentOuvert}
+      aside={
+        <AgentPanel
+          tdrId={etatCourant?.tdrId ?? null}
+          ouvert={agentOuvert}
+          onToggle={() => setAgentOuvert((v) => !v)}
+          etapeCourante={etapeCourante}
+          onEcriture={() => {
+            const id = etatCourant?.tdrId;
+            if (id) void alignerSurLaBase(id);
+          }}
+          onAnnuler={async (e) => {
+            const id = etatCourant?.tdrId;
+            if (!id) return;
+            // La valeur précédente revient telle quelle. La marque, elle,
+            // reste : l'assistant a bien contribué à ce champ, et un
+            // relecteur doit continuer de le savoir.
+            await tdrApi.update(id, { [e.champ]: e.avant });
+            await alignerSurLaBase(id);
+          }}
+        />
+      }
+      patch={patch}
+      onDraftChange={(s, etape) => {
+        setEtatCourant(s);
+        setEtapeCourante(steps[etape]?.label ?? "");
+      }}
       onFinish={async (s) => {
         if (!s.tdrId) throw new Error("Brouillon non enregistré.");
         try {
