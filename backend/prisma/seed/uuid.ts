@@ -46,4 +46,6 @@ export const idFor = {
   user: (email: string) => deterministicUuid(`user:${email.toLowerCase()}`),
   assignment: (email: string, subroleCode: string) =>
     deterministicUuid(`assignment:${email.toLowerCase()}:${subroleCode}`),
+  /** Clé « exercice:code », l'unicité d'une activité étant celle du couple. */
+  ptbaActivity: (yearAndCode: string) => deterministicUuid(`ptba:${yearAndCode}`),
 };

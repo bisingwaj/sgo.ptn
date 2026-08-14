@@ -1,0 +1,283 @@
+/**
+ * Plan de Travail et Budget Annuel.
+ * Écran de saisie et de suivi des enveloppes par composante.
+ */
+
+.yearPicker,
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  font-family: inherit;
+  font-size: 12px;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-background, #fff);
+  color: var(--cds-text-primary, #161616);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 1px;
+  }
+}
+
+.btnPrimary {
+  background: var(--ptn-accent);
+  border-color: var(--ptn-accent);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.btnGhost:hover {
+  background: var(--cds-layer-hover, #e8e8e8);
+}
+
+/* ===== Messages ===== */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ptn-space-02);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  margin-bottom: var(--ptn-space-04);
+  background: var(--ptn-status-danger-surface);
+  border-left: 3px solid var(--ptn-status-danger);
+  color: var(--ptn-status-danger-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.notice {
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  margin-bottom: var(--ptn-space-04);
+  background: var(--cds-layer, #f4f4f4);
+  border-left: 3px solid var(--cds-border-strong, #8d8d8d);
+  font-size: 13px;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.empty {
+  padding: var(--ptn-space-06);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cds-text-helper, #6f6f6f);
+  max-width: 62ch;
+  margin: 0 auto;
+}
+
+/* ===== Formulaire ===== */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-04);
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--ptn-space-04);
+}
+
+@media (max-width: 800px) {
+  .row3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  > span {
+    font-size: 12px;
+    color: var(--cds-text-secondary, #525252);
+    letter-spacing: 0.16px;
+
+    em {
+      font-style: normal;
+      color: var(--ptn-status-danger);
+    }
+  }
+
+  input,
+  select {
+    font: inherit;
+    font-size: 14px;
+    padding: 9px 12px;
+    background: var(--cds-field, #f4f4f4);
+    border: none;
+    border-bottom: 1px solid var(--cds-border-strong, #8d8d8d);
+    color: var(--cds-text-primary, #161616);
+    min-width: 0;
+
+    &:focus {
+      outline: 2px solid var(--ptn-accent);
+      outline-offset: -2px;
+    }
+  }
+
+  small {
+    font-size: 11px;
+    color: var(--cds-text-helper, #6f6f6f);
+  }
+}
+
+.hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ptn-space-03);
+}
+
+/* ===== Soldes par composante ===== */
+
+.soldes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--ptn-space-03);
+  margin: var(--ptn-space-05) 0;
+}
+
+.solde {
+  padding: var(--ptn-space-04);
+  background: var(--cds-layer, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+}
+
+.soldeHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ptn-space-02);
+  font-size: 12px;
+
+  strong {
+    color: var(--ptn-accent);
+  }
+
+  span {
+    color: var(--cds-text-secondary, #525252);
+  }
+}
+
+/* Jauge d'engagement. Pas de dégradé : la part engagée se lit à la
+   longueur, pas à la couleur. */
+.gauge {
+  height: 4px;
+  background: var(--cds-border-subtle, #e0e0e0);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--ptn-accent);
+  }
+}
+
+.soldeMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--cds-text-primary, #161616);
+
+  span:last-child {
+    color: var(--cds-text-helper, #6f6f6f);
+  }
+}
+
+.soldeCount {
+  font-size: 11px;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.reconc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--cds-text-helper, #6f6f6f);
+  padding-top: var(--ptn-space-02);
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+/* ===== Tableau ===== */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    text-align: left;
+    font-weight: 400;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.32px;
+    color: var(--cds-text-helper, #6f6f6f);
+    padding: var(--ptn-space-03) var(--ptn-space-04);
+    border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: var(--ptn-space-03) var(--ptn-space-04);
+    border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+    color: var(--cds-text-primary, #161616);
+    vertical-align: top;
+  }
+
+  tbody tr:hover {
+    background: var(--cds-layer-hover, #e8e8e8);
+  }
+}
+
+/* Chiffres tabulaires et alignement à droite : les colonnes de montants se
+   comparent d'un coup d'œil vertical. */
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sub {
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.remove {
+  padding: 6px;
+  background: transparent;
+  border: none;
+  color: var(--ptn-status-danger-text);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--ptn-status-danger-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 1px;
+  }
+}

@@ -624,6 +624,7 @@ export const ptbaApi = {
   createActivity: (year: number, payload: Record<string, unknown>) =>
     api.post<PtbaActivityApi>(`/ptba/exercices/${year}/activites`, payload),
   deactivate: (id: string) => api.post<{ id: string }>(`/ptba/activites/${id}/retirer`),
+  validateYear: (year: number) => api.post<PtbaYearApi>(`/ptba/exercices/${year}/valider`),
 };
 
 
