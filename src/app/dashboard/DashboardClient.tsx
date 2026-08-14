@@ -216,7 +216,7 @@ const DEFAULT_CONFIG: DashboardProfileConfig = {
   greeting: "Bonjour Marie — Ministère du Numérique",
   cycleLabel: "2026-Q2",
   syncLabel: "08 mai 2026 · 09:42 UTC+1",
-  primaryAction: { label: "Proposer une initiative", href: "/tdr" },
+  primaryAction: { label: "Proposer une initiative", href: "/tdr/nouveau" },
   tableTitle: "Initiatives en cours",
 };
 

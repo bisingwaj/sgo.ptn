@@ -64,7 +64,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
           items: [
             { label: "PTBA", href: "/ptba", icon: <ChartLineSmooth size={16} /> },
             { label: "PPM", href: "/ppm", icon: <Notebook size={16} />, count: "78" },
-            { label: "TDR", href: "/tdr", icon: <Document size={16} />, count: "32" },
+            { label: "TDR", href: "/tdr/nouveau", icon: <Document size={16} />, count: "32" },
             { label: "Inbox ANO", href: "/ano", icon: <TaskApproved size={16} />, count: "9" },
             { label: "Commissions", href: "/commissions", icon: <Events size={16} /> },
             { label: "Contrats", href: "/contrats", icon: <Folders size={16} /> },

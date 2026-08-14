@@ -171,11 +171,31 @@
   place-items: center;
 }
 
+/* Pictogramme du type. Carré net, sans rayon — la grille Carbon n'en a
+   pas — et fond d'accent atténué pour porter la couleur sans concurrencer
+   le titre. */
+.tileIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: var(--ptn-accent-surface);
+  color: var(--ptn-accent);
+}
+
 .tileTitle {
   font-size: 14px;
   font-weight: 500;
   color: var(--cds-text-primary);
   line-height: 1.3;
+}
+
+/* Le code du type passe sous le titre quand l'icône occupe l'en-tête : il
+   reste consultable sans disputer la première lecture. */
+.tileRef {
+  font-size: 11px;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-helper, #6f6f6f);
 }
 
 .tileDesc {
@@ -194,6 +214,13 @@
   padding-top: var(--ptn-space-02);
   border-top: 1px solid var(--cds-border-subtle);
   flex-wrap: wrap;
+}
+
+/* La tuile sélectionnée porte son icône en plein, pour que le choix se voie
+   de la grille entière et non de la seule bordure. */
+.tileSelected .tileIcon {
+  background: var(--ptn-accent);
+  color: var(--cds-background, #fff);
 }
 
 // ===== CheckRow =====

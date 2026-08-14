@@ -10,7 +10,7 @@
  * - SignatureBlock (Code de Conduite, COI)
  */
 
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { CheckmarkFilled } from "@carbon/icons-react";
 import styles from "./WizardFields.module.scss";
 
@@ -110,6 +110,11 @@ interface SelectableTileProps {
   description?: string;
   metrics?: ReactNode;
   disabled?: boolean;
+  /**
+   * Pictogramme du choix. Une grille de onze tuiles se parcourt d'abord à
+   * la forme : sans lui, l'œil doit lire onze titres pour en distinguer un.
+   */
+  icon?: ComponentType<{ size?: number }>;
 }
 
 export function SelectableTile({
@@ -120,6 +125,7 @@ export function SelectableTile({
   description,
   metrics,
   disabled,
+  icon: Icon,
 }: SelectableTileProps) {
   return (
     <button
@@ -129,7 +135,13 @@ export function SelectableTile({
       className={`${styles.tile} ${selected ? styles.tileSelected : ""}`}
     >
       <div className={styles.tileHead}>
-        {tag && <span className={`${styles.tileTag} ptn-mono`}>{tag}</span>}
+        {Icon ? (
+          <span className={styles.tileIcon} aria-hidden>
+            <Icon size={20} />
+          </span>
+        ) : (
+          tag && <span className={`${styles.tileTag} ptn-mono`}>{tag}</span>
+        )}
         {selected && (
           <span className={styles.tileCheck} aria-hidden>
             <CheckmarkFilled size={16} />
@@ -137,6 +149,7 @@ export function SelectableTile({
         )}
       </div>
       <div className={styles.tileTitle}>{title}</div>
+      {Icon && tag && <span className={`${styles.tileRef} ptn-mono`}>{tag}</span>}
       {description && <div className={styles.tileDesc}>{description}</div>}
       {metrics && <div className={styles.tileMetrics}>{metrics}</div>}
     </button>

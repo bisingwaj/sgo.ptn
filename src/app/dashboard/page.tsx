@@ -118,7 +118,7 @@ export default function MdaDashboardPage() {
         config={{
           cycleLabel: "PTBA 2026-Q2",
           syncLabel: "10 mai 2026 · 09:42 UTC+1",
-          primaryAction: { label: "Proposer une initiative", href: "/tdr" },
+          primaryAction: { label: "Proposer une initiative", href: "/tdr/nouveau" },
           tableTitle: "Initiatives en cours",
         }}
       />

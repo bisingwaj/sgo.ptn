@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Wizard, type WizardStep } from "@/components/wizard/Wizard";
-import { Field, Input, Textarea, Select, Note, SelectableTile, CheckRow } from "@/components/wizard/WizardFields";
+import { Field, Input, Textarea, Select, Note, SelectableTile, CheckRow, Segmented } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import {
   tdrApi,
@@ -29,6 +29,7 @@ import {
   type IndicatorApi,
   type LibraryEntry,
   type PtbaActivityApi,
+  type ComponentApi,
   type OrganisationApi,
   type ProvinceApi,
   type RiskApi,
@@ -38,9 +39,20 @@ import {
 import {
   Add,
   AiGenerate,
+  Analytics,
+  Bullhorn,
   CheckmarkFilled,
+  Construction,
+  Delivery,
+  Education,
+  Events,
   Idea,
   Locked,
+  Money,
+  Partnership,
+  Plane,
+  Rule,
+  Tools,
   TrashCan,
   WarningAltFilled,
 } from "@carbon/icons-react";
@@ -51,6 +63,13 @@ interface State {
   reference: string | null;
   tdrTypeCode: string;
   ptbaActivityId: string;
+  /**
+   * Composante servant a reduire la liste des activites. Ce n'est pas une
+   * donnee du dossier : la composante d'un TDR est celle de son activite
+   * PTBA, deja connue en base. La saisir a part ouvrirait une contradiction
+   * que rien n'empecherait.
+   */
+  componentFilter: string;
   beneficiaryOrganisationId: string;
   title: string;
   /**
@@ -100,7 +119,7 @@ interface State {
 }
 
 const INITIAL: State = {
-  tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", beneficiaryOrganisationId: "", title: "", titleTouched: false,
+  tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", componentFilter: "", beneficiaryOrganisationId: "", title: "", titleTouched: false,
   context: "", justification: "", beneficiaries: "",
   objectives: [], deliverables: [], expectedResults: "", deliverableFormat: "", reportingRhythm: "",
   approach: "", methodology: "", constraints: "",
@@ -118,6 +137,33 @@ const ES_LEVELS = [
   { value: "SUBSTANTIEL", label: "Substantiel — EIES allégée + PGES" },
   { value: "ELEVE", label: "Élevé — EIES complète + PGES" },
 ];
+
+/**
+ * Signes distinctifs des onze types.
+ *
+ * L'ancien sélecteur `/tdr` — supprimé, il faisait double emploi avec cette
+ * étape — portait une icône et des repères métier par type. Il les avait
+ * dans du code, sans source ; on reprend ceux qui décrivent une pièce
+ * réellement attendue, et on écarte « ISA » et « Manuel SBP », que l'audit
+ * a établis comme non attestés au corpus.
+ *
+ * Le reste des pastilles n'est plus écrit à la main : nombre d'étapes,
+ * exigence de PGES, méthode par défaut et origines ouvertes viennent du
+ * référentiel, où ils sont déjà tenus à jour.
+ */
+const TYPE_SIGNES: Record<string, { icon: typeof Construction; hint?: string }> = {
+  "TDR-TX": { icon: Construction, hint: "Métré et bordereau de prix" },
+  "TDR-FN": { icon: Delivery, hint: "Spécifications et service après-vente" },
+  "TDR-CS": { icon: Partnership, hint: "Profils-clés et CV nominatifs" },
+  "TDR-SN": { icon: Tools, hint: "Niveaux de service et indicateurs qualité" },
+  "TDR-AT": { icon: Events, hint: "Programme et per diem" },
+  "TDR-FO": { icon: Education, hint: "Curriculum et évaluation des acquis" },
+  "TDR-MI": { icon: Plane, hint: "Délégation et indemnités de séjour" },
+  "TDR-ET": { icon: Analytics, hint: "Question évaluative et méthode" },
+  "TDR-CO": { icon: Bullhorn, hint: "Messages, publics et canaux" },
+  "TDR-SB": { icon: Money, hint: "Jalons et critères de décaissement" },
+  "TDR-AU": { icon: Rule, hint: "Périmètre et échantillonnage" },
+};
 
 /**
  * Convention d'échéance des livrables.
@@ -395,6 +441,7 @@ export function TdrCreationClient() {
   const [activities, setActivities] = useState<PtbaActivityApi[]>([]);
   const [provinces, setProvinces] = useState<ProvinceApi[]>([]);
   const [organisations, setOrganisations] = useState<OrganisationApi[]>([]);
+  const [components, setComponents] = useState<ComponentApi[]>([]);
   const [library, setLibrary] = useState<{ clauses: ClauseApi[]; indicators: IndicatorApi[]; risks: RiskApi[] }>({
     clauses: [], indicators: [], risks: [],
   });
@@ -408,12 +455,16 @@ export function TdrCreationClient() {
       ptbaApi.activities(new Date().getFullYear()),
       referentielApi.provinces(),
       referentielApi.organisations(),
+      referentielApi.composantes(),
     ])
-      .then(([t, p, pr, orgs]) => {
+      .then(([t, p, pr, orgs, comps]) => {
         setTypes(t.filter((x) => x.isActive));
         setActivities(p.activities);
         setProvinces(pr);
         setOrganisations(orgs);
+        // C5 est la réserve non dotée : aucune activité ne s'y rattache,
+        // la proposer au filtre n'ouvrirait qu'une liste vide.
+        setComponents(comps.filter((c) => Number(c.totalUsdM) > 0));
       })
       .catch((e: unknown) =>
         setLoadError(e instanceof Error ? e.message : "Référentiel indisponible."),
@@ -498,6 +549,7 @@ export function TdrCreationClient() {
             types={types}
             activities={activities}
             organisations={organisations}
+            components={components}
           />
         ),
       },
@@ -711,11 +763,16 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
         ),
       },
 
-      // ===== 07 · Clauses =====
+      // ===== 07 · Cadre et risques =====
+      //
+      // Le parcours MDA d'origine tenait les trois bibliothèques sur une
+      // seule étape, répartie en onglets — « Clauses, indicateurs et risques
+      // pré-cadrés ». La refonte en avait fait deux étapes ; c'était une
+      // marche de plus pour un même geste, répété trois fois.
       {
         num: "07",
-        label: "Clauses",
-        sub: "Dispositions contractuelles retenues",
+        label: "Cadre & risques",
+        sub: "Clauses, indicateurs et risques pré-cadrés pour ce type",
         commit: (s) =>
           persist(s, {
             clauses: s.clauses.map((c) => ({
@@ -725,34 +782,6 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
               label: c.label,
               text: c.text,
             })),
-          }),
-        render: (s, set) => (
-          <PickerStep
-            title="Clauses de la bibliothèque"
-            hint="Le texte retenu est copié dans votre TDR : une évolution ultérieure de la bibliothèque ne le modifiera pas."
-            available={library.clauses}
-            selected={s.clauses}
-            onToggle={(c) =>
-              set({
-                ...s,
-                clauses: s.clauses.some((x) => x.id === c.id)
-                  ? s.clauses.filter((x) => x.id !== c.id)
-                  : [...s.clauses, c],
-              })
-            }
-            renderBody={(c) => c.text}
-            renderTag={(c) => c.category}
-          />
-        ),
-      },
-
-      // ===== 08 · Indicateurs et risques =====
-      {
-        num: "08",
-        label: "Indicateurs & risques",
-        sub: "Mesure de la performance et aléas anticipés",
-        commit: (s) =>
-          persist(s, {
             indicators: s.indicators.map((i) => ({
               sourceFamilyKey: i.familyKey, label: i.label, measure: i.measure, target: i.target,
             })),
@@ -761,44 +790,12 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
               mitigation: r.mitigation, level: r.level,
             })),
           }),
-        render: (s, set) => (
-          <div className={styles.stack}>
-            <PickerStep
-              title="Indicateurs"
-              available={library.indicators}
-              selected={s.indicators}
-              onToggle={(i) =>
-                set({
-                  ...s,
-                  indicators: s.indicators.some((x) => x.id === i.id)
-                    ? s.indicators.filter((x) => x.id !== i.id)
-                    : [...s.indicators, i],
-                })
-              }
-              renderBody={(i) => `${i.measure} — cible ${i.target}`}
-            />
-            <PickerStep
-              title="Risques"
-              available={library.risks}
-              selected={s.risks}
-              onToggle={(r) =>
-                set({
-                  ...s,
-                  risks: s.risks.some((x) => x.id === r.id)
-                    ? s.risks.filter((x) => x.id !== r.id)
-                    : [...s.risks, r],
-                })
-              }
-              renderBody={(r) => `${r.description} — atténuation : ${r.mitigation}`}
-              renderTag={(r) => r.level.toLowerCase()}
-            />
-          </div>
-        ),
+        render: (s, set) => <FrameworkStep state={s} set={set} library={library} />,
       },
 
       // ===== 09 · Sauvegardes E&S =====
       {
-        num: "09",
+        num: "08",
         label: "Sauvegardes E&S",
         sub: "Classification du risque environnemental et social",
         validate: (s) => {
@@ -882,7 +879,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 10 · Revue et soumission =====
       {
-        num: "10",
+        num: "09",
         label: "Revue & transmission",
         sub: "Contrôle de complétude et engagements",
         validate: (s) => {
@@ -939,7 +936,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
           La méthode et le type de revue ont été figés depuis les seuils en vigueur aujourd’hui. Un
           instantané du document a été conservé.
         </p>
-        <Link href="/tdr" className={styles.gateLink}>Retour au sélecteur</Link>
+        <Link href="/dashboard" className={styles.gateLink}>Retour au tableau de bord</Link>
       </div>
     );
   }
@@ -953,7 +950,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
       subtitle={`Vous rédigez au titre de ${user.organisationName} · ${user.subroleLabel}`}
       steps={steps}
       initialState={{ ...INITIAL, tdrTypeCode: preselected }}
-      cancelHref="/tdr"
+      cancelHref="/dashboard"
       finishLabel="Transmettre à l’UGP"
       onFinish={async (s) => {
         if (!s.tdrId) throw new Error("Brouillon non enregistré.");
@@ -971,13 +968,14 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 // ============================================================
 
 function TypeStep({
-  state, set, types, activities, organisations,
+  state, set, types, activities, organisations, components,
 }: {
   state: State;
   set: (s: State) => void;
   types: TdrTypeApi[];
   activities: PtbaActivityApi[];
   organisations: OrganisationApi[];
+  components: ComponentApi[];
 }) {
   const families = [...new Set(types.map((t) => t.family))].sort();
 
@@ -1009,6 +1007,23 @@ function TypeStep({
   }
 
   const stillGeneric = composed !== "" && state.title.trim() === composed;
+
+  /**
+   * Activités visibles. Le parcours MDA d'origine faisait de la composante
+   * une étape à part, puis n'affichait que ses activités ; ici elle n'est
+   * qu'un filtre, la composante d'un TDR étant celle de son activité.
+   * Sans lui, les 78 lignes d'un PTBA réel tiendraient dans une seule
+   * liste déroulante.
+   */
+  const visibles = state.componentFilter
+    ? activities.filter((a) => a.componentCode === state.componentFilter)
+    : activities;
+
+  const parComposante = useMemo(() => {
+    const n: Record<string, number> = {};
+    for (const a of activities) n[a.componentCode] = (n[a.componentCode] ?? 0) + 1;
+    return n;
+  }, [activities]);
 
   return (
     <div className={styles.stack}>
@@ -1052,13 +1067,23 @@ function TypeStep({
                       disabled={Boolean(state.tdrId)}
                       tag={t.code}
                       title={t.name}
-                      description={
-                        t.defaultMethod ? `Méthode par défaut ${t.defaultMethod.code}` : undefined
-                      }
+                      icon={TYPE_SIGNES[t.code]?.icon}
+                      description={TYPE_SIGNES[t.code]?.hint}
                       metrics={
-                        t.requiresPges ? (
-                          <span className={styles.tilePges}>PGES requis</span>
-                        ) : undefined
+                        <span className={styles.tileTags}>
+                          <span className={styles.tag}>{t.stepCount} étapes</span>
+                          {t.defaultMethod && (
+                            <span className={styles.tag}>{t.defaultMethod.code}</span>
+                          )}
+                          {t.requiresPges && (
+                            <span className={`${styles.tag} ${styles.tagPges}`}>PGES</span>
+                          )}
+                          {t.allowedOrigins.length > 1 && (
+                            <span className={`${styles.tag} ${styles.tagOpen}`}>
+                              Ouvert hors UGP
+                            </span>
+                          )}
+                        </span>
                       }
                     />
                   ))}
@@ -1068,25 +1093,59 @@ function TypeStep({
         )}
       </fieldset>
 
-      <Field
-        label="Activité PTBA de rattachement"
-        required
-        helper={
-          activities.length === 0
-            ? "Aucune activité au plan de l’exercice en cours. Elle doit y être inscrite d’abord."
-            : "L’enveloppe de cette activité plafonne le budget du TDR."
-        }
-      >
-        <Select
-          value={state.ptbaActivityId}
-          onChange={(e) => set(withComposedTitle({ ...state, ptbaActivityId: e.target.value }))}
-          placeholder="Sélectionner une activité"
-          options={activities.map((a) => ({
-            value: a.id,
-            label: `${a.code} · ${a.title} — ${(Number(a.envelopeUsd) / 1e6).toFixed(2)} M USD`,
-          }))}
-        />
-      </Field>
+      <div className={styles.row2}>
+        <Field
+          label="Composante d’affectation"
+          helper="Réduit la liste des activités. La composante retenue reste celle de l’activité choisie."
+        >
+          <Select
+            value={state.componentFilter}
+            onChange={(e) =>
+              // Changer de composante invalide l'activite si elle n'en releve
+              // plus : sans cela le dossier garderait une ligne devenue
+              // invisible a l'ecran.
+              set(
+                withComposedTitle({
+                  ...state,
+                  componentFilter: e.target.value,
+                  ptbaActivityId: activities.some(
+                    (a) => a.id === state.ptbaActivityId && a.componentCode === e.target.value,
+                  )
+                    ? state.ptbaActivityId
+                    : "",
+                }),
+              )
+            }
+            placeholder="Toutes les composantes"
+            options={components.map((c) => ({
+              value: c.code,
+              label: `${c.code} · ${c.shortLabel} — ${parComposante[c.code] ?? 0} activité${(parComposante[c.code] ?? 0) > 1 ? "s" : ""}`,
+            }))}
+          />
+        </Field>
+
+        <Field
+          label="Activité PTBA de rattachement"
+          required
+          helper={
+            activities.length === 0
+              ? "Aucune activité au plan de l’exercice en cours. Elle doit y être inscrite d’abord."
+              : visibles.length === 0
+                ? "Aucune activité sur cette composante."
+                : "L’enveloppe de cette activité plafonne le budget du TDR."
+          }
+        >
+          <Select
+            value={state.ptbaActivityId}
+            onChange={(e) => set(withComposedTitle({ ...state, ptbaActivityId: e.target.value }))}
+            placeholder="Sélectionner une activité"
+            options={visibles.map((a) => ({
+              value: a.id,
+              label: `${a.code} · ${a.title} — ${(Number(a.envelopeUsd) / 1e6).toFixed(2)} M USD`,
+            }))}
+          />
+        </Field>
+      </div>
 
       {/* L'intitulé suit l'activité, et non l'inverse : il se compose de ce
           qui précède. Le placer avant reviendrait à demander de nommer un
@@ -1317,8 +1376,12 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
   return (
     <div className={styles.stack}>
       <ObjectivesAssist state={state} set={set} />
+      <p className={styles.hint}>
+        Spécifique · Mesurable · Atteignable · Réaliste · Temporel. Chaque objectif s’accompagne
+        d’un critère qui permettra d’en constater l’atteinte.
+      </p>
       <ListEditor
-        title="Objectifs"
+        title="Objectifs SMART"
         prefix="O"
         items={state.objectives}
         onAdd={() => set({ ...state, objectives: [...state.objectives, { title: "", criteria: "" }] })}
@@ -1332,7 +1395,7 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
                 next[i] = { ...o, title: e.target.value };
                 set({ ...state, objectives: next });
               }}
-              placeholder="Objectif"
+              placeholder="Énoncé de l’objectif — verbe d’action à l’infinitif"
             />
             <Input
               value={o.criteria}
@@ -1341,7 +1404,7 @@ function OutcomesStep({ state, set }: { state: State; set: (s: State) => void })
                 next[i] = { ...o, criteria: e.target.value };
                 set({ ...state, objectives: next });
               }}
-              placeholder="Critère de constatation"
+              placeholder="Critère de succès mesurable — grandeur et horizon"
             />
           </>
         )}
@@ -1436,6 +1499,94 @@ R3 · 95 % des agents formés certifiés (M+6)`}
           />
         </Field>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Les trois bibliothèques, sur une seule étape.
+ *
+ * Reprend la disposition du parcours MDA : trois onglets, un geste unique
+ * — cocher ce qui s'applique. Le texte retenu est copié dans le TDR, jamais
+ * référencé : une évolution ultérieure de la bibliothèque ne doit pas
+ * réécrire un document déjà transmis.
+ */
+function FrameworkStep({
+  state, set, library,
+}: {
+  state: State;
+  set: (s: State) => void;
+  library: { clauses: ClauseApi[]; indicators: IndicatorApi[]; risks: RiskApi[] };
+}) {
+  const [onglet, setOnglet] = useState<"clauses" | "indicateurs" | "risques">("clauses");
+
+  return (
+    <div className={styles.stack}>
+      <Segmented
+        ariaLabel="Catégorie du cadre"
+        value={onglet}
+        onChange={(v) => setOnglet(v as typeof onglet)}
+        options={[
+          { value: "clauses", label: `Clauses (${state.clauses.length})` },
+          { value: "indicateurs", label: `Indicateurs (${state.indicators.length})` },
+          { value: "risques", label: `Risques (${state.risks.length})` },
+        ]}
+      />
+
+      {onglet === "clauses" && (
+        <PickerStep
+          title="Clauses de la bibliothèque"
+          hint="Le texte retenu est copié dans votre TDR : une évolution ultérieure de la bibliothèque ne le modifiera pas."
+          available={library.clauses}
+          selected={state.clauses}
+          onToggle={(c) =>
+            set({
+              ...state,
+              clauses: state.clauses.some((x) => x.id === c.id)
+                ? state.clauses.filter((x) => x.id !== c.id)
+                : [...state.clauses, c],
+            })
+          }
+          renderBody={(c) => c.text}
+          renderTag={(c) => c.category}
+        />
+      )}
+
+      {onglet === "indicateurs" && (
+        <PickerStep
+          title="Indicateurs"
+          hint="Ils alimentent le cadre de résultats du projet."
+          available={library.indicators}
+          selected={state.indicators}
+          onToggle={(i) =>
+            set({
+              ...state,
+              indicators: state.indicators.some((x) => x.id === i.id)
+                ? state.indicators.filter((x) => x.id !== i.id)
+                : [...state.indicators, i],
+            })
+          }
+          renderBody={(i) => `${i.measure} — cible ${i.target}`}
+        />
+      )}
+
+      {onglet === "risques" && (
+        <PickerStep
+          title="Risques et atténuation"
+          available={library.risks}
+          selected={state.risks}
+          onToggle={(r) =>
+            set({
+              ...state,
+              risks: state.risks.some((x) => x.id === r.id)
+                ? state.risks.filter((x) => x.id !== r.id)
+                : [...state.risks, r],
+            })
+          }
+          renderBody={(r) => `${r.description} — atténuation : ${r.mitigation}`}
+          renderTag={(r) => r.level.toLowerCase()}
+        />
+      )}
     </div>
   );
 }

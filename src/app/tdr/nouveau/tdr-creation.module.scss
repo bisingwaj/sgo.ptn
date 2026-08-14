@@ -81,8 +81,33 @@
   }
 }
 
-.tilePges {
+/* Repères du type, dérivés du référentiel : nombre d'étapes, méthode par
+   défaut, exigence de PGES, ouverture hors UGP. */
+.tileTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag {
+  font-size: 10px;
+  letter-spacing: 0.24px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  background: var(--cds-background, #fff);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  color: var(--cds-text-secondary, #525252);
+  white-space: nowrap;
+}
+
+.tagPges {
+  border-color: var(--ptn-status-warning);
   color: var(--ptn-status-warning-text);
+}
+
+.tagOpen {
+  border-color: var(--ptn-accent);
+  color: var(--ptn-accent);
 }
 
 .familyLabel {
