@@ -636,19 +636,33 @@ export function TdrCreationClient() {
     const typeOf = (s: State) => types.find((t) => t.code === s.tdrTypeCode);
 
     return [
-      // ===== 01 · Type et rattachement =====
+      // ===== 01 · Type d'activité =====
+      //
+      // Choisir la nature du marché et le rattacher au plan sont deux gestes
+      // distincts : l'un regarde onze tuiles, l'autre remplit quatre champs.
+      // Les tenir sur un même écran obligeait à faire défiler entre les deux.
       {
         num: "01",
-        label: "Type & rattachement",
-        sub: "Nature de l’activité et ligne du plan annuel",
+        label: "Type d’activité",
+        sub: "La nature du marché commande le parcours et les bibliothèques",
+        validate: (s) => (s.tdrTypeCode ? null : "Sélectionnez un type d’activité."),
+        render: (s, set) => <TypeStep state={s} set={set} types={types} activities={activities} />,
+      },
+
+      // ===== 02 · Rattachement =====
+      //
+      // C'est ici que le brouillon naît : sa création exige le type, l'intitulé
+      // et l'activité, or seul le type est connu à l'étape précédente.
+      {
+        num: "02",
+        label: "Rattachement",
+        sub: "Ligne du plan annuel, intitulé du marché et maîtrise d’ouvrage",
         validate: (s) => {
-          if (!s.tdrTypeCode) return "Sélectionnez un type d’activité.";
-          if (s.title.trim().length < 5) return "Renseignez un intitulé.";
           if (!s.ptbaActivityId)
             return "Rattachez une activité PTBA : sans ligne au plan, il n’y a pas d’enveloppe.";
+          if (s.title.trim().length < 5) return "Renseignez un intitulé.";
           return null;
         },
-        // Ouvre le brouillon en base : la suite du parcours écrit dessus.
         commit: async (s) => {
           if (s.tdrId) {
             await persist(s, {
@@ -677,7 +691,7 @@ export function TdrCreationClient() {
           await loadLibrary(s.tdrTypeCode);
         },
         render: (s, set) => (
-          <TypeStep
+          <RattachementStep
             state={s}
             set={set}
             types={types}
@@ -690,7 +704,7 @@ export function TdrCreationClient() {
 
       // ===== 02 · Cadrage =====
       {
-        num: "02",
+        num: "03",
         label: "Cadrage",
         sub: "Contexte, justification, bénéficiaires",
         validate: (s) => (s.context.trim().length < 30 ? "Le contexte doit être rédigé." : null),
@@ -741,7 +755,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 03 · Objectifs et livrables =====
       {
-        num: "03",
+        num: "04",
         label: "Objectifs & livrables",
         sub: "Ce qui est attendu, et comment on le constate",
         validate: (s) => {
@@ -762,7 +776,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 04 · Méthodologie =====
       {
-        num: "04",
+        num: "05",
         label: "Méthodologie",
         sub: "Approche attendue et contraintes",
         commit: (s) =>
@@ -784,7 +798,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 05 · Calendrier et expertise =====
       {
-        num: "05",
+        num: "06",
         label: "Calendrier & expertise",
         sub: "Durée, couverture et profils requis",
         commit: (s) =>
@@ -864,7 +878,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 06 · Budget =====
       {
-        num: "06",
+        num: "07",
         label: "Budget",
         sub: "Enveloppe et ventilation par source de financement",
         validate: (s) => {
@@ -904,7 +918,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
       // pré-cadrés ». La refonte en avait fait deux étapes ; c'était une
       // marche de plus pour un même geste, répété trois fois.
       {
-        num: "07",
+        num: "08",
         label: "Cadre & risques",
         sub: "Clauses, indicateurs et risques pré-cadrés pour ce type",
         commit: (s) =>
@@ -929,7 +943,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 09 · Sauvegardes E&S =====
       {
-        num: "08",
+        num: "09",
         label: "Sauvegardes E&S",
         sub: "Classification du risque environnemental et social",
         validate: (s) => {
@@ -1013,7 +1027,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 10 · Revue et soumission =====
       {
-        num: "09",
+        num: "10",
         label: "Revue & transmission",
         sub: "Contrôle de complétude et engagements",
         validate: (s) => {
@@ -1123,77 +1137,66 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
 // ============================================================
 
+/**
+ * Étape 01 — la nature du marché, et rien d'autre.
+ *
+ * Le type commande le parcours entier : bibliothèques chargées, exigence de
+ * PGES, catégorie de passation, convention d'intitulé. Il mérite un écran
+ * où l'on compare onze tuiles sans rien d'autre à lire.
+ */
+/**
+ * Composition de l'intitulé depuis la convention du type et le libellé de
+ * l'activité. Hissée hors des composants : les deux premières étapes en ont
+ * besoin — changer de type à l'étape 01 doit recomposer un intitulé déjà
+ * formé à l'étape 02 — et deux copies auraient fini par diverger.
+ *
+ * Le référentiel porte le gabarit ; l'écran ne fait que le substituer.
+ */
+function composeTitle(
+  state: State,
+  types: TdrTypeApi[],
+  activities: PtbaActivityApi[],
+): string {
+  const type = types.find((t) => t.code === state.tdrTypeCode);
+  const activity = activities.find((a) => a.id === state.ptbaActivityId);
+  if (!type?.titleTemplate || !activity) return "";
+  return fillTemplate(type.titleTemplate, activity);
+}
+
+/**
+ * Recompose tant que l'auteur n'a pas écrit lui-même. Changer de type après
+ * coup doit corriger l'intitulé, sinon un TDR de travaux resterait annoncé
+ * comme une étude — mais jamais au prix d'une saisie effacée.
+ */
+function withComposedTitle(
+  next: State,
+  types: TdrTypeApi[],
+  activities: PtbaActivityApi[],
+): State {
+  if (next.titleTouched) return next;
+  const compose = composeTitle(next, types, activities);
+  return compose ? { ...next, title: compose } : next;
+}
+
+/**
+ * Étape 01 — la nature du marché, et rien d'autre.
+ *
+ * Le type commande le parcours entier : bibliothèques chargées, exigence de
+ * PGES, catégorie de passation, convention d'intitulé. Il mérite un écran où
+ * l'on compare onze tuiles sans rien d'autre à lire.
+ */
 function TypeStep({
-  state, set, types, activities, organisations, components,
+  state, set, types, activities,
 }: {
   state: State;
   set: (s: State) => void;
   types: TdrTypeApi[];
   activities: PtbaActivityApi[];
-  organisations: OrganisationApi[];
-  components: ComponentApi[];
 }) {
   const families = [...new Set(types.map((t) => t.family))].sort();
 
-  /**
-   * Intitulé composé depuis la convention du type et le libellé de
-   * l'activité. Le référentiel porte le gabarit, l'écran ne fait que le
-   * substituer : la convention de dénomination reste une donnée, modifiable
-   * sans redéploiement, comme le gabarit de contexte dont elle reprend les
-   * marqueurs.
-   */
-  const composed = useMemo(() => {
-    const type = types.find((t) => t.code === state.tdrTypeCode);
-    const activity = activities.find((a) => a.id === state.ptbaActivityId);
-    if (!type?.titleTemplate || !activity) return "";
-    return fillTemplate(type.titleTemplate, activity);
-  }, [types, activities, state.tdrTypeCode, state.ptbaActivityId]);
-
-  /**
-   * Recompose tant que l'auteur n'a pas écrit lui-même. Changer de type
-   * après coup doit corriger l'intitulé, sinon un TDR de travaux resterait
-   * annoncé comme une étude — mais jamais au prix d'une saisie effacée.
-   */
-  function withComposedTitle(next: State): State {
-    if (next.titleTouched) return next;
-    const type = types.find((t) => t.code === next.tdrTypeCode);
-    const activity = activities.find((a) => a.id === next.ptbaActivityId);
-    if (!type?.titleTemplate || !activity) return next;
-    return { ...next, title: fillTemplate(type.titleTemplate, activity) };
-  }
-
-  const stillGeneric = composed !== "" && state.title.trim() === composed;
-
-  /**
-   * Activités visibles. Le parcours MDA d'origine faisait de la composante
-   * une étape à part, puis n'affichait que ses activités ; ici elle n'est
-   * qu'un filtre, la composante d'un TDR étant celle de son activité.
-   * Sans lui, les 78 lignes d'un PTBA réel tiendraient dans une seule
-   * liste déroulante.
-   */
-  const visibles = state.componentFilter
-    ? activities.filter((a) => a.componentCode === state.componentFilter)
-    : activities;
-
-  const parComposante = useMemo(() => {
-    const n: Record<string, number> = {};
-    for (const a of activities) n[a.componentCode] = (n[a.componentCode] ?? 0) + 1;
-    return n;
-  }, [activities]);
-
   return (
     <div className={styles.stack}>
-      {state.reference && (
-        <Note tone="info" title={`Brouillon ${state.reference}`}>
-          Vos saisies sont enregistrées à chaque étape.
-        </Note>
-      )}
-
-      {/* Rendu hors `Field` : celui-ci enveloppe ses enfants dans un
-          conteneur en ligne, muni d'un fond de champ et d'un soulignement,
-          conçu pour un seul input — une grille de tuiles s'y écrase. Un
-          `<button>` dans son `<label>` poserait en outre un second
-          déclencheur au clic. */}
       <fieldset className={styles.typeFieldset}>
         <legend className={styles.typeLegend}>
           Type d’activité <span className={styles.required}>*</span>
@@ -1219,7 +1222,7 @@ function TypeStep({
                     <SelectableTile
                       key={t.code}
                       selected={state.tdrTypeCode === t.code}
-                      onClick={() => set(withComposedTitle({ ...state, tdrTypeCode: t.code }))}
+                      onClick={() => set(withComposedTitle({ ...state, tdrTypeCode: t.code }, types, activities))}
                       disabled={Boolean(state.tdrId)}
                       tag={t.code}
                       title={t.name}
@@ -1248,6 +1251,61 @@ function TypeStep({
           ))
         )}
       </fieldset>
+    </div>
+  );
+}
+
+/**
+ * Étape 02 — rattacher le marché au plan.
+ *
+ * C'est ici que le brouillon naît : sa création exige le type, l'intitulé et
+ * l'activité, et seul le type était connu à l'étape précédente. L'intitulé
+ * vient en dernier parce qu'il se compose de ce qui précède.
+ */
+function RattachementStep({
+  state, set, types, activities, organisations, components,
+}: {
+  state: State;
+  set: (s: State) => void;
+  types: TdrTypeApi[];
+  activities: PtbaActivityApi[];
+  organisations: OrganisationApi[];
+  components: ComponentApi[];
+}) {
+  const composed = useMemo(
+    () => composeTitle(state, types, activities),
+    [state, types, activities],
+  );
+  const recompose = (next: State) => withComposedTitle(next, types, activities);
+
+  const stillGeneric = composed !== "" && state.title.trim() === composed;
+
+  const visibles = state.componentFilter
+    ? activities.filter((a) => a.componentCode === state.componentFilter)
+    : activities;
+
+  const parComposante = useMemo(() => {
+    const n: Record<string, number> = {};
+    for (const a of activities) n[a.componentCode] = (n[a.componentCode] ?? 0) + 1;
+    return n;
+  }, [activities]);
+
+  const type = types.find((t) => t.code === state.tdrTypeCode);
+
+  return (
+    <div className={styles.stack}>
+      {state.reference && (
+        <Note tone="info" title={`Brouillon ${state.reference}`}>
+          Vos saisies sont enregistrées à chaque étape.
+        </Note>
+      )}
+
+      {type && (
+        <p className={styles.hint}>
+          Type retenu : <strong>{type.code} · {type.name}</strong>. Il est figé une fois le
+          brouillon ouvert — il commande les bibliothèques et le parcours.
+        </p>
+      )}
 
       <div className={styles.row2}>
         <Field
@@ -1261,7 +1319,7 @@ function TypeStep({
               // plus : sans cela le dossier garderait une ligne devenue
               // invisible a l'ecran.
               set(
-                withComposedTitle({
+                recompose({
                   ...state,
                   componentFilter: e.target.value,
                   ptbaActivityId: activities.some(
@@ -1293,7 +1351,7 @@ function TypeStep({
         >
           <Select
             value={state.ptbaActivityId}
-            onChange={(e) => set(withComposedTitle({ ...state, ptbaActivityId: e.target.value }))}
+            onChange={(e) => set(recompose({ ...state, ptbaActivityId: e.target.value }))}
             placeholder="Sélectionner une activité"
             options={visibles.map((a) => ({
               value: a.id,
@@ -1359,6 +1417,7 @@ function TypeStep({
     </div>
   );
 }
+
 
 /** Rédaction du contexte, ancrée sur l'activité PTBA du dossier. */
 function ContextAssist({ state, set }: { state: State; set: (s: State) => void }) {
