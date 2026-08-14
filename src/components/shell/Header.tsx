@@ -1,33 +1,50 @@
 "use client";
 
 /**
- * Header global Carbon (48px, fond noir).
- * - Brand PTN-RDC à gauche
- * - Breadcrumb au centre
- * - Recherche + Notifications + Aide + Langue + Profil à droite
+ * Bandeau applicatif.
+ *
+ * ---------------------------------------------------------------------------
+ * CE QUI CHANGE PAR RAPPORT À LA VERSION PRÉCÉDENTE
+ *
+ * 1. IL SUIT LE THÈME. `Header.module.scss` écrivait une trentaine de valeurs
+ *    en dur — #161616, #f4f4f4, #393939, #262626… Le sélecteur clair/sombre
+ *    n'avait donc aucune prise sur le bandeau, qui restait noir en thème
+ *    clair. Tout passe désormais par les tokens Carbon.
+ *
+ * 2. IL RESPIRE. 48 px suffisent à Carbon pour un bandeau de navigation, pas
+ *    pour porter une signature institutionnelle : le logo y était réduit à
+ *    18 px de haut et passait inaperçu. 56 px, et la marque à 28 px.
+ *
+ * 3. LES MENUS EXISTENT. Notifications, aide et compte ouvrent de vrais
+ *    panneaux, fermés à l'Échap et au clic extérieur, avec le focus rendu à
+ *    leur déclencheur. Un bouton qui ne fait rien est pire qu'un bouton
+ *    absent : il use la confiance à chaque clic sans effet.
+ * ---------------------------------------------------------------------------
  */
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  Notification,
-  Help,
-  Search,
-  UserAvatar,
-  ChevronDown,
   Asleep,
+  Help,
   Light,
   Logout,
+  Notification,
+  OpenPanelRight,
   Renew,
+  Search,
+  UserAvatar,
 } from "@carbon/icons-react";
 import { useProfile } from "@/components/profile/ProfileContext";
 import { useAuth } from "@/components/auth/AuthContext";
-import { PROFILES, PROFILE_KEYS } from "@/lib/profiles";
+import { PROFILES, type ProfileKey } from "@/lib/profiles";
 import { LanguagePicker } from "@/components/chrome/LanguagePicker";
 import { useCommandPalette } from "@/components/chrome/CommandPalette";
-import { useRouter } from "next/navigation";
 import { BrandLockup } from "@/components/brand/BrandLockup";
-import styles from "./Header.module.scss";
+import { cn } from "@/lib/cn";
+import { HeaderMenu } from "./HeaderMenu";
+import { NotificationsPanel } from "./NotificationsPanel";
+import { HelpPanel } from "./HelpPanel";
 
 interface Crumb {
   label: string;
@@ -36,213 +53,201 @@ interface Crumb {
 
 interface HeaderProps {
   crumbs?: Crumb[];
+  /** Rendu uniquement si l'écran fournit un panneau contextuel. */
+  onToggleSidePanel?: () => void;
+  sidePanelOpen?: boolean;
 }
 
-export function Header({ crumbs = [] }: HeaderProps) {
-  const router = useRouter();
-  const { profile, setProfile, config, theme, setTheme } = useProfile();
+export function Header({ crumbs = [], onToggleSidePanel, sidePanelOpen }: HeaderProps) {
+  const { profile, config, theme, setTheme } = useProfile();
   const { user, assignments, logout, switchAssignment } = useAuth();
   const { open: openPalette } = useCommandPalette();
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
   const isDark = theme === "g100";
 
-  // Fermeture au clic extérieur
-  useEffect(() => {
-    if (!accountMenuOpen) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!accountRef.current?.contains(event.target as Node)) setAccountMenuOpen(false);
-    };
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAccountMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onEscape);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onEscape);
-    };
-  }, [accountMenuOpen]);
+  const handleSwitchAssignment = useCallback(
+    async (assignmentId: string) => {
+      setSwitching(true);
+      try {
+        await switchAssignment(assignmentId);
+      } finally {
+        setSwitching(false);
+      }
+    },
+    [switchAssignment],
+  );
 
-  const handleSwitchAssignment = async (assignmentId: string) => {
-    setSwitching(true);
-    try {
-      await switchAssignment(assignmentId);
-      setAccountMenuOpen(false);
-    } finally {
-      setSwitching(false);
-    }
-  };
-
-  const handleProfileSwitch = (newProfile: typeof profile) => {
-    setProfile(newProfile);
-    setProfileMenuOpen(false);
-    router.push(PROFILES[newProfile].homePath);
-  };
-
-  const toggleTheme = () => {
-    setTheme(isDark ? "g10" : "g100");
-  };
+  /**
+   * Destination de la signature.
+   *
+   * Elle pointe sur l'accueil du profil actif, et non sur « / » : la racine
+   * n'est qu'un aiguillage, la traverser imposait un aller-retour visible.
+   *
+   * Elle n'est pas non plus figée sur /cockpit : c'est l'accueil de l'UGP.
+   * Un partenaire ou un auditeur y serait envoyé sur un écran qui ne le
+   * concerne pas, et que sa session lui refuserait.
+   */
+  const homePath = PROFILES[(user ? profileFromApi(user.profile) : profile) as ProfileKey].homePath;
 
   return (
-    <header className={styles.header} role="banner">
-      {/* Logo officiel, variante claire : le bandeau Carbon est sombre. */}
-      <Link href="/" className={styles.brand} aria-label="UGPTN — accueil">
-        <BrandLockup tone="sombre" height={22} />
-        <span className={styles.brandPipe} aria-hidden>
-          /
-        </span>
-        <span className={styles.brandTag}>Gouvernance opérationnelle</span>
+    <header
+      role="banner"
+      className={cn(
+        "bg-layer border-subtle relative z-30 flex h-14 items-center gap-1 border-b pr-2 pl-4",
+      )}
+    >
+      <Link
+        href={homePath}
+        aria-label="UGPTN — accueil"
+        className="focus-visible:outline-accent mr-1 flex shrink-0 items-center gap-3 focus-visible:outline-2"
+      >
+        <BrandLockup tone={isDark ? "sombre" : "clair"} height={28} />
       </Link>
 
+      <span aria-hidden className="border-subtle mx-2 hidden h-6 border-l lg:block" />
+
       {crumbs.length > 0 && (
-        <nav aria-label="Fil d'Ariane" className={styles.crumb}>
+        <nav aria-label="Fil d'Ariane" className="hidden min-w-0 items-center gap-1.5 lg:flex">
           {crumbs.map((c, i) => {
             const isLast = i === crumbs.length - 1;
             return (
-              <span key={`${c.label}-${i}`} className={styles.crumbItem}>
+              <span key={`${c.label}-${i}`} className="flex items-center gap-1.5">
                 {!isLast && c.href ? (
-                  <Link href={c.href}>{c.label}</Link>
+                  <Link
+                    href={c.href}
+                    className="text-caption text-secondary hover:text-accent truncate underline-offset-2 hover:underline"
+                  >
+                    {c.label}
+                  </Link>
                 ) : (
-                  <span className={isLast ? styles.crumbCurrent : ""}>{c.label}</span>
+                  <span
+                    className={cn(
+                      "text-caption truncate",
+                      isLast ? "text-primary font-medium" : "text-secondary",
+                    )}
+                    aria-current={isLast ? "page" : undefined}
+                  >
+                    {c.label}
+                  </span>
                 )}
-                {!isLast && <span className={styles.crumbSep}>/</span>}
+                {!isLast && (
+                  <span aria-hidden className="text-helper">
+                    /
+                  </span>
+                )}
               </span>
             );
           })}
         </nav>
       )}
 
-      <div className={styles.spacer} />
+      <div className="flex-1" />
 
+      {/* ---------- Recherche ---------- */}
       <button
         type="button"
         onClick={openPalette}
-        aria-label="Ouvrir la recherche globale (⌘K)"
-        className={styles.searchWrap}
-        style={{ cursor: "pointer", border: 0, font: "inherit", color: "inherit" }}
+        aria-label="Ouvrir la recherche globale"
+        aria-keyshortcuts="Meta+K Control+K"
+        className="border-subtle bg-field hover:bg-field-hover focus-visible:outline-accent mr-1 hidden h-9 max-w-[22rem] min-w-0 flex-1 items-center gap-2 border px-3 focus-visible:outline-2 md:flex"
       >
-        <Search size={16} aria-hidden />
-        <span className={styles.search} style={{ textAlign: "left", color: "var(--cds-text-helper)" }}>
-          Rechercher (réf, intitulé, dossier…)
+        <Search size={16} aria-hidden className="text-secondary shrink-0" />
+        <span className="text-body text-placeholder truncate">
+          Rechercher une référence, un intitulé…
         </span>
-        <kbd className={styles.kbd}>⌘K</kbd>
+        <kbd className="border-subtle text-caption text-secondary mono ml-auto shrink-0 border px-1.5 py-0.5">
+          ⌘K
+        </kbd>
       </button>
 
-      <button
-        type="button"
-        className={styles.iconBtn}
-        onClick={toggleTheme}
-        aria-label={isDark ? "Activer le mode clair" : "Activer le mode sombre"}
-        aria-pressed={isDark}
-        title={isDark ? "Mode clair" : "Mode sombre"}
-      >
-        {isDark ? <Light size={20} aria-hidden /> : <Asleep size={20} aria-hidden />}
-      </button>
-
-      <button type="button" className={styles.iconBtn} aria-label="Aide">
-        <Help size={20} aria-hidden />
-      </button>
-
-      <button type="button" className={styles.iconBtn} aria-label="Notifications">
-        <Notification size={20} aria-hidden />
-        <span className={styles.iconBadge} aria-hidden />
-      </button>
-
-      <span className={styles.divider} aria-hidden />
-
-      <LanguagePicker variant="compact" tone="dark" />
-
-      {/* Sélecteur de profil — mode démonstration uniquement. Dès qu'une
-          session réelle est ouverte, le profil découle de l'habilitation
-          et ne se choisit plus dans un menu. */}
-      {!user && (
-      <div className={styles.profileBlock}>
-        <button
-          type="button"
-          className={styles.profileBtn}
-          onClick={() => setProfileMenuOpen((v) => !v)}
-          aria-haspopup="menu"
-          aria-expanded={profileMenuOpen}
+      {/* ---------- Panneau contextuel ---------- */}
+      {onToggleSidePanel && (
+        <IconButton
+          label={sidePanelOpen ? "Masquer le panneau contextuel" : "Afficher le panneau contextuel"}
+          onClick={onToggleSidePanel}
+          pressed={sidePanelOpen}
         >
-          <span
-            className={styles.profileDot}
-            style={{ background: config.accent.base }}
-            aria-hidden
-          />
-          <span className={styles.profileMeta}>
-            <span className={styles.profileLabel}>{config.short}</span>
-            <span className={styles.profileMicro}>Démo · changer de profil</span>
-          </span>
-          <ChevronDown size={14} aria-hidden />
-        </button>
-
-        {profileMenuOpen && (
-          <ul className={styles.profileMenu} role="menu">
-            {PROFILE_KEYS.map((p) => {
-              const def = PROFILES[p];
-              return (
-                <li key={p}>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => handleProfileSwitch(p)}
-                    className={`${styles.profileMenuItem} ${p === profile ? styles.profileMenuItemActive : ""}`}
-                  >
-                    <span
-                      className={styles.profileDot}
-                      style={{ background: def.accent.base }}
-                      aria-hidden
-                    />
-                    <span>
-                      <strong>{def.short}</strong>
-                      <small>{def.label}</small>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+          <OpenPanelRight size={20} aria-hidden />
+        </IconButton>
       )}
 
-      <div className={styles.accountBlock} ref={accountRef}>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={() => setAccountMenuOpen((v) => !v)}
-          aria-haspopup="menu"
-          aria-expanded={accountMenuOpen}
-          aria-label={user ? `Compte de ${user.firstName} ${user.lastName}` : "Compte utilisateur"}
-        >
-          <UserAvatar size={20} aria-hidden />
-        </button>
+      {/* ---------- Thème ---------- */}
+      <IconButton
+        label={isDark ? "Activer le thème clair" : "Activer le thème sombre"}
+        onClick={() => setTheme(isDark ? "g10" : "g100")}
+        pressed={isDark}
+      >
+        {isDark ? <Light size={20} aria-hidden /> : <Asleep size={20} aria-hidden />}
+      </IconButton>
 
-        {accountMenuOpen && (
-          <div className={styles.accountMenu} role="menu">
+      {/* ---------- Aide ---------- */}
+      <HeaderMenu
+        label="Aide et ressources"
+        icon={<Help size={20} aria-hidden />}
+        width="20rem"
+      >
+        {(close) => <HelpPanel onNavigate={close} />}
+      </HeaderMenu>
+
+      {/* ---------- Notifications ---------- */}
+      <HeaderMenu
+        label="Notifications"
+        icon={<Notification size={20} aria-hidden />}
+        badge
+        width="24rem"
+      >
+        {(close) => <NotificationsPanel onNavigate={close} />}
+      </HeaderMenu>
+
+      <span aria-hidden className="border-subtle mx-1 h-6 border-l" />
+
+      <LanguagePicker variant="compact" tone={isDark ? "dark" : "light"} />
+
+      {/* ---------- Compte ---------- */}
+      <HeaderMenu
+        label={user ? `Compte de ${user.firstName} ${user.lastName}` : "Compte"}
+        icon={<UserAvatar size={20} aria-hidden />}
+        width="20rem"
+        align="end"
+        trailing={
+          user ? (
+            <span className="hidden max-w-[10rem] flex-col items-start leading-tight xl:flex">
+              <span className="text-caption text-primary truncate font-medium">
+                {user.firstName} {user.lastName}
+              </span>
+              <span className="text-caption text-secondary truncate">{user.subroleLabel}</span>
+            </span>
+          ) : undefined
+        }
+      >
+        {(close) => (
+          <div className="flex flex-col">
             {user ? (
               <>
-                <div className={styles.accountIdentity}>
-                  <strong>
+                <div className="border-subtle flex flex-col gap-0.5 border-b px-4 py-3">
+                  <span className="text-heading-01 text-primary">
                     {user.firstName} {user.lastName}
-                  </strong>
-                  <span className="ptn-mono">{user.email}</span>
+                  </span>
+                  <span className="text-caption text-secondary mono truncate">{user.email}</span>
                 </div>
 
-                <div className={styles.accountSection}>
-                  <span className={styles.accountLabel}>Habilitation active</span>
-                  <div className={styles.accountCurrent}>
+                <div className="border-subtle flex flex-col gap-2 border-b px-4 py-3">
+                  <span className="text-caption text-helper tracking-wide uppercase">
+                    Habilitation active
+                  </span>
+                  <div className="flex items-start gap-2.5">
                     <span
-                      className={styles.profileDot}
-                      style={{ background: config.accent.base }}
                       aria-hidden
+                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: config.accent.base }}
                     />
-                    <span>
-                      <strong>{user.subroleLabel}</strong>
-                      <small>{user.organisationName}</small>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-body text-primary font-medium">
+                        {user.subroleLabel}
+                      </span>
+                      <span className="text-caption text-secondary truncate">
+                        {user.organisationName}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -250,23 +255,26 @@ export function Header({ crumbs = [] }: HeaderProps) {
                 {/* Multi-affectation : un cadre UGP peut aussi siéger au CTP.
                     Basculer réémet un jeton portant l'autre habilitation. */}
                 {assignments.length > 1 && (
-                  <div className={styles.accountSection}>
-                    <span className={styles.accountLabel}>Autres habilitations</span>
+                  <div className="border-subtle flex flex-col gap-1 border-b px-2 py-2">
+                    <span className="text-caption text-helper px-2 py-1 tracking-wide uppercase">
+                      Autres habilitations
+                    </span>
                     {assignments
                       .filter((a) => a.id !== user.assignmentId)
                       .map((a) => (
                         <button
                           key={a.id}
                           type="button"
-                          role="menuitem"
                           disabled={switching}
-                          className={styles.accountSwitch}
-                          onClick={() => void handleSwitchAssignment(a.id)}
+                          onClick={() => void handleSwitchAssignment(a.id).then(close)}
+                          className="hover:bg-layer-hover focus-visible:outline-accent flex items-start gap-2.5 px-2 py-2 text-left disabled:opacity-50 focus-visible:outline-2"
                         >
-                          <Renew size={14} aria-hidden />
-                          <span>
-                            <strong>{a.subroleLabel}</strong>
-                            <small>{a.organisationName}</small>
+                          <Renew size={16} aria-hidden className="text-secondary mt-0.5 shrink-0" />
+                          <span className="flex min-w-0 flex-col">
+                            <span className="text-body text-primary">{a.subroleLabel}</span>
+                            <span className="text-caption text-secondary truncate">
+                              {a.organisationName}
+                            </span>
                           </span>
                         </button>
                       ))}
@@ -275,29 +283,67 @@ export function Header({ crumbs = [] }: HeaderProps) {
 
                 <button
                   type="button"
-                  role="menuitem"
-                  className={styles.accountLogout}
                   onClick={() => void logout()}
+                  className="text-body text-danger-text hover:bg-danger-surface focus-visible:outline-accent flex items-center gap-2.5 px-4 py-3 text-left focus-visible:outline-2"
                 >
                   <Logout size={16} aria-hidden />
                   Se déconnecter
                 </button>
               </>
             ) : (
-              <>
-                <div className={styles.accountIdentity}>
-                  <strong>Mode démonstration</strong>
-                  <span>Aucune session ouverte. Les écrans affichent des données d’exemple.</span>
-                </div>
-                <Link href="/login" className={styles.accountLogout} role="menuitem">
+              <div className="flex flex-col gap-3 p-4">
+                <p className="text-body text-secondary">Aucune session ouverte.</p>
+                <Link
+                  href="/login"
+                  onClick={close}
+                  className="text-body text-accent inline-flex items-center gap-2 underline-offset-4 hover:underline"
+                >
                   <Logout size={16} aria-hidden />
                   Se connecter
                 </Link>
-              </>
+              </div>
             )}
           </div>
         )}
-      </div>
+      </HeaderMenu>
     </header>
   );
 }
+
+/* ------------------------------------------------------------------ */
+
+/** Les profils de l'API sont en majuscules, ceux du design system en minuscules. */
+function profileFromApi(profile: string): ProfileKey {
+  return profile.toLowerCase() as ProfileKey;
+}
+
+function IconButton({
+  label,
+  onClick,
+  pressed,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  pressed?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      className={cn(
+        // 40 px de cible : au-dessus du minimum de 24 px du WCAG 2.2, et
+        // confortable pour une main peu assurée sur une souris.
+        "text-secondary hover:bg-layer-hover hover:text-primary focus-visible:outline-accent flex h-10 w-10 shrink-0 items-center justify-center focus-visible:outline-2",
+        pressed && "bg-accent-surface text-accent",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+

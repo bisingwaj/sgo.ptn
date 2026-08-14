@@ -12,6 +12,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useProfile } from "./ProfileContext";
+import { useAuth } from "@/components/auth/AuthContext";
 import type { ProfileKey } from "@/lib/profiles";
 
 export interface UserIdentity {
@@ -114,7 +115,38 @@ const Ctx = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
-  const value = useMemo<UserContextValue>(() => ({ user: USERS[profile] }), [profile]);
+  const { user: session } = useAuth();
+
+  /**
+   * La session réelle prime sur le jeu d'exemple.
+   *
+   * Le cockpit saluait « Bonjour Joseph » à quelqu'un connecté sous le nom
+   * de Sylvie Mbuyi : l'identité venait de la table ci-dessus, indexée par
+   * profil, sans jamais consulter la session. Sur un écran d'accueil, se
+   * voir appeler par le nom de quelqu'un d'autre suffit à faire douter de
+   * tout le reste.
+   *
+   * Le jeu d'exemple n'est pas supprimé pour autant : les écrans encore non
+   * raccordés s'en servent, et il reste le repli quand aucune session n'est
+   * ouverte (page publique, capture de démonstration).
+   */
+  const value = useMemo<UserContextValue>(() => {
+    const fallback = USERS[profile];
+    if (!session) return { user: fallback };
+
+    return {
+      user: {
+        ...fallback,
+        firstName: session.firstName,
+        lastName: session.lastName,
+        role: session.subroleLabel,
+        entityShort: session.organisationCode,
+        entityLong: session.organisationName,
+        email: session.email,
+      },
+    };
+  }, [profile, session]);
+
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

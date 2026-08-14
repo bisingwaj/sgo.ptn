@@ -97,6 +97,7 @@ export default function CockpitPage() {
     <Shell
       crumbs={[{ label: "Accueil", href: "/cockpit" }, { label: "Cockpit UGP" }]}
       sidePanel={<DashboardSidePanel />}
+      sidePanelTitle="Activité et échéances"
     >
       <DashboardWithUser
         profile="ugp"

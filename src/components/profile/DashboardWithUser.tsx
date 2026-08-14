@@ -5,8 +5,18 @@
  * (Bonjour {firstName} — {entityLong}) dans la config du DashboardClient
  * et applique le bon profil au ProfileContext.
  *
- * Lit les données utilisateur DIRECTEMENT depuis la map USERS (par `profile`),
- * pas via useUser() — ainsi le SSR rend le bon greeting dès le 1er HTML.
+ * L'identité vient de `useUser()`, qui fait primer la session réelle sur le
+ * jeu d'exemple.
+ *
+ * La version précédente lisait `USERS[profile]` en direct, pour que le rendu
+ * serveur produise déjà le bon nom. L'intention était juste, la conséquence
+ * non : le nom affiché restait celui du jeu d'exemple même une fois la
+ * personne connectée, et le cockpit accueillait « Bonjour Joseph » quelqu'un
+ * qui s'appelle autrement. Un salut adressé à un autre nom que le sien, en
+ * tête d'écran, jette le doute sur tout ce qui suit.
+ *
+ * Le serveur ne connaît pas la session — elle vit dans le navigateur — donc
+ * le premier rendu porte encore le nom de repli, remplacé à l'hydratation.
  */
 
 import { useEffect } from "react";
@@ -15,7 +25,7 @@ import {
   type DashboardKpi,
   type DashboardProfileConfig,
 } from "@/app/dashboard/DashboardClient";
-import { USERS } from "@/components/profile/UserContext";
+import { useUser } from "@/components/profile/UserContext";
 import { useProfile } from "@/components/profile/ProfileContext";
 import type { ProfileKey } from "@/lib/profiles";
 import type { Initiative } from "@/lib/mock-initiatives";
@@ -38,7 +48,7 @@ export function DashboardWithUser({
   config,
   welcomePrefix = "Bonjour",
 }: DashboardWithUserProps) {
-  const user = USERS[profile];
+  const { user } = useUser();
   const { profile: current, setProfile } = useProfile();
 
   // Synchronise le profil actif si la route ne correspond pas
