@@ -194,7 +194,12 @@ function navFor(profile: ProfileKey): NavGroup[] {
   }
 }
 
-export function SideNav() {
+interface SideNavProps {
+  /** Repliée en colonne d'icônes. */
+  collapsed?: boolean;
+}
+
+export function SideNav({ collapsed = false }: SideNavProps) {
   const pathname = usePathname() ?? "";
   const { profile, config } = useProfile();
   const { org } = useOrganisation();
@@ -250,7 +255,10 @@ export function SideNav() {
         };
 
   return (
-    <aside className={styles.sn} aria-label="Navigation principale">
+    <aside
+      className={`${styles.sn} ${collapsed ? styles.snCollapsed : ""}`}
+      aria-label="Navigation principale"
+    >
       <div className={styles.entity}>
         <div className={styles.entityLabel}>
           {/* Pastille de profil : elle porte l'identité de couleur sans
@@ -275,6 +283,12 @@ export function SideNav() {
                   <li key={item.href + item.label}>
                     <Link
                       href={item.href}
+                      // L'intitulé disparaît une fois repliée : `title` le
+                      // rend au survol, `aria-label` au lecteur d'écran. Sans
+                      // eux, la colonne repliée n'est qu'une suite de
+                      // pictogrammes à deviner.
+                      title={collapsed ? item.label : undefined}
+                      aria-label={collapsed ? item.label : undefined}
                       className={`${styles.item} ${active ? styles.itemActive : ""}`}
                     >
                       <span className={styles.itemIcon} aria-hidden>

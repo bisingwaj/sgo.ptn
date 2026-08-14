@@ -57,7 +57,10 @@ export function BrandLockup({
       // source. L'actif est déjà détouré, dimensionné pour les écrans 2× et
       // compressé par `npm run logo` ; l'optimiseur n'a rien à y gagner.
       unoptimized
-      className={cn("block shrink-0 self-start", className)}
+      // Pas de `self-start` : il forçait l'alignement en haut à gauche et
+      // empêchait le conteneur de centrer la marque. `shrink-0` suffit à
+      // préserver le rapport ; l'alignement appartient au parent.
+      className={cn("block shrink-0", className)}
     />
   );
 }

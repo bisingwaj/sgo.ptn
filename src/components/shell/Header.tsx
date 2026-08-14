@@ -30,6 +30,8 @@ import {
   Light,
   Logout,
   Notification,
+  OpenPanelLeft,
+  OpenPanelFilledLeft,
   OpenPanelRight,
   Renew,
   Search,
@@ -56,9 +58,17 @@ interface HeaderProps {
   /** Rendu uniquement si l'écran fournit un panneau contextuel. */
   onToggleSidePanel?: () => void;
   sidePanelOpen?: boolean;
+  onToggleNav?: () => void;
+  navCollapsed?: boolean;
 }
 
-export function Header({ crumbs = [], onToggleSidePanel, sidePanelOpen }: HeaderProps) {
+export function Header({
+  crumbs = [],
+  onToggleSidePanel,
+  sidePanelOpen,
+  onToggleNav,
+  navCollapsed,
+}: HeaderProps) {
   const { profile, config, theme, setTheme } = useProfile();
   const { user, assignments, logout, switchAssignment } = useAuth();
   const { open: openPalette } = useCommandPalette();
@@ -94,22 +104,43 @@ export function Header({ crumbs = [], onToggleSidePanel, sidePanelOpen }: Header
       role="banner"
       className="bg-layer border-subtle relative z-30 flex h-14 items-center gap-1 border-b pr-2"
     >
-      {/* Le bloc de marque occupe exactement la largeur de la navigation :
-          le filet du bandeau et le bord de la colonne forment ainsi une seule
-          verticale. C'est ce qui distingue une interface composée d'éléments
-          simplement posés côte à côte. */}
+      {/* Déployée, la navigation et le bloc de marque partagent la même
+          largeur : le filet du bandeau prolonge le bord de la colonne, et les
+          deux ne forment qu'une verticale.
+          
+          Repliée, cette largeur n'aurait plus rien à prolonger — le filet
+          tomberait à 264 px quand la colonne s'arrête à 56, soit deux
+          verticales voisines et concurrentes. Le bloc reprend alors sa
+          largeur naturelle et renonce à son filet. */}
       <Link
         href={homePath}
         aria-label="UGPTN — accueil"
-        className="focus-visible:outline-accent border-subtle flex h-full shrink-0 items-center justify-center border-r px-3 min-[1025px]:w-[var(--ptn-shell-sidenav-w)] min-[1025px]:justify-start min-[1025px]:px-4"
+        className={cn(
+          "focus-visible:outline-accent border-subtle flex h-full shrink-0 items-center justify-center px-4",
+          !navCollapsed && "border-r min-[1025px]:w-[var(--ptn-shell-sidenav-w)]",
+        )}
       >
         <BrandLockup tone={isDark ? "sombre" : "clair"} height={36} />
       </Link>
 
+      {/* Placé contre la colonne qu'il commande : la commande est là où se
+          trouve ce qu'elle affecte, pas reléguée à l'autre bout du bandeau. */}
+      {onToggleNav && (
+        <div className="ml-2 hidden min-[1025px]:block">
+          <IconButton
+            label={navCollapsed ? "Déployer la navigation" : "Replier la navigation"}
+            onClick={onToggleNav}
+            pressed={navCollapsed}
+          >
+            {navCollapsed ? <OpenPanelLeft size={20} aria-hidden /> : <OpenPanelFilledLeft size={20} aria-hidden />}
+          </IconButton>
+        </div>
+      )}
+
       {crumbs.length > 0 && (
         <nav
           aria-label="Fil d'Ariane"
-          className="hidden min-w-0 items-center gap-1.5 pl-4 lg:flex"
+          className="hidden min-w-0 items-center gap-1.5 pl-2 lg:flex"
         >
           {crumbs.map((c, i) => {
             const isLast = i === crumbs.length - 1;

@@ -190,12 +190,15 @@
 }
 
 // ----- Repli en colonne d'icônes -----
-// Sous 1024 px, seuls les pictogrammes subsistent. Les intitulés étant
-// masqués, `title` et `aria-label` portent seuls le sens — voir SideNav.tsx.
-@media (max-width: 1024px) {
-  .sn {
-    width: var(--ptn-shell-sidenav-collapsed-w);
-  }
+//
+// Deux déclencheurs, un seul rendu : le repli commandé depuis le bandeau
+// (`.snCollapsed`) et le repli automatique sous 1024 px. Les règles sont
+// écrites une fois et partagées — deux copies auraient divergé.
+//
+// Les intitulés disparaissant, `title` et `aria-label` portent seuls le sens.
+// Voir SideNav.tsx.
+@mixin collapsed {
+  width: var(--ptn-shell-sidenav-collapsed-w);
 
   .entity,
   .group,
@@ -209,5 +212,25 @@
     justify-content: center;
     padding: 0;
     border-left-width: 2px;
+  }
+}
+
+.snCollapsed {
+  @include collapsed;
+}
+
+@media (max-width: 1024px) {
+  .sn {
+    @include collapsed;
+  }
+}
+
+// La largeur est animée : sans transition, le contenu saute d'un bloc à
+// l'autre et l'on perd de vue ce qui a changé.
+.sn {
+  transition: width var(--ptn-motion-moderate-01) var(--ptn-motion-easing-productive);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }

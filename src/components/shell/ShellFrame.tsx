@@ -19,6 +19,7 @@ import { SideNav } from "./SideNav";
 import { SidePanelDrawer } from "./SidePanelDrawer";
 import { AssistantChatbot } from "@/components/chatbot/AssistantChatbot";
 import { sidePanelStore } from "./side-panel-store";
+import { sideNavStore } from "./sidenav-store";
 import styles from "./Shell.module.scss";
 
 interface ShellFrameProps {
@@ -39,9 +40,14 @@ export function ShellFrame({
   // Fermé par défaut ; la préférence est relue au montage côté client.
   // Voir side-panel-store.ts pour le choix de useSyncExternalStore.
   const panelOpen = sidePanelStore.use();
+  const navCollapsed = sideNavStore.use();
 
   const togglePanel = useCallback(() => {
     sidePanelStore.set(!sidePanelStore.get());
+  }, []);
+
+  const toggleNav = useCallback(() => {
+    sideNavStore.set(!sideNavStore.get());
   }, []);
 
   return (
@@ -50,9 +56,11 @@ export function ShellFrame({
         crumbs={crumbs}
         onToggleSidePanel={sidePanel ? togglePanel : undefined}
         sidePanelOpen={panelOpen}
+        onToggleNav={toggleNav}
+        navCollapsed={navCollapsed}
       />
       <div className={styles.body}>
-        <SideNav />
+        <SideNav collapsed={navCollapsed} />
         <main className={styles.main} id="ptn-main" tabIndex={-1}>
           <div className={styles.mainInner}>{children}</div>
         </main>
