@@ -297,13 +297,45 @@ export class TdrService {
       blockers.push('Les engagements de conformité au MEP et de protection des données ne sont pas confirmés.');
     }
 
-    // L'enveloppe du TDR ne peut excéder celle de l'activité au plan.
+    // L'enveloppe du TDR ne peut excéder celle de l'activité au plan, ni
+    // seule ni cumulée avec les autres dossiers de la même ligne.
+    //
+    // Le contrôle individuel ne suffisait pas : une activité dotée de
+    // 8,7 M USD portait douze TDR totalisant 48,5 M, chacun passant le
+    // contrôle. C'est l'oubli symétrique de celui que le PTBA évite d'un
+    // cran plus haut, où la somme des activités est bornée par la dotation
+    // de la composante.
+    //
+    // Les brouillons des autres sont comptés : une enveloppe se réserve dès
+    // qu'un dossier la vise, sans quoi deux rédacteurs la dépenseraient
+    // deux fois. Les dossiers refusés et archivés la libèrent.
     if (tdr.ptbaActivity && tdr.budgetTotalUsd) {
       const envelope = Number(tdr.ptbaActivity.envelopeUsd);
-      if (Number(tdr.budgetTotalUsd) > envelope) {
+      const budget = Number(tdr.budgetTotalUsd);
+
+      if (budget > envelope) {
         blockers.push(
-          `Le budget (${(Number(tdr.budgetTotalUsd) / 1e6).toFixed(2)} M USD) dépasse l’enveloppe de l’activité ${tdr.ptbaActivity.code} (${(envelope / 1e6).toFixed(2)} M USD).`,
+          `Le budget (${(budget / 1e6).toFixed(2)} M USD) dépasse l’enveloppe de l’activité ${tdr.ptbaActivity.code} (${(envelope / 1e6).toFixed(2)} M USD).`,
         );
+      } else {
+        const autres = await this.prisma.tdr.aggregate({
+          where: {
+            ptbaActivityId: tdr.ptbaActivityId,
+            id: { not: tdr.id },
+            status: { notIn: ['ANO_REFUSE', 'ARCHIVE'] },
+          },
+          _sum: { budgetTotalUsd: true },
+        });
+        const dejaEngage = Number(autres._sum.budgetTotalUsd ?? 0);
+        if (dejaEngage + budget > envelope) {
+          const reste = envelope - dejaEngage;
+          blockers.push(
+            `L’activité ${tdr.ptbaActivity.code} porte déjà ${(dejaEngage / 1e6).toFixed(2)} M USD ` +
+              `sur une enveloppe de ${(envelope / 1e6).toFixed(2)} M USD : ` +
+              `${reste > 0 ? `il y reste ${(reste / 1e6).toFixed(2)} M USD` : 'il n’y reste rien'}, ` +
+              `et ce dossier en demande ${(budget / 1e6).toFixed(2)} M USD.`,
+          );
+        }
       }
     }
 

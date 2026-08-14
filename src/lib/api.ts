@@ -696,8 +696,28 @@ export interface TdrApi {
   risks: TdrRiskApi[];
 }
 
+/** Ligne de la liste des TDR — l'API renvoie le document entier, la liste
+ *  n'en consomme que l'en-tête. */
+export interface TdrListItem {
+  id: string;
+  reference: string;
+  title: string;
+  status: TdrStatusApi;
+  origin: string;
+  tdrTypeCode: string;
+  budgetTotalUsd: string | null;
+  procurementMethodCode: string | null;
+  reviewType: "PRIOR" | "POST" | null;
+  updatedAt: string;
+  submittedAt: string | null;
+  tdrType: { code: string; name: string };
+  ptbaActivity: { code: string; componentCode: string } | null;
+  organisation: { code: string; name: string };
+}
+
 export const tdrApi = {
-  list: (statut?: string) => api.get<TdrApi[]>(`/tdr${statut ? `?statut=${statut}` : ""}`),
+  list: (statut?: string) =>
+    api.get<TdrListItem[]>(`/tdr${statut ? `?statut=${statut}` : ""}`),
   get: (id: string) => api.get<TdrApi>(`/tdr/${id}`),
   completeness: (id: string) =>
     api.get<{ blockers: string[]; warnings: string[] }>(`/tdr/${id}/completude`),

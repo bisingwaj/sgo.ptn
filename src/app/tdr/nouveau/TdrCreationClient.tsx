@@ -887,7 +887,16 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
           if (s.blockers.length > 0) return "Des éléments obligatoires manquent.";
           return null;
         },
-        render: (s, set) => <ReviewStep state={s} set={set} persist={persist} />,
+        render: (s, set) => (
+          <ReviewStep
+            state={s}
+            set={set}
+            persist={persist}
+            types={types}
+            activities={activities}
+            provinces={provinces}
+          />
+        ),
       },
     ];
   }, [types, activities, provinces, library, persist, loadLibrary]);
@@ -1767,12 +1776,185 @@ function PickerStep<T extends LibraryEntry>({
   );
 }
 
+/**
+ * Récapitulatif du dossier.
+ *
+ * Chaque bloc renvoie à l'étape qui le porte : relire sans pouvoir corriger
+ * n'aurait qu'un demi-intérêt. Les champs vides sont montrés comme vides,
+ * et non masqués — c'est justement ce qu'il faut voir avant de transmettre.
+ */
+function Recap({
+  state, types, activities, provinces,
+}: {
+  state: State;
+  types: TdrTypeApi[];
+  activities: PtbaActivityApi[];
+  provinces: ProvinceApi[];
+}) {
+  const type = types.find((t) => t.code === state.tdrTypeCode);
+  const activity = activities.find((a) => a.id === state.ptbaActivityId);
+  const province = provinces.find((p) => p.code === state.provinceCode);
+  const usd = (v: string) => (v ? `${(Number(v) / 1e6).toFixed(2)} M USD` : "—");
+  const vide = (v: string) => (v.trim() ? v : null);
+
+  return (
+    <div className={styles.recap}>
+      <RecapBloc titre="Type & rattachement" etape="01">
+        <RecapLigne cle="Type" val={type ? `${type.code} · ${type.name}` : "—"} />
+        <RecapLigne cle="Intitulé du marché" val={state.title || "—"} />
+        <RecapLigne
+          cle="Activité PTBA"
+          val={activity ? `${activity.code} · ${activity.title}` : "—"}
+        />
+        <RecapLigne
+          cle="Enveloppe de l’activité"
+          val={activity ? usd(activity.envelopeUsd) : "—"}
+        />
+      </RecapBloc>
+
+      <RecapBloc titre="Cadrage" etape="02">
+        <RecapTexte cle="Contexte" val={vide(state.context)} />
+        <RecapTexte cle="Justification" val={vide(state.justification)} />
+        <RecapTexte cle="Bénéficiaires visés" val={vide(state.beneficiaries)} />
+      </RecapBloc>
+
+      <RecapBloc titre="Objectifs & livrables" etape="03">
+        <RecapListe
+          cle="Objectifs SMART"
+          items={state.objectives.filter((o) => o.title.trim()).map(
+            (o, i) => `O${i + 1} · ${o.title}${o.criteria ? ` — ${o.criteria}` : ""}`,
+          )}
+        />
+        <RecapTexte cle="Résultats attendus" val={vide(state.expectedResults)} />
+        <RecapListe
+          cle="Livrables"
+          items={state.deliverables.filter((d) => d.title.trim()).map(
+            (d, i) =>
+              `L${i + 1} · ${d.title}${d.format ? ` — ${d.format}` : ""}${d.deadline ? ` · ${d.deadline}` : ""}`,
+          )}
+        />
+      </RecapBloc>
+
+      <RecapBloc titre="Méthodologie" etape="04">
+        <RecapTexte cle="Approche" val={vide(state.approach)} />
+        <RecapTexte cle="Méthodes et outils" val={vide(state.methodology)} />
+        <RecapTexte cle="Contraintes" val={vide(state.constraints)} />
+      </RecapBloc>
+
+      <RecapBloc titre="Calendrier & expertise" etape="05">
+        <RecapLigne cle="Démarrage souhaité" val={state.startDate || "—"} />
+        <RecapLigne
+          cle="Durée"
+          val={state.durationMonths ? `${state.durationMonths} mois` : "—"}
+        />
+        <RecapLigne
+          cle="Volume d’effort"
+          val={state.effortDays ? `${state.effortDays} jours-homme` : "—"}
+        />
+        <RecapLigne cle="Couverture" val={province ? province.label : "Nationale"} />
+        <RecapListe
+          cle="Profils-clés"
+          items={state.keyProfiles.map(
+            (id) => PROFIL_KEYS.find((p) => p.id === id)?.label ?? id,
+          )}
+        />
+      </RecapBloc>
+
+      <RecapBloc titre="Budget" etape="06">
+        <RecapLigne cle="Budget total" val={usd(state.budgetTotalUsd)} />
+        <RecapLigne cle="Part IDA" val={usd(state.budgetIdaUsd)} />
+        <RecapLigne cle="Part AFD" val={usd(state.budgetAfdUsd)} />
+        <RecapLigne cle="Part Gouvernement" val={usd(state.budgetGovUsd)} />
+      </RecapBloc>
+
+      <RecapBloc titre="Cadre & risques" etape="07">
+        <RecapListe cle="Clauses retenues" items={state.clauses.map((c) => c.label)} />
+        <RecapListe cle="Indicateurs" items={state.indicators.map((i) => i.label)} />
+        <RecapListe cle="Risques" items={state.risks.map((r) => r.label)} />
+      </RecapBloc>
+
+      <RecapBloc titre="Sauvegardes E&S" etape="08">
+        <RecapLigne
+          cle="Catégorie de risque"
+          val={ES_LEVELS.find((l) => l.value === state.esCategory)?.label ?? "—"}
+        />
+        <RecapListe
+          cle="Risques identifiés"
+          items={state.esRisks.map(
+            (id) => ES_RISK_CATALOG.find((r) => r.id === id)?.title ?? id,
+          )}
+        />
+      </RecapBloc>
+    </div>
+  );
+}
+
+function RecapBloc({
+  titre, etape, children,
+}: {
+  titre: string;
+  etape: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={styles.recapBloc}>
+      <header className={styles.recapHead}>
+        <span className={`${styles.recapEtape} ptn-mono`}>{etape}</span>
+        <h4>{titre}</h4>
+      </header>
+      <dl className={styles.recapListe}>{children}</dl>
+    </section>
+  );
+}
+
+function RecapLigne({ cle, val }: { cle: string; val: string }) {
+  return (
+    <div className={styles.recapRow}>
+      <dt>{cle}</dt>
+      <dd>{val}</dd>
+    </div>
+  );
+}
+
+function RecapTexte({ cle, val }: { cle: string; val: string | null }) {
+  return (
+    <div className={styles.recapRow}>
+      <dt>{cle}</dt>
+      <dd className={val ? styles.recapProse : styles.recapAbsent}>
+        {val ?? "Non renseigné"}
+      </dd>
+    </div>
+  );
+}
+
+function RecapListe({ cle, items }: { cle: string; items: string[] }) {
+  return (
+    <div className={styles.recapRow}>
+      <dt>{cle}</dt>
+      <dd>
+        {items.length === 0 ? (
+          <span className={styles.recapAbsent}>Aucun</span>
+        ) : (
+          <ul className={styles.recapItems}>
+            {items.map((t, i) => (
+              <li key={`${t}-${i}`}>{t}</li>
+            ))}
+          </ul>
+        )}
+      </dd>
+    </div>
+  );
+}
+
 function ReviewStep({
-  state, set, persist,
+  state, set, persist, types, activities, provinces,
 }: {
   state: State;
   set: (s: State) => void;
   persist: (s: State, patch: Record<string, unknown>) => Promise<void>;
+  types: TdrTypeApi[];
+  activities: PtbaActivityApi[];
+  provinces: ProvinceApi[];
 }) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -1819,6 +2001,17 @@ function ReviewStep({
           {w}
         </Note>
       ))}
+
+      {/* Relecture avant transmission. Un TDR transmis passe en SOUMIS_UGP
+          et cesse d'être modifiable ; c'est ici, et nulle part ailleurs, que
+          l'auteur peut encore reprendre le dossier entier. L'étape n'en
+          montrait rien. */}
+      <h3 className={styles.sectionTitle}>Le dossier avant transmission</h3>
+      <p className={styles.hint}>
+        Dernière relecture. Une fois transmis, le document n’est plus modifiable : il faut
+        qu’il vous soit retourné.
+      </p>
+      <Recap state={state} types={types} activities={activities} provinces={provinces} />
 
       <h3 className={styles.sectionTitle}>Engagements</h3>
       <label className={styles.consent}>

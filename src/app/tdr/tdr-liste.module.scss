@@ -1,0 +1,147 @@
+/**
+ * Registre des TDR — barre de filtres et statuts.
+ * Le tableau reprend `ugp-shared`, inchangé.
+ */
+
+.barre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ptn-space-04);
+  flex-wrap: wrap;
+  margin: var(--ptn-space-05) 0 var(--ptn-space-04);
+}
+
+.filtres {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.filtre {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--cds-text-secondary, #525252);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover, #e8e8e8);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+.filtreOn {
+  border-bottom-color: var(--ptn-accent);
+  color: var(--cds-text-primary, #161616);
+  font-weight: 500;
+}
+
+/* Le compte se lit à côté du libellé, pas à sa place : un filtre vide reste
+   cliquable et le dit. */
+.compte {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 5px;
+  background: var(--cds-layer, #f4f4f4);
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.recherche {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  min-width: 280px;
+  flex: 1;
+  max-width: 380px;
+  background: var(--cds-field, #f4f4f4);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong, #8d8d8d);
+  color: var(--cds-text-primary, #161616);
+
+  &:focus {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+/* ===== Statuts ===== */
+
+.statut {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  border: 1px solid;
+}
+
+.tonNeutre {
+  border-color: var(--cds-border-subtle, #e0e0e0);
+  color: var(--cds-text-secondary, #525252);
+  background: var(--cds-layer, #f4f4f4);
+}
+
+.tonAttente {
+  border-color: var(--ptn-accent);
+  color: var(--ptn-accent);
+  background: var(--ptn-accent-surface);
+}
+
+.tonOk {
+  border-color: var(--ptn-status-success);
+  color: var(--ptn-status-success-text, #0e6027);
+  background: var(--ptn-status-success-surface, #defbe6);
+}
+
+.tonAlerte {
+  border-color: var(--ptn-status-danger);
+  color: var(--ptn-status-danger-text);
+  background: var(--ptn-status-danger-surface);
+}
+
+.sousTitre {
+  font-size: 11px;
+  color: var(--cds-text-helper, #6f6f6f);
+  margin-top: 3px;
+}
+
+/* ===== États ===== */
+
+.vide {
+  padding: var(--ptn-space-07) var(--ptn-space-05);
+  text-align: center;
+  color: var(--cds-text-helper, #6f6f6f);
+
+  svg {
+    color: var(--cds-border-strong, #8d8d8d);
+  }
+
+  p {
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 52ch;
+    margin: var(--ptn-space-03) auto var(--ptn-space-04);
+  }
+}
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ptn-space-02);
+  padding: var(--ptn-space-03) var(--ptn-space-04);
+  margin-bottom: var(--ptn-space-04);
+  background: var(--ptn-status-danger-surface);
+  border-left: 3px solid var(--ptn-status-danger);
+  color: var(--ptn-status-danger-text);
+  font-size: 13px;
+}
