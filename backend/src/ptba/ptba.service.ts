@@ -42,6 +42,7 @@ export class PtbaService {
       include: {
         component: { select: { code: true, shortLabel: true } },
         province: { select: { code: true, label: true } },
+        ...PtbaService.CONTENT_INCLUDE,
       },
     });
 
@@ -108,6 +109,83 @@ export class PtbaService {
     return ptbaYear;
   }
 
+  /**
+   * Ecrit les cinq listes que l'activite porte en propre.
+   *
+   * Remplacement en bloc, comme pour les collections d'un TDR : l'ecran
+   * renvoie l'etat complet de chaque liste, jamais des operations
+   * differentielles. Une entree sans intitule est ecartee — un formulaire
+   * laisse volontiers une ligne vide en fin de saisie.
+   */
+  private static async writeContent(
+    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    activityId: string,
+    dto: UpsertActivityDto,
+  ): Promise<void> {
+    const propre = (v?: string) => (v && v.trim() ? v.trim() : null);
+
+    if (dto.objectives) {
+      await tx.ptbaActivityObjective.deleteMany({ where: { activityId } });
+      await tx.ptbaActivityObjective.createMany({
+        data: dto.objectives
+          .filter((o) => o.title?.trim())
+          .map((o, i) => ({ activityId, title: o.title.trim(), criteria: propre(o.criteria), position: i })),
+      });
+    }
+    if (dto.deliverables) {
+      await tx.ptbaActivityDeliverable.deleteMany({ where: { activityId } });
+      await tx.ptbaActivityDeliverable.createMany({
+        data: dto.deliverables
+          .filter((d) => d.title?.trim())
+          .map((d, i) => ({
+            activityId, title: d.title.trim(), format: propre(d.format), deadline: propre(d.deadline), position: i,
+          })),
+      });
+    }
+    if (dto.indicators) {
+      await tx.ptbaActivityIndicator.deleteMany({ where: { activityId } });
+      await tx.ptbaActivityIndicator.createMany({
+        data: dto.indicators
+          .filter((n) => n.label?.trim())
+          .map((n, i) => ({
+            activityId, label: n.label.trim(), measure: propre(n.measure), target: propre(n.target), position: i,
+          })),
+      });
+    }
+    if (dto.risks) {
+      await tx.ptbaActivityRisk.deleteMany({ where: { activityId } });
+      await tx.ptbaActivityRisk.createMany({
+        data: dto.risks
+          .filter((r) => r.label?.trim())
+          .map((r, i) => ({
+            activityId,
+            label: r.label.trim(),
+            description: propre(r.description),
+            mitigation: propre(r.mitigation),
+            level: (propre(r.level) as never) ?? null,
+            position: i,
+          })),
+      });
+    }
+    if (dto.clauses) {
+      await tx.ptbaActivityClause.deleteMany({ where: { activityId } });
+      await tx.ptbaActivityClause.createMany({
+        data: dto.clauses
+          .filter((c) => c.label?.trim())
+          .map((c, i) => ({ activityId, label: c.label.trim(), text: propre(c.text), position: i })),
+      });
+    }
+  }
+
+  /** Les cinq listes, ordonnees, pour tout renvoi d'activite. */
+  private static readonly CONTENT_INCLUDE = {
+    objectives: { orderBy: { position: 'asc' } },
+    deliverables: { orderBy: { position: 'asc' } },
+    indicators: { orderBy: { position: 'asc' } },
+    risks: { orderBy: { position: 'asc' } },
+    clauses: { orderBy: { position: 'asc' } },
+  } as const;
+
   async createActivity(year: number, dto: UpsertActivityDto, actor: AuthenticatedUser, ctx: RequestContext) {
     const ptbaYear = await this.assertEditable(year);
     PtbaService.assertDonorSplit(dto);
@@ -121,18 +199,28 @@ export class PtbaService {
 
     await this.assertEnvelopeFits(ptbaYear.id, dto.componentCode as ComponentCode, dto.envelopeUsd);
 
-    const activity = await this.prisma.ptbaActivity.create({
-      data: {
-        ptbaYearId: ptbaYear.id,
-        code: dto.code,
-        title: dto.title.trim(),
-        componentCode: dto.componentCode as ComponentCode,
-        subComponent: dto.subComponent?.trim() || null,
-        envelopeUsd: dto.envelopeUsd,
-        idaUsd: dto.idaUsd ?? null,
-        afdUsd: dto.afdUsd ?? null,
-        provinceCode: dto.provinceCode || null,
-      },
+    // Une seule transaction : une activite dont le contenu aurait echoue a
+    // s'ecrire serait pire qu'une activite absente, puisqu'elle passerait
+    // pour complete.
+    const activity = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.ptbaActivity.create({
+        data: {
+          ptbaYearId: ptbaYear.id,
+          code: dto.code,
+          title: dto.title.trim(),
+          componentCode: dto.componentCode as ComponentCode,
+          subComponent: dto.subComponent?.trim() || null,
+          envelopeUsd: dto.envelopeUsd,
+          idaUsd: dto.idaUsd ?? null,
+          afdUsd: dto.afdUsd ?? null,
+          provinceCode: dto.provinceCode || null,
+        },
+      });
+      await PtbaService.writeContent(tx, created.id, dto);
+      return tx.ptbaActivity.findUniqueOrThrow({
+        where: { id: created.id },
+        include: PtbaService.CONTENT_INCLUDE,
+      });
     });
 
     await this.audit.record({
@@ -166,18 +254,25 @@ export class PtbaService {
       id,
     );
 
-    const updated = await this.prisma.ptbaActivity.update({
-      where: { id },
-      data: {
-        code: dto.code,
-        title: dto.title.trim(),
-        componentCode: dto.componentCode as ComponentCode,
-        subComponent: dto.subComponent?.trim() || null,
-        envelopeUsd: dto.envelopeUsd,
-        idaUsd: dto.idaUsd ?? null,
-        afdUsd: dto.afdUsd ?? null,
-        provinceCode: dto.provinceCode || null,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.ptbaActivity.update({
+        where: { id },
+        data: {
+          code: dto.code,
+          title: dto.title.trim(),
+          componentCode: dto.componentCode as ComponentCode,
+          subComponent: dto.subComponent?.trim() || null,
+          envelopeUsd: dto.envelopeUsd,
+          idaUsd: dto.idaUsd ?? null,
+          afdUsd: dto.afdUsd ?? null,
+          provinceCode: dto.provinceCode || null,
+        },
+      });
+      await PtbaService.writeContent(tx, id, dto);
+      return tx.ptbaActivity.findUniqueOrThrow({
+        where: { id },
+        include: PtbaService.CONTENT_INCLUDE,
+      });
     });
 
     await this.audit.record({

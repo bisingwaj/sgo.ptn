@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, Matches, Min, MaxLength, MinLength } from 'class-validator';
+import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Matches, Min, MaxLength, MinLength } from 'class-validator';
 import { ComponentCode } from '../../../generated/prisma/enums';
 
 export class UpsertActivityDto {
@@ -47,4 +47,34 @@ export class UpsertActivityDto {
   @IsOptional()
   @IsString()
   provinceCode?: string;
+
+  /**
+   * Ce que l'activite porte en propre. Facultatif a la creation : une ligne
+   * de plan peut s'inscrire avant que son contenu soit arrete, et se
+   * completer ensuite.
+   */
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  objectives?: Array<{ title: string; criteria?: string }>;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  deliverables?: Array<{ title: string; format?: string; deadline?: string }>;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  indicators?: Array<{ label: string; measure?: string; target?: string }>;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  risks?: Array<{ label: string; description?: string; mitigation?: string; level?: string }>;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  clauses?: Array<{ label: string; text?: string }>;
 }

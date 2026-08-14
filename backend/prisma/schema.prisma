@@ -515,6 +515,85 @@ model PtbaYear {
   @@map("ptba_years")
 }
 
+/// Objectif de l'activite, distinct de celui d'un TDR : l'activite dit ce
+/// qu'elle doit atteindre, le marche dit ce qu'il execute pour y concourir.
+model PtbaActivityObjective {
+  id         String       @id @default(uuid()) @db.Uuid
+  activityId String       @db.Uuid
+  activity   PtbaActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  title      String
+  /// Comment on constatera l'atteinte
+  criteria   String?
+  position   Int          @default(0)
+
+  @@index([activityId])
+  @@map("ptba_activity_objectives")
+}
+
+/// Livrable attendu de l'activite. Reserve dans laquelle les TDR puisent :
+/// l'un commande le local, l'autre les equipements.
+model PtbaActivityDeliverable {
+  id         String       @id @default(uuid()) @db.Uuid
+  activityId String       @db.Uuid
+  activity   PtbaActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  title      String
+  format     String?
+  /// Delai relatif au demarrage — J+15, S+4, M+6
+  deadline   String?
+  position   Int          @default(0)
+
+  @@index([activityId])
+  @@map("ptba_activity_deliverables")
+}
+
+/// Indicateur de resultat propre a l'activite. C'est le seul des cinq qui
+/// remonte : il alimente le cadre de resultats de la composante.
+model PtbaActivityIndicator {
+  id         String       @id @default(uuid()) @db.Uuid
+  activityId String       @db.Uuid
+  activity   PtbaActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  label      String
+  /// Unite ou methode de mesure
+  measure    String?
+  target     String?
+  position   Int          @default(0)
+
+  @@index([activityId])
+  @@map("ptba_activity_indicators")
+}
+
+/// Risque propre a l'activite, avec son attenuation. Distinct des risques
+/// d'execution attaches au type de marche, qui restent au referentiel.
+model PtbaActivityRisk {
+  id          String       @id @default(uuid()) @db.Uuid
+  activityId  String       @db.Uuid
+  activity    PtbaActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  label       String
+  description String?
+  mitigation  String?
+  level       EsCategory?
+  position    Int          @default(0)
+
+  @@index([activityId])
+  @@map("ptba_activity_risks")
+}
+
+/// Norme ou disposition propre a l'activite — ICAO 9303 pour l'identite,
+/// ISO 27001 pour un centre de supervision. Les clauses CONTRACTUELLES, qui
+/// suivent la forme du marche et non son objet, restent attachees au type
+/// de TDR dans la bibliotheque versionnee.
+model PtbaActivityClause {
+  id         String       @id @default(uuid()) @db.Uuid
+  activityId String       @db.Uuid
+  activity   PtbaActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  label      String
+  text       String?      @db.Text
+  position   Int          @default(0)
+
+  @@index([activityId])
+  @@map("ptba_activity_clauses")
+}
+
 model PtbaActivity {
   id         String   @id @default(uuid()) @db.Uuid
   ptbaYearId String   @db.Uuid
@@ -538,6 +617,23 @@ model PtbaActivity {
   province     Province? @relation(fields: [provinceCode], references: [code])
 
   isActive Boolean @default(true)
+
+  /// Ce que l'activite porte en propre — saisi avec elle, au plan.
+  ///
+  /// Ces elements ne rejoignent pas les bibliotheques versionnees du
+  /// referentiel : celles-ci decrivent la FORME d'un marche et evoluent
+  /// lentement, tandis que ceux-ci decrivent l'OBJET d'une ligne du plan et
+  /// suivent le cycle de l'exercice. Ils naissent avec l'activite, se figent
+  /// quand l'exercice est valide, et disparaissent avec elle.
+  ///
+  /// Le TDR y puisera : une activite porte plusieurs marches, et chacun ne
+  /// reprend que ce qui le concerne. Jamais d'heritage automatique — un
+  /// marche de peinture ne porte pas l'objectif « doter le pays d'un SOC ».
+  objectives   PtbaActivityObjective[]
+  deliverables PtbaActivityDeliverable[]
+  indicators   PtbaActivityIndicator[]
+  risks        PtbaActivityRisk[]
+  clauses      PtbaActivityClause[]
 
   tdrs Tdr[]
 
