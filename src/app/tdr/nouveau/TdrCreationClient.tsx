@@ -236,6 +236,101 @@ const REPORTING_RHYTHMS = [
 ];
 
 /**
+ * Reconstitue l'état du parcours depuis un dossier enregistré.
+ *
+ * La reprise d'un brouillon n'existait pas : le parcours repartait toujours
+ * de zéro, et un dossier interrompu était perdu de vue. Les champs simples
+ * se recopient ; les trois bibliothèques demandent un raccord.
+ *
+ * Une clause enregistrée est une COPIE du texte, pas une référence — c'est
+ * voulu, une évolution de la bibliothèque ne doit pas réécrire un document.
+ * Pour rendre la sélection au sélecteur, on la rapproche de son entrée
+ * d'origine par `sourceFamilyKey`. Quand la famille a été archivée depuis,
+ * le rapprochement échoue : on fabrique alors une entrée de substitution à
+ * partir du texte conservé, faute de quoi l'enregistrement suivant — qui
+ * remplace la collection en bloc — effacerait la clause en silence.
+ */
+function hydrate(
+  tdr: TdrApi,
+  bib: { clauses: ClauseApi[]; indicators: IndicatorApi[]; risks: RiskApi[] },
+): State {
+  const socle = <T extends { familyKey: string }>(familyKey: string | null | undefined, i: number) =>
+    ({
+      id: `conserve:${familyKey ?? i}`,
+      familyKey: familyKey ?? `conserve-${i}`,
+      version: 0,
+      tdrTypeCode: tdr.tdrTypeCode,
+      status: "PUBLIE" as const,
+      effectiveFrom: null,
+      supersededAt: null,
+      createdAt: "",
+    }) as unknown as T;
+
+  const clauses: ClauseApi[] = tdr.clauses.map((c, i) => {
+    const source = bib.clauses.find((x) => x.familyKey === c.sourceFamilyKey);
+    return source ?? { ...socle<ClauseApi>(c.sourceFamilyKey, i), label: c.label, text: c.text, category: c.category };
+  });
+  const indicators: IndicatorApi[] = tdr.indicators.map((n, i) => {
+    const source = bib.indicators.find((x) => x.familyKey === n.sourceFamilyKey);
+    return source ?? { ...socle<IndicatorApi>(n.sourceFamilyKey, i), label: n.label, measure: n.measure, target: n.target };
+  });
+  const risks: RiskApi[] = tdr.risks.map((r, i) => {
+    const source = bib.risks.find((x) => x.familyKey === r.sourceFamilyKey);
+    return source ?? {
+      ...socle<RiskApi>(r.sourceFamilyKey, i),
+      label: r.label, description: r.description, mitigation: r.mitigation, level: r.level,
+    };
+  });
+
+  return {
+    ...INITIAL,
+    tdrId: tdr.id,
+    reference: tdr.reference,
+    tdrTypeCode: tdr.tdrTypeCode,
+    ptbaActivityId: tdr.ptbaActivityId ?? "",
+    componentFilter: tdr.ptbaActivity?.componentCode ?? "",
+    beneficiaryOrganisationId: tdr.beneficiaryOrganisationId ?? "",
+    title: tdr.title,
+    // Un intitulé déjà enregistré est celui de l'auteur : la composition
+    // automatique ne doit pas le reprendre en main.
+    titleTouched: true,
+
+    context: tdr.context ?? "",
+    justification: tdr.justification ?? "",
+    beneficiaries: tdr.beneficiaries ?? "",
+
+    objectives: tdr.objectives.map((o) => ({ title: o.title, criteria: o.criteria })),
+    deliverables: tdr.deliverables.map((d) => ({
+      title: d.title, format: d.format ?? "", deadline: d.deadline ?? "",
+    })),
+    expectedResults: tdr.expectedResults ?? "",
+    deliverableFormat: tdr.deliverableFormat ?? "",
+    reportingRhythm: tdr.reportingRhythm ?? "",
+
+    approach: tdr.approach ?? "",
+    methodology: tdr.methodology ?? "",
+    constraints: tdr.constraints ?? "",
+
+    startDate: tdr.startDate ? tdr.startDate.slice(0, 10) : "",
+    durationMonths: tdr.durationMonths ? String(tdr.durationMonths) : "",
+    provinceCode: tdr.provinceCode ?? "",
+    expertise: tdr.expertise ?? "",
+    effortDays: tdr.effortDays ? String(tdr.effortDays) : "",
+    keyProfiles: tdr.keyProfiles ?? [],
+
+    budgetTotalUsd: tdr.budgetTotalUsd ?? "",
+    budgetIdaUsd: tdr.budgetIdaUsd ?? "",
+    budgetAfdUsd: tdr.budgetAfdUsd ?? "",
+    budgetGovUsd: tdr.budgetGovUsd ?? "",
+
+    clauses, indicators, risks,
+
+    esCategory: tdr.esCategory ?? "",
+    esRisks: tdr.esRisks ?? [],
+  };
+}
+
+/**
  * Substitue les marqueurs du gabarit de contexte par l'activité rattachée.
  * Le gabarit est stocké en base avec `{{ptbaCode}}` et `{{ptbaTitle}}`,
  * pour que le référentiel reste indépendant d'un dossier particulier.
@@ -448,6 +543,15 @@ export function TdrCreationClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<TdrApi | null>(null);
 
+  // Reprise d'un brouillon : `?id=` désigne le dossier à rouvrir. Tant que
+  // l'hydratation n'a pas abouti, le parcours n'est pas monté — le Wizard
+  // fige son état initial au montage, et l'ouvrir vide puis le remplir
+  // ferait clignoter un formulaire neuf par-dessus un dossier existant.
+  const draftId = params.get("id");
+  const [resume, setResume] = useState<State | null>(null);
+  const [resuming, setResuming] = useState(Boolean(draftId));
+  const [resumeError, setResumeError] = useState<string | null>(null);
+
   useEffect(() => {
     if (authLoading || !user) return;
     Promise.all([
@@ -480,12 +584,42 @@ export function TdrCreationClient() {
       tdrReferentielApi.library("indicateurs", { type: "transversal", status: "PUBLIE" }),
       tdrReferentielApi.library("risques", { type: "transversal", status: "PUBLIE" }),
     ]);
-    setLibrary({
+    const bib = {
       clauses: c.filter(isClause),
       indicators: [...i, ...ti].filter(isIndicator),
       risks: [...r, ...tr].filter(isRisk),
-    });
+    };
+    setLibrary(bib);
+    // Rendue autant que posée : la reprise d'un brouillon a besoin de la
+    // bibliothèque avant d'hydrater, pour rapprocher les copies conservées
+    // de leur entrée d'origine.
+    return bib;
   }, []);
+
+  useEffect(() => {
+    if (!draftId || authLoading || !user) return;
+    let annule = false;
+    (async () => {
+      try {
+        const tdr = await tdrApi.get(draftId);
+        if (!['BROUILLON', 'RETOURNE'].includes(tdr.status)) {
+          throw new Error(
+            `${tdr.reference} n’est plus en rédaction : un dossier transmis se consulte, il faut qu’il soit retourné pour être repris.`,
+          );
+        }
+        const bib = await loadLibrary(tdr.tdrTypeCode);
+        if (annule) return;
+        setResume(hydrate(tdr, bib));
+      } catch (e) {
+        if (!annule) setResumeError(e instanceof Error ? e.message : "Reprise impossible.");
+      } finally {
+        if (!annule) setResuming(false);
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [draftId, authLoading, user, loadLibrary]);
 
   const selectedType = useMemo(
     () => types.find((t) => t.code === INITIAL.tdrTypeCode) ?? null,
@@ -917,6 +1051,19 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
     );
   }
 
+  if (resuming) return <div className={styles.gate}>Ouverture du brouillon…</div>;
+
+  if (resumeError) {
+    return (
+      <div className={styles.gate}>
+        <WarningAltFilled size={32} aria-hidden />
+        <h1>Brouillon non repris</h1>
+        <p>{resumeError}</p>
+        <Link href="/tdr" className={styles.gateLink}>Retour au registre</Link>
+      </div>
+    );
+  }
+
   if (loadError) {
     return (
       <div className={styles.gate}>
@@ -955,11 +1102,11 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
   return (
     <Wizard<State>
       eyebrow="RÉDACTION · TERMES DE RÉFÉRENCE"
-      title="Nouveau TDR"
+      title={resume ? `Reprise de ${resume.reference}` : "Nouveau TDR"}
       subtitle={`Vous rédigez au titre de ${user.organisationName} · ${user.subroleLabel}`}
       steps={steps}
-      initialState={{ ...INITIAL, tdrTypeCode: preselected }}
-      cancelHref="/dashboard"
+      initialState={resume ?? { ...INITIAL, tdrTypeCode: preselected }}
+      cancelHref="/tdr"
       finishLabel="Transmettre à l’UGP"
       onFinish={async (s) => {
         if (!s.tdrId) throw new Error("Brouillon non enregistré.");

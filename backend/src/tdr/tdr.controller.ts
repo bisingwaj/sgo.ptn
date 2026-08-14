@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -180,6 +181,21 @@ export class TdrController {
     @Req() req: Request,
   ) {
     return this.assist.proposeDeliverables(id, actor, contextOf(req));
+  }
+
+  @Delete(':id')
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Supprimer un brouillon',
+    description:
+      'Réservé à l’auteur, et au seul statut BROUILLON : un dossier transmis se retourne, il ne s’efface pas. La suppression est journalisée avant d’être opérée, et la référence reste consommée.',
+  })
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tdr.deleteDraft(id, actor, contextOf(req));
   }
 
   @Post(':id/soumettre')

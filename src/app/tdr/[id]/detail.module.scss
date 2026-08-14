@@ -1,0 +1,126 @@
+/**
+ * Consultation d'un TDR — lecture du document.
+ * Les cartes reprennent `ugp-shared` ; seule la liste de définitions
+ * est propre à cet écran.
+ */
+
+.doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-05);
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ptn-space-04);
+  gap: var(--ptn-space-03);
+}
+
+/* Deux colonnes fixes : l'œil descend les libellés et repère les manques
+   sans les lire un par un. */
+.row {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: var(--ptn-space-04);
+  align-items: baseline;
+
+  dt {
+    font-size: 12px;
+    color: var(--cds-text-helper, #6f6f6f);
+  }
+
+  dd {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--cds-text-primary, #161616);
+    min-width: 0;
+  }
+}
+
+@media (max-width: 672px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* Le texte conserve ses retours à la ligne : c'est ainsi qu'il sortira
+   dans le document transmis. */
+.prose {
+  white-space: pre-wrap;
+}
+
+.absent {
+  color: var(--cds-text-helper, #6f6f6f);
+  font-style: italic;
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ptn-space-04);
+  padding: var(--ptn-space-07);
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+
+  svg {
+    color: var(--ptn-status-danger);
+  }
+}
+
+/* ===== Confirmation de suppression ===== */
+
+.confirm {
+  padding: var(--ptn-space-04);
+  margin-bottom: var(--ptn-space-04);
+  background: var(--ptn-status-danger-surface);
+  border-left: 3px solid var(--ptn-status-danger);
+
+  p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--cds-text-primary, #161616);
+    max-width: 76ch;
+  }
+}
+
+.confirmActions {
+  display: flex;
+  gap: var(--ptn-space-03);
+  margin-top: var(--ptn-space-04);
+}
+
+.btnDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 13px;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 0;
+  background: var(--ptn-status-danger);
+  color: #fff;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 1px;
+  }
+}

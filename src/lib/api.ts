@@ -174,6 +174,7 @@ async function tryRefresh(): Promise<boolean> {
 export const api = {
   get: <T>(path: string) => request<T>(path, { method: "GET" }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
+  del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   refresh: tryRefresh,
 };
 
@@ -719,6 +720,8 @@ export const tdrApi = {
   list: (statut?: string) =>
     api.get<TdrListItem[]>(`/tdr${statut ? `?statut=${statut}` : ""}`),
   get: (id: string) => api.get<TdrApi>(`/tdr/${id}`),
+  remove: (id: string) =>
+    api.del<{ id: string; reference: string }>(`/tdr/${id}`),
   completeness: (id: string) =>
     api.get<{ blockers: string[]; warnings: string[] }>(`/tdr/${id}/completude`),
   createDraft: (payload: { tdrTypeCode: string; title: string; ptbaActivityId?: string }) =>

@@ -458,6 +458,55 @@ export class TdrService {
     return tdr;
   }
 
+  /**
+   * Suppression d'un brouillon.
+   *
+   * Seul un brouillon s'efface, et seulement par son auteur. Un dossier
+   * transmis a quitté sa main : il se retourne, il ne se supprime pas — et
+   * un relecteur n'efface pas le travail d'autrui, même en revue.
+   *
+   * La trace subsiste : le journal d'audit ne référence les entités que par
+   * identifiant, sans clé étrangère, de sorte que l'ouverture puis la
+   * suppression restent lisibles après coup. L'entrée est écrite AVANT la
+   * suppression, pour ne pas dépendre de sa réussite.
+   *
+   * La référence PTN-2026-NNN reste consommée. Une séquence ne se
+   * rembobine pas : deux dossiers ne doivent jamais avoir porté le même
+   * numéro, même à des mois d'intervalle.
+   */
+  async deleteDraft(id: string, actor: AuthenticatedUser, ctx: RequestContext) {
+    const tdr = await this.prisma.tdr.findUnique({
+      where: { id },
+      select: { id: true, reference: true, title: true, status: true, authorId: true },
+    });
+    if (!tdr) throw new NotFoundException('TDR introuvable.');
+
+    if (tdr.authorId !== actor.userId) {
+      throw new ForbiddenException('Seul l’auteur d’un brouillon peut le supprimer.');
+    }
+    if (tdr.status !== 'BROUILLON') {
+      throw new BadRequestException(
+        `Un TDR au statut ${tdr.status} ne se supprime pas. Un dossier transmis se retourne à son auteur.`,
+      );
+    }
+
+    await this.audit.record({
+      actorId: actor.userId,
+      actorEmail: actor.email,
+      action: 'tdr.draft_deleted',
+      entityType: 'Tdr',
+      entityId: id,
+      payload: { reference: tdr.reference, title: tdr.title },
+      ...ctx,
+    });
+
+    // Objectifs, livrables, clauses, indicateurs et risques partent en
+    // cascade : le schéma les déclare ainsi.
+    await this.prisma.tdr.delete({ where: { id } });
+
+    return { id, reference: tdr.reference, deleted: true };
+  }
+
   async list(actor: AuthenticatedUser, filters: { status?: string } = {}) {
     const isPrivileged =
       actor.permissions.includes('tdr:review') || actor.permissions.includes('ano:decide');

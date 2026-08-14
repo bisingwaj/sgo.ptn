@@ -145,3 +145,43 @@
   color: var(--ptn-status-danger-text);
   font-size: 13px;
 }
+
+/* ===== Ouverture d'un dossier ===== */
+
+.lien {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--ptn-accent);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* Action de ligne. Discrète au repos : c'est la ligne entière qui invite,
+   pas ce lien. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--ptn-accent);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}

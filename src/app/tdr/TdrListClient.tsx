@@ -18,7 +18,7 @@ import { Shell } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
 import { tdrApi, type TdrListItem, type TdrStatusApi } from "@/lib/api";
-import { Add, Document, WarningAltFilled } from "@carbon/icons-react";
+import { Add, Document, Edit, View, WarningAltFilled } from "@carbon/icons-react";
 import styles from "@/styles/ugp-shared.module.scss";
 import liste from "./tdr-liste.module.scss";
 
@@ -173,6 +173,7 @@ export function TdrListClient() {
               <col style={{ width: "11%" }} />
               <col style={{ width: "14%" }} />
               <col style={{ width: "11%" }} />
+              <col style={{ width: "9%" }} />
             </colgroup>
             <thead>
               <tr>
@@ -183,18 +184,19 @@ export function TdrListClient() {
                 <th style={{ textAlign: "right" }}>Budget</th>
                 <th>Statut</th>
                 <th>Mise à jour</th>
+                <th />
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className={liste.vide}>
+                  <td colSpan={8} className={liste.vide}>
                     Chargement…
                   </td>
                 </tr>
               ) : visibles.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className={liste.vide}>
+                  <td colSpan={8} className={liste.vide}>
                     <Document size={24} aria-hidden />
                     <p>
                       {items.length === 0
@@ -213,10 +215,14 @@ export function TdrListClient() {
                 visibles.map((t) => (
                   <tr key={t.id}>
                     <td>
-                      <span className={styles.ref}>{t.reference}</span>
+                      <Link href={`/tdr/${t.id}`} className={styles.ref}>
+                        {t.reference}
+                      </Link>
                     </td>
                     <td>
-                      <div className={styles.title}>{t.title}</div>
+                      <Link href={`/tdr/${t.id}`} className={liste.lien}>
+                        {t.title}
+                      </Link>
                       <div className={liste.sousTitre}>{t.organisation.name}</div>
                     </td>
                     <td>
@@ -236,6 +242,21 @@ export function TdrListClient() {
                       )}
                     </td>
                     <td className={styles.date}>{jour(t.updatedAt)}</td>
+                    <td>
+                      {/* Un brouillon se reprend là où il s'est arrêté ; un
+                          dossier transmis ne se consulte plus qu'en lecture.
+                          Le libellé dit lequel des deux, pour qu'on ne
+                          découvre pas la différence après le clic. */}
+                      {["BROUILLON", "RETOURNE"].includes(t.status) && can("tdr:author") ? (
+                        <Link href={`/tdr/nouveau?id=${t.id}`} className={liste.action}>
+                          <Edit size={14} aria-hidden /> Reprendre
+                        </Link>
+                      ) : (
+                        <Link href={`/tdr/${t.id}`} className={liste.action}>
+                          <View size={14} aria-hidden /> Ouvrir
+                        </Link>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
