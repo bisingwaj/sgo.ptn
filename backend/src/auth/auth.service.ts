@@ -331,6 +331,10 @@ export class AuthService {
    *
    * Un jeton déjà révoqué qui se présente à nouveau signale un vol de
    * session : toutes les sessions de l'utilisateur sont alors coupées.
+   *
+   * Exception : une rotation interrompue en vol (voir le délai de grâce
+   * ci-dessous), qui produit exactement la même apparence sans être une
+   * attaque.
    */
   async refresh(token: string, ctx: RequestContext): Promise<AuthTokens> {
     let payload: RefreshTokenPayload;
@@ -352,11 +356,89 @@ export class AuthService {
       // le client légitime a reçu son successeur, donc quiconque présente
       // l'ancien en a gardé copie. On coupe toutes les sessions.
       if (stored.replacedById) {
+        // ----------------------------------------------------------------
+        // DÉLAI DE GRÂCE — rotation interrompue plutôt que vol de session
+        //
+        // La rotation n'est pas atomique du point de vue du navigateur :
+        // le serveur crée le successeur ET révoque l'ancien jeton, puis
+        // renvoie le nouveau. Si l'onglet se ferme, navigue ou se recharge
+        // pendant cet aller-retour, la réponse est perdue alors que
+        // l'ancien jeton est déjà consommé. Au chargement suivant, le
+        // client présente donc de bonne foi un jeton « déjà remplacé ».
+        //
+        // Sans distinction, ce cas était traité comme un vol : TOUTES les
+        // sessions de la personne étaient coupées. Une connexion lente ou
+        // un clic pendant le chargement suffisait à déconnecter partout.
+        //
+        // Le critère qui sépare les deux situations n'est pas le délai
+        // seul, mais l'état du SUCCESSEUR :
+        //
+        //   · successeur jamais utilisé  → le client légitime ne l'a jamais
+        //     reçu : la rotation a bien été interrompue. On rejoue depuis
+        //     le successeur et la session se poursuit.
+        //
+        //   · successeur déjà utilisé    → le client légitime l'a bien reçu
+        //     et s'en est servi. Quiconque présente encore le parent en a
+        //     gardé copie : c'est un vol, et on coupe tout.
+        //
+        // Le délai ne fait que borner la fenêtre pendant laquelle cette
+        // indulgence s'applique. Conforme à la pratique recommandée pour la
+        // rotation des jetons (OAuth 2.0 Security BCP, § 4.14.2).
+        // ----------------------------------------------------------------
+        const graceMs = AuthService.durationToMs(
+          this.config.get<string>('REFRESH_ROTATION_GRACE') ?? '60s',
+        );
+        const rotatedAgo = stored.revokedAt ? Date.now() - stored.revokedAt.getTime() : Infinity;
+
+        if (rotatedAgo <= graceMs) {
+          const successor = await this.prisma.refreshToken.findUnique({
+            where: { id: stored.replacedById },
+          });
+
+          const successorUntouched =
+            successor && !successor.revokedAt && successor.expiresAt > new Date();
+
+          if (successorUntouched) {
+            const owner = await this.prisma.user.findUniqueOrThrow({
+              where: { id: successor.userId },
+              select: { email: true, status: true },
+            });
+            if (owner.status !== 'ACTIF' && owner.status !== 'INVITE') {
+              throw new ForbiddenException('Compte inactif.');
+            }
+
+            const assignmentId =
+              successor.activeAssignmentId ??
+              (await this.resolvePrimaryAssignment(successor.userId)).id;
+
+            // Tracé sans être traité comme incident : une fréquence
+            // anormale de ces rejeux mérite un regard, une occurrence non.
+            await this.audit.record({
+              actorId: successor.userId,
+              action: 'auth.refresh.grace_replay',
+              payload: {
+                tokenId: stored.id,
+                successorId: successor.id,
+                rotatedAgoMs: rotatedAgo,
+              },
+              ...ctx,
+            });
+
+            return this.issueTokens(
+              successor.userId,
+              assignmentId,
+              owner.email,
+              ctx,
+              successor.id,
+            );
+          }
+        }
+
         await this.revokeAllSessions(stored.userId);
         await this.audit.record({
           actorId: stored.userId,
           action: 'auth.refresh.reuse_detected',
-          payload: { tokenId: stored.id, replacedBy: stored.replacedById },
+          payload: { tokenId: stored.id, replacedBy: stored.replacedById, rotatedAgoMs: rotatedAgo },
           ...ctx,
         });
         throw new UnauthorizedException(
