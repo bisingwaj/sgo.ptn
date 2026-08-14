@@ -1,3 +1,4 @@
+import { AuthGate } from "@/components/auth/AuthGate";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { TdrCreationClient } from "./TdrCreationClient";
@@ -9,10 +10,12 @@ export const metadata: Metadata = {
 };
 
 export default function NewTdrPage() {
-  // `useSearchParams` impose une frontière de suspense en rendu statique.
   return (
-    <Suspense fallback={null}>
-      <TdrCreationClient />
-    </Suspense>
+    <AuthGate>
+      {/* `useSearchParams` impose une frontière de suspense en rendu statique. */}
+      <Suspense fallback={null}>
+        <TdrCreationClient />
+      </Suspense>
+    </AuthGate>
   );
 }

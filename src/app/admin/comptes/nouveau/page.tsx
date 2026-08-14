@@ -1,3 +1,4 @@
+import { AuthGate } from "@/components/auth/AuthGate";
 import type { Metadata } from "next";
 import { CreateAccountClient } from "./CreateAccountClient";
 
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function CreateAccountPage() {
-  return <CreateAccountClient />;
+  return (
+    <AuthGate>
+      <CreateAccountClient />
+    </AuthGate>
+  );
 }
