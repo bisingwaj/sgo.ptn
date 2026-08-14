@@ -14,7 +14,7 @@
  * que d'afficher un chiffre sans source.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Shell } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -37,6 +37,8 @@ import {
   Notebook,
   Activity,
   TrashCan,
+  ChevronDown,
+  ChevronRight,
   WarningAltFilled,
 } from "@carbon/icons-react";
 import styles from "@/styles/ugp-shared.module.scss";
@@ -75,12 +77,215 @@ interface FormState {
   idaUsd: string;
   afdUsd: string;
   provinceCode: string;
+  /**
+   * Ce que l'activité porte en propre. Facultatif : une ligne peut
+   * s'inscrire au plan avant que son contenu soit arrêté, et se compléter
+   * ensuite. C'est pourquoi les sections sont repliées par défaut — une
+   * inscription rapide reste rapide.
+   */
+  objectives: Array<{ title: string; criteria: string }>;
+  deliverables: Array<{ title: string; format: string; deadline: string }>;
+  indicators: Array<{ label: string; measure: string; target: string }>;
+  risks: Array<{ label: string; description: string; mitigation: string; level: string }>;
+  clauses: Array<{ label: string; text: string }>;
 }
 
 const FORM_VIDE: FormState = {
   code: "", title: "", componentCode: "", subComponent: "",
   envelopeUsd: "", idaUsd: "", afdUsd: "", provinceCode: "",
+  objectives: [], deliverables: [], indicators: [], risks: [], clauses: [],
 };
+
+const NIVEAUX = [
+  { value: "", label: "—" },
+  { value: "FAIBLE", label: "Faible" },
+  { value: "MODERE", label: "Modéré" },
+  { value: "SUBSTANTIEL", label: "Substantiel" },
+  { value: "ELEVE", label: "Élevé" },
+];
+
+/**
+ * Ce qu'une activité porte en propre, en lecture.
+ *
+ * Une liste vide est dite vide, non masquée : c'est ce qu'il faut voir
+ * pour savoir ce qui reste à renseigner avant qu'un TDR s'y rattache.
+ */
+function Contenu({ activite }: { activite: PtbaActivityApi }) {
+  const blocs: Array<{ titre: string; lignes: string[] }> = [
+    {
+      titre: "Objectifs",
+      lignes: (activite.objectives ?? []).map(
+        (o, i) => `O${i + 1} · ${o.title}${o.criteria ? ` — ${o.criteria}` : ""}`,
+      ),
+    },
+    {
+      titre: "Livrables attendus",
+      lignes: (activite.deliverables ?? []).map(
+        (d, i) =>
+          `L${i + 1} · ${d.title}${d.format ? ` — ${d.format}` : ""}${d.deadline ? ` · ${d.deadline}` : ""}`,
+      ),
+    },
+    {
+      titre: "Indicateurs clés",
+      lignes: (activite.indicators ?? []).map(
+        (n) => `${n.label}${n.target ? ` — cible ${n.target}` : ""}${n.measure ? ` (${n.measure})` : ""}`,
+      ),
+    },
+    {
+      titre: "Risques et atténuation",
+      lignes: (activite.risks ?? []).map(
+        (r) => `${r.label}${r.level ? ` [${r.level.toLowerCase()}]` : ""}${r.mitigation ? ` — ${r.mitigation}` : ""}`,
+      ),
+    },
+    {
+      titre: "Normes",
+      lignes: (activite.clauses ?? []).map((c) => `${c.label}${c.text ? ` — ${c.text}` : ""}`),
+    },
+  ];
+
+  const tout = blocs.every((b) => b.lignes.length === 0);
+
+  return (
+    <div className={form_.contenu}>
+      {tout ? (
+        <p className={form_.hint}>
+          Cette activité ne porte encore ni objectif, ni livrable, ni indicateur. Un TDR qui s’y
+          rattache n’aura rien à y puiser.
+        </p>
+      ) : (
+        blocs.map((b) => (
+          <div key={b.titre} className={form_.contenuBloc}>
+            <h4>{b.titre}</h4>
+            {b.lignes.length === 0 ? (
+              <p className={form_.absent}>Aucun</p>
+            ) : (
+              <ul>
+                {b.lignes.map((l, i) => (
+                  <li key={i}>{l}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+/**
+ * Section repliable. `details` natif plutôt qu'un état React : le
+ * navigateur sait déjà ouvrir et fermer, l'accessibilité vient avec, et
+ * l'état n'a pas à remonter dans le formulaire.
+ */
+function Section({
+  titre, compte, children,
+}: {
+  titre: string;
+  compte: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className={form_.section}>
+      <summary className={form_.sectionHead}>
+        <span>{titre}</span>
+        <span className={form_.sectionCompte}>
+          {compte === 0 ? "aucun" : compte}
+        </span>
+      </summary>
+      <div className={form_.sectionBody}>{children}</div>
+    </details>
+  );
+}
+
+interface Champ {
+  cle: string;
+  ph: string;
+  large?: boolean;
+  court?: boolean;
+  options?: Array<{ value: string; label: string }>;
+}
+
+/**
+ * Éditeur de liste. Une ligne à la fois, retirable, avec un repère O1/L1
+ * quand l'ordre compte — c'est ainsi que le document produit y renverra.
+ * Les lignes sans intitulé sont écartées par le service : le formulaire
+ * n'a pas à empêcher une ligne vide en fin de saisie.
+ */
+function Lignes<T extends Record<string, string>>({
+  items, vide, onChange, champs, prefix,
+}: {
+  items: T[];
+  vide: T;
+  onChange: (v: T[]) => void;
+  champs: Champ[];
+  prefix?: string;
+}) {
+  return (
+    <div className={form_.lignes}>
+      {items.map((item, i) => (
+        <div key={i} className={form_.ligne}>
+          {prefix && (
+            <span className={`${form_.rang} ptn-mono`} aria-hidden>
+              {prefix}
+              {i + 1}
+            </span>
+          )}
+          <div className={form_.ligneChamps}>
+            {champs.map((c) =>
+              c.options ? (
+                <select
+                  key={c.cle}
+                  value={item[c.cle] ?? ""}
+                  aria-label={c.ph}
+                  className={c.court ? form_.court : undefined}
+                  onChange={(e) => {
+                    const n = [...items];
+                    n[i] = { ...item, [c.cle]: e.target.value };
+                    onChange(n);
+                  }}
+                >
+                  {c.options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  key={c.cle}
+                  value={item[c.cle] ?? ""}
+                  placeholder={c.ph}
+                  aria-label={c.ph}
+                  className={c.large ? form_.large : c.court ? form_.court : undefined}
+                  onChange={(e) => {
+                    const n = [...items];
+                    n[i] = { ...item, [c.cle]: e.target.value };
+                    onChange(n);
+                  }}
+                />
+              ),
+            )}
+          </div>
+          <button
+            type="button"
+            className={form_.rowAction}
+            aria-label="Retirer cette ligne"
+            onClick={() => onChange(items.filter((_, x) => x !== i))}
+          >
+            <TrashCan size={14} aria-hidden />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={form_.ajouter}
+        onClick={() => onChange([...items, { ...vide }])}
+      >
+        <Add size={14} aria-hidden /> Ajouter une ligne
+      </button>
+    </div>
+  );
+}
 
 export function PtbaClient() {
   const { can, loading: authLoading } = useAuth();
@@ -91,6 +296,9 @@ export function PtbaClient() {
   const [provinces, setProvinces] = useState<ProvinceApi[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Ligne dépliée. Une seule à la fois : le contenu d'une activité se lit,
+  // il ne se compare pas ligne à ligne.
+  const [deplie, setDeplie] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [form, setForm] = useState<FormState>(FORM_VIDE);
   const [formError, setFormError] = useState<string | null>(null);
@@ -157,6 +365,11 @@ export function PtbaClient() {
         idaUsd: form.idaUsd ? Number(form.idaUsd) : undefined,
         afdUsd: form.afdUsd ? Number(form.afdUsd) : undefined,
         provinceCode: form.provinceCode || undefined,
+        objectives: form.objectives,
+        deliverables: form.deliverables,
+        indicators: form.indicators,
+        risks: form.risks,
+        clauses: form.clauses,
       });
       setForm(FORM_VIDE);
       setOpenForm(false);
@@ -328,6 +541,93 @@ export function PtbaClient() {
             Le cumul des activités d’une composante ne peut excéder sa dotation.
           </p>
 
+          {/* Ce que l'activité porte en propre. Replié : une ligne peut
+              s'inscrire avant que son contenu soit arrêté. Les TDR y
+              puiseront — une activité porte plusieurs marchés, et chacun ne
+              reprend que ce qui le concerne. */}
+          <div className={form_.sections}>
+            <Section titre="Objectifs de l’activité" compte={form.objectives.length}>
+              <p className={form_.hint}>
+                Ce que l’activité doit atteindre, non ce qu’un marché exécute. Un TDR y
+                rattachera les siens sans en hériter.
+              </p>
+              <Lignes
+                items={form.objectives}
+                vide={{ title: "", criteria: "" }}
+                onChange={(v) => setForm({ ...form, objectives: v })}
+                prefix="O"
+                champs={[
+                  { cle: "title", ph: "Doter le pays d’un centre de supervision opérationnel", large: true },
+                  { cle: "criteria", ph: "Comment on le constatera" },
+                ]}
+              />
+            </Section>
+
+            <Section titre="Livrables attendus" compte={form.deliverables.length}>
+              <Lignes
+                items={form.deliverables}
+                vide={{ title: "", format: "", deadline: "" }}
+                onChange={(v) => setForm({ ...form, deliverables: v })}
+                prefix="L"
+                champs={[
+                  { cle: "title", ph: "Local technique aménagé", large: true },
+                  { cle: "format", ph: "Procès-verbal de réception" },
+                  { cle: "deadline", ph: "M+8", court: true },
+                ]}
+              />
+            </Section>
+
+            <Section titre="Indicateurs clés" compte={form.indicators.length}>
+              <p className={form_.hint}>
+                Indicateurs de résultat propres à cette activité. Ils remontent au cadre de
+                résultats de la composante.
+              </p>
+              <Lignes
+                items={form.indicators}
+                vide={{ label: "", measure: "", target: "" }}
+                onChange={(v) => setForm({ ...form, indicators: v })}
+                champs={[
+                  { cle: "label", ph: "CSIRT opérationnel", large: true },
+                  { cle: "measure", ph: "Unité ou méthode de mesure" },
+                  { cle: "target", ph: "Cible", court: true },
+                ]}
+              />
+            </Section>
+
+            <Section titre="Risques et atténuation" compte={form.risks.length}>
+              <p className={form_.hint}>
+                Risques propres à cette activité. Ceux qui tiennent à la forme du marché —
+                retard de chantier, défaillance d’attributaire — restent au référentiel du type.
+              </p>
+              <Lignes
+                items={form.risks}
+                vide={{ label: "", description: "", mitigation: "", level: "" }}
+                onChange={(v) => setForm({ ...form, risks: v })}
+                champs={[
+                  { cle: "label", ph: "Retard de raccordement électrique", large: true },
+                  { cle: "mitigation", ph: "Atténuation prévue", large: true },
+                  { cle: "level", ph: "Niveau", options: NIVEAUX, court: true },
+                ]}
+              />
+            </Section>
+
+            <Section titre="Normes propres à l’activité" compte={form.clauses.length}>
+              <p className={form_.hint}>
+                ISO 27001, ICAO 9303… Les clauses contractuelles, elles, suivent la forme du
+                marché et restent au référentiel du type de TDR.
+              </p>
+              <Lignes
+                items={form.clauses}
+                vide={{ label: "", text: "" }}
+                onChange={(v) => setForm({ ...form, clauses: v })}
+                champs={[
+                  { cle: "label", ph: "ISO 27001" },
+                  { cle: "text", ph: "Portée de la norme pour cette activité", large: true },
+                ]}
+              />
+            </Section>
+          </div>
+
           {formError && (
             <div className={form_.alert}>
               <WarningAltFilled size={16} aria-hidden /> {formError}
@@ -433,9 +733,22 @@ export function PtbaClient() {
                   </tr>
                 ) : (
                   activities.map((a) => (
-                    <tr key={a.id}>
+                    <Fragment key={a.id}>
+                    <tr>
                       <td>
-                        <span className={styles.ref}>{a.code}</span>
+                        <button
+                          type="button"
+                          className={form_.deplier}
+                          onClick={() => setDeplie(deplie === a.id ? null : a.id)}
+                          aria-expanded={deplie === a.id}
+                        >
+                          {deplie === a.id ? (
+                            <ChevronDown size={14} aria-hidden />
+                          ) : (
+                            <ChevronRight size={14} aria-hidden />
+                          )}
+                          <span className={styles.ref}>{a.code}</span>
+                        </button>
                       </td>
                       <td>
                         <div className={styles.title}>{a.title}</div>
@@ -466,6 +779,14 @@ export function PtbaClient() {
                         )}
                       </td>
                     </tr>
+                    {deplie === a.id && (
+                      <tr>
+                        <td colSpan={7} className={form_.detail}>
+                          <Contenu activite={a} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))
                 )}
               </tbody>

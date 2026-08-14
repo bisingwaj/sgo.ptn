@@ -569,6 +569,18 @@ export interface PtbaYearApi {
   _count?: { activities: number };
 }
 
+/** Ce qu'une activité porte en propre, saisi avec elle au plan. */
+export interface PtbaObjectiveApi { title: string; criteria: string | null }
+export interface PtbaDeliverableApi { title: string; format: string | null; deadline: string | null }
+export interface PtbaIndicatorApi { label: string; measure: string | null; target: string | null }
+export interface PtbaRiskApi {
+  label: string;
+  description: string | null;
+  mitigation: string | null;
+  level: "FAIBLE" | "MODERE" | "SUBSTANTIEL" | "ELEVE" | null;
+}
+export interface PtbaClauseApi { label: string; text: string | null }
+
 export interface PtbaActivityApi {
   id: string;
   code: string;
@@ -581,6 +593,11 @@ export interface PtbaActivityApi {
   provinceCode: string | null;
   component?: { code: string; shortLabel: string };
   province?: { code: string; label: string } | null;
+  objectives?: PtbaObjectiveApi[];
+  deliverables?: PtbaDeliverableApi[];
+  indicators?: PtbaIndicatorApi[];
+  risks?: PtbaRiskApi[];
+  clauses?: PtbaClauseApi[];
 }
 
 export const tdrReferentielApi = {
