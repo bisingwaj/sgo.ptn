@@ -11,19 +11,57 @@ import {
   Put,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
-import type { Request } from 'express';
+import {
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import type { Request, Response } from 'express';
 import { TdrService } from './tdr.service';
 import { TdrAssistService } from '../ai/tdr-assist.service';
+import { TdrAgentService } from '../ai/tdr-agent.service';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
 function contextOf(req: Request): RequestContext {
   return { ipAddress: req.ip ?? undefined, userAgent: req.get('user-agent') ?? undefined };
+}
+
+class TourDeParoleDto {
+  @ApiProperty({ enum: ['user', 'assistant'] })
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(8000)
+  content!: string;
+}
+
+export class AgentTurnDto {
+  @ApiProperty({ example: 'Rédige-moi un contexte en rapport avec l’activité PTBA.' })
+  @IsString()
+  @MinLength(2, { message: 'Dites ce que vous attendez.' })
+  @MaxLength(4000)
+  instruction!: string;
+
+  @ApiPropertyOptional({ description: 'Tours précédents, du plus ancien au plus récent' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TourDeParoleDto)
+  historique?: TourDeParoleDto[];
 }
 
 export class CreateDraftDto {
@@ -58,6 +96,7 @@ export class TdrController {
   constructor(
     private readonly tdr: TdrService,
     private readonly assist: TdrAssistService,
+    private readonly agent: TdrAgentService,
   ) {}
 
   @Get()
@@ -196,6 +235,72 @@ export class TdrController {
     @Req() req: Request,
   ) {
     return this.tdr.deleteDraft(id, actor, contextOf(req));
+  }
+
+  /**
+   * Un échange avec l'assistant, rendu au fil de l'eau.
+   *
+   * Écriture SSE directe plutôt que le décorateur `Sse` : celui-ci s'appuie
+   * sur un flux d'évènements en GET, or l'instruction voyage en corps de
+   * requête. `@Res()` désactive la sérialisation de Nest, ce qui est
+   * précisément ce qu'on veut : c'est ici qu'on écrit.
+   *
+   * Le premier fragment part en moins d'une seconde. Sans cela, l'auteur
+   * attendrait dix à vingt-cinq secondes devant un écran immobile.
+   */
+  @Post(':id/agent')
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Parler à l’assistant du dossier',
+    description:
+      'Flux d’évènements. L’assistant écrit directement dans les champs qui lui sont ouverts, et chaque écriture est marquée et journalisée. Les montants, le rattachement et les attestations lui sont fermés.',
+  })
+  async agentTurn(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AgentTurnDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    res.writeHead(HttpStatus.OK, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      // Sans cela, un proxy intermédiaire garde le flux en tampon et le
+      // rend d'un bloc : l'effet recherché disparaît.
+      'X-Accel-Buffering': 'no',
+    });
+
+    const envoyer = (ev: unknown) => res.write(`data: ${JSON.stringify(ev)}
+
+`);
+
+    // Un auteur qui quitte l'étape ferme la connexion : inutile de
+    // continuer à écrire dans le vide.
+    let ferme = false;
+    req.on('close', () => {
+      ferme = true;
+    });
+
+    try {
+      for await (const ev of this.agent.converser(
+        id,
+        dto.instruction,
+        dto.historique ?? [],
+        actor,
+        contextOf(req),
+      )) {
+        if (ferme) break;
+        envoyer(ev);
+      }
+    } catch (e) {
+      envoyer({
+        type: 'erreur',
+        message: e instanceof Error ? e.message : 'L’assistant n’a pas pu répondre.',
+      });
+    } finally {
+      if (!ferme) res.end();
+    }
   }
 
   @Post(':id/soumettre')

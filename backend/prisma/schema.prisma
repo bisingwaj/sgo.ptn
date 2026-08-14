@@ -963,6 +963,17 @@ model Tdr {
   justification String? @db.Text
   beneficiaries String? @db.Text
 
+  /// Champs auxquels l'assistant a contribue.
+  ///
+  /// Remplace le geste de reprise que l'ancien parcours exigeait : l'agent
+  /// ecrivant directement, il faut une autre trace de ce qui vient d'une
+  /// machine. Elle subsiste jusqu'a la transmission et reste lisible en
+  /// revue UGP — un relecteur doit pouvoir savoir ou porter son attention.
+  ///
+  /// Elle dit qu'il a CONTRIBUE, non que le texte serait de lui : l'auteur
+  /// retouche ensuite, et la marque reste vraie.
+  aiAssistedFields String[] @default([])
+
   /// Ce que l'on constatera, avec son horizon — distinct des objectifs, qui
   /// disent l'intention. Le wizard partenaire les séparait et renvoyait au
   /// cadre de résultats du projet ; la fusion des deux parcours avait retenu
