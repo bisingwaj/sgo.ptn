@@ -319,7 +319,7 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
               <div
                 role="radiogroup"
                 aria-label="Famille d'acteurs"
-                className="flex flex-col gap-px"
+                className="grid grid-cols-2"
               >
                 {FAMILIES.map((f) => {
                   const active = f.key === family;
@@ -331,7 +331,7 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
                       aria-checked={active}
                       onClick={() => setFamily(f.key)}
                       className={cn(
-                        "border-subtle flex items-start gap-3 border px-4 py-3 text-left transition-colors",
+                        "border-subtle flex items-start gap-3 rounded-lg border p-4 text-left transition-colors",
                         "focus-visible:outline-accent focus-visible:z-10 focus-visible:outline-2",
                         active
                           ? "bg-accent-surface border-accent relative z-10"
@@ -339,7 +339,9 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
                       )}
                     >
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className={cn("text-body text-primary", active && "font-semibold")}>
+                        <span
+                          className={cn("text-body text-primary", active && "font-semibold")}
+                        >
                           {f.label}
                         </span>
                         <span className="text-caption text-secondary">{f.hint}</span>
