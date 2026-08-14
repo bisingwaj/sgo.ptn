@@ -92,22 +92,25 @@ export function Header({ crumbs = [], onToggleSidePanel, sidePanelOpen }: Header
   return (
     <header
       role="banner"
-      className={cn(
-        "bg-layer border-subtle relative z-30 flex h-14 items-center gap-1 border-b pr-2 pl-4",
-      )}
+      className="bg-layer border-subtle relative z-30 flex h-14 items-center gap-1 border-b pr-2"
     >
+      {/* Le bloc de marque occupe exactement la largeur de la navigation :
+          le filet du bandeau et le bord de la colonne forment ainsi une seule
+          verticale. C'est ce qui distingue une interface composée d'éléments
+          simplement posés côte à côte. */}
       <Link
         href={homePath}
         aria-label="UGPTN — accueil"
-        className="focus-visible:outline-accent mr-1 flex shrink-0 items-center gap-3 focus-visible:outline-2"
+        className="focus-visible:outline-accent border-subtle flex h-full shrink-0 items-center justify-center border-r px-3 min-[1025px]:w-[var(--ptn-shell-sidenav-w)] min-[1025px]:justify-start min-[1025px]:px-4"
       >
         <BrandLockup tone={isDark ? "sombre" : "clair"} height={28} />
       </Link>
 
-      <span aria-hidden className="border-subtle mx-2 hidden h-6 border-l lg:block" />
-
       {crumbs.length > 0 && (
-        <nav aria-label="Fil d'Ariane" className="hidden min-w-0 items-center gap-1.5 lg:flex">
+        <nav
+          aria-label="Fil d'Ariane"
+          className="hidden min-w-0 items-center gap-1.5 pl-4 lg:flex"
+        >
           {crumbs.map((c, i) => {
             const isLast = i === crumbs.length - 1;
             return (

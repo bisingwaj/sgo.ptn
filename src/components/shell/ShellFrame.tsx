@@ -13,17 +13,12 @@
  * navigation.
  */
 
-import { useCallback, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import { Header } from "./Header";
 import { SideNav } from "./SideNav";
 import { SidePanelDrawer } from "./SidePanelDrawer";
 import { AssistantChatbot } from "@/components/chatbot/AssistantChatbot";
-import {
-  getServerSnapshot,
-  getSnapshot,
-  setSidePanelOpen,
-  subscribe,
-} from "./side-panel-store";
+import { sidePanelStore } from "./side-panel-store";
 import styles from "./Shell.module.scss";
 
 interface ShellFrameProps {
@@ -43,10 +38,10 @@ export function ShellFrame({
 }: ShellFrameProps) {
   // Fermé par défaut ; la préférence est relue au montage côté client.
   // Voir side-panel-store.ts pour le choix de useSyncExternalStore.
-  const panelOpen = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const panelOpen = sidePanelStore.use();
 
   const togglePanel = useCallback(() => {
-    setSidePanelOpen(!getSnapshot());
+    sidePanelStore.set(!sidePanelStore.get());
   }, []);
 
   return (

@@ -68,8 +68,10 @@
   --ptn-space-10: 160px;
 
   // Layout
-  --ptn-shell-header-h: 48px;
-  --ptn-shell-sidenav-w: 224px;
+  --ptn-shell-header-h: 56px;
+  // 264 px et non 224 : « Inbox ANO bailleur » et « EAS/HS confidentiel »
+  // se tronquaient, et un intitulé coupé oblige à deviner.
+  --ptn-shell-sidenav-w: 264px;
   --ptn-shell-sidepanel-w: 320px;
   --ptn-shell-sidenav-collapsed-w: 56px;
 

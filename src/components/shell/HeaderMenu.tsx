@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useDismissable } from "@/lib/use-dismissable";
 import { cn } from "@/lib/cn";
 
 interface HeaderMenuProps {
@@ -61,26 +62,9 @@ export function HeaderMenu({
     wasOpen.current = open;
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const onPointerDown = (event: MouseEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        close();
-      }
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, close]);
+  // Fermeture au clic extérieur et à Échap — mutualisée avec le sélecteur de
+  // langue, qui était le seul menu du bandeau à s'en passer.
+  useDismissable(wrapRef, open, close);
 
   return (
     <div ref={wrapRef} className="relative">
