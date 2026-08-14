@@ -130,6 +130,28 @@ export function enumerationChamps(): string {
 }
 
 /**
+ * Ramène une liste à un tableau, qu'elle arrive comme tel ou sérialisée.
+ *
+ * Le modèle sérialise volontiers un tableau en chaîne JSON — c'est ce
+ * qu'il fait quand le paramètre n'annonce pas de type, et l'argument d'un
+ * outil voyage de toute façon en texte. Refuser cette forme condamnait
+ * l'écriture des objectifs et des livrables à échouer en boucle : il
+ * réessayait à l'identique, puisque rien ne lui disait ce qui clochait.
+ */
+export function versTableau(valeur: unknown): unknown[] | null {
+  if (Array.isArray(valeur)) return valeur;
+  if (typeof valeur === 'string') {
+    try {
+      const lu: unknown = JSON.parse(valeur);
+      return Array.isArray(lu) ? lu : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * Contrôle d'une valeur avant écriture.
  *
  * Le modèle est instruit, mais l'instruction n'est pas un contrôle : c'est
@@ -145,14 +167,22 @@ export function refus(spec: FieldSpec, valeur: unknown): string | null {
     return null;
   }
 
-  if (!Array.isArray(valeur) || valeur.length === 0) {
-    return `${spec.cle} attend une liste non vide.`;
+  const liste = versTableau(valeur);
+  if (!liste) {
+    // Le message dit la forme attendue : sans cela le modèle réessaie à
+    // l'identique, et la conversation tourne à vide.
+    const forme =
+      spec.kind === 'liste_objectifs'
+        ? '[{"title": "…", "criteria": "…"}]'
+        : '[{"title": "…", "format": "…", "deadline": "M+6"}]';
+    return `${spec.cle} attend un tableau d'objets, de la forme ${forme}.`;
   }
-  if (valeur.length > 20) {
-    return `${spec.cle} : vingt entrées au maximum, ${valeur.length} proposées.`;
+  if (liste.length === 0) return `${spec.cle} attend une liste non vide.`;
+  if (liste.length > 20) {
+    return `${spec.cle} : vingt entrées au maximum, ${liste.length} proposées.`;
   }
 
-  for (const [i, ligne] of valeur.entries()) {
+  for (const [i, ligne] of liste.entries()) {
     if (typeof ligne !== 'object' || ligne === null) {
       return `${spec.cle} : l'entrée ${i + 1} n'est pas un objet.`;
     }
@@ -172,10 +202,10 @@ export function refus(spec: FieldSpec, valeur: unknown): string | null {
  */
 export function normaliseListe(
   spec: FieldSpec,
-  valeur: unknown[],
+  valeur: unknown,
 ): Array<Record<string, string>> {
   const texte = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
-  return valeur.map((ligne): Record<string, string> => {
+  return (versTableau(valeur) ?? []).map((ligne): Record<string, string> => {
     const o = ligne as Record<string, unknown>;
     if (spec.kind === 'liste_objectifs') {
       return { title: texte(o.title), criteria: texte(o.criteria) };

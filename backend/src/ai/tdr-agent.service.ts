@@ -78,8 +78,29 @@ export class TdrAgentService {
                 description: 'Identifiant du champ à écrire.',
               },
               valeur: {
-                description:
-                  "Pour un champ de texte : une chaîne. Pour objectives : [{title, criteria}]. Pour deliverables : [{title, format, deadline}].",
+                // Sans type déclaré, le modèle sérialisait les listes en
+                // chaîne et l'écriture échouait en boucle. On annonce les
+                // deux formes, et le service accepte l'une comme l'autre.
+                anyOf: [
+                  { type: 'string', description: 'Pour un champ de texte.' },
+                  {
+                    type: 'array',
+                    description: 'Pour objectives et deliverables.',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        title: { type: 'string' },
+                        criteria: { type: 'string', description: 'objectives seulement' },
+                        format: { type: 'string', description: 'deliverables seulement' },
+                        deadline: {
+                          type: 'string',
+                          description: 'deliverables seulement — J+15, S+4, M+6',
+                        },
+                      },
+                      required: ['title'],
+                    },
+                  },
+                ],
               },
             },
             required: ['champ', 'valeur'],
@@ -128,6 +149,19 @@ export class TdrAgentService {
     if (debut === -1) return null;
     const guillemet = args.indexOf('"', args.indexOf(':', debut) + 1);
     if (guillemet === -1) return null;
+
+    // Une liste s'ouvre par un crochet, hors de toute chaîne : le décodage
+    // ci-dessous ne vaut que pour du texte. On rend alors ce qui est déjà
+    // arrivé, brut, plutôt que rien.
+    const apresDeuxPoints = args.slice(args.indexOf(':', debut) + 1).trimStart();
+    if (apresDeuxPoints.startsWith('[')) {
+      return apresDeuxPoints
+        .replace(/[[\]{}"]/g, '')
+        .replace(/title\s*:/g, '')
+        .replace(/(criteria|format|deadline)\s*:/g, '— ')
+        .replace(/,\s*/g, '\n')
+        .trim();
+    }
 
     const ECHAPPES: Record<string, string> = {
       n: '\n',
@@ -327,6 +361,9 @@ export class TdrAgentService {
 
         const motif = refus(spec, args.valeur);
         if (motif) {
+          this.logger.warn(
+            `Écriture refusée sur ${cle} — ${motif} — reçu : ${JSON.stringify(args.valeur).slice(0, 300)}`,
+          );
           return { resultat: `Écriture refusée : ${motif}`, evenement: { type: 'refus', champ: cle, motif } };
         }
 
