@@ -7,36 +7,47 @@
 
 ## 1. Base de données
 
-Le projet attend PostgreSQL sur le **port 5433**, base `ptn_rdc`, rôle `ptn`.
-Le port 5433 — et non 5432 — évite tout conflit avec une instance PostgreSQL
-déjà installée sur le poste.
+PostgreSQL local, base `ptn_rdc`, rôle applicatif `ptn`, **port 5432**.
 
-### Option A — Docker (non disponible sur tous les postes)
+Le rôle `ptn` n'est pas superutilisateur : l'application ne se connecte jamais
+avec `postgres`. Une erreur de requête reste ainsi contenue à sa propre base.
 
-```bash
-cd backend && npm run db:up
-```
+### Création (une seule fois)
 
-### Option B — Grappe dédiée, sans Docker
-
-Crée une instance PostgreSQL isolée, indépendante de celle éventuellement déjà
-installée. Aucun mot de passe à connaître, aucune base existante touchée.
+Remplacer `<mdp-postgres>` par le mot de passe de votre superutilisateur local.
 
 ```bash
 export PATH="/Library/PostgreSQL/18/bin:$PATH"   # adapter la version
+export PGPASSWORD=<mdp-postgres>
 
-initdb -D "$HOME/.ptn-rdc-pg" -U ptn --auth=trust --encoding=UTF8 --locale=C
-pg_ctl -D "$HOME/.ptn-rdc-pg" -o "-p 5433 -k /tmp" -l "$HOME/.ptn-rdc-pg/server.log" start
-psql -h localhost -p 5433 -U ptn -d postgres -c "ALTER ROLE ptn WITH PASSWORD 'ptn_dev_password';"
-createdb -h localhost -p 5433 -U ptn ptn_rdc
+psql -h localhost -p 5432 -U postgres -d postgres \
+  -c "CREATE ROLE ptn LOGIN PASSWORD 'ptn_dev_password';"
+createdb -h localhost -p 5432 -U postgres -O ptn ptn_rdc
+psql -h localhost -p 5432 -U postgres -d ptn_rdc \
+  -c "GRANT ALL ON SCHEMA public TO ptn; ALTER SCHEMA public OWNER TO ptn;"
 ```
 
-Commandes de service :
+Vérification :
 
 ```bash
-pg_ctl -D "$HOME/.ptn-rdc-pg" stop      # arrêter
-pg_ctl -D "$HOME/.ptn-rdc-pg" -o "-p 5433 -k /tmp" -l "$HOME/.ptn-rdc-pg/server.log" start
-rm -rf "$HOME/.ptn-rdc-pg"              # supprimer entièrement
+PGPASSWORD=ptn_dev_password psql -h localhost -p 5432 -U ptn -d ptn_rdc \
+  -tAc "select current_user, current_database();"
+# → ptn|ptn_rdc
+```
+
+### Variante Docker
+
+`docker compose up -d` (script `npm run db:up`) expose PostgreSQL sur le port
+**5433**. Dans ce cas, remplacer 5432 par 5433 dans `DATABASE_URL`.
+
+### « Can't reach database server »
+
+Le serveur n'est pas démarré, ou `DATABASE_URL` désigne le mauvais port. Vérifier
+d'abord quel port écoute :
+
+```bash
+nc -z localhost 5432 && echo "5432 ouvert"
+nc -z localhost 5433 && echo "5433 ouvert"
 ```
 
 ## 2. Backend
@@ -45,6 +56,7 @@ rm -rf "$HOME/.ptn-rdc-pg"              # supprimer entièrement
 cd backend
 cp .env.example .env        # les valeurs par défaut conviennent en local
 npm install
+npm run db:generate         # REGÉNÈRE LE CLIENT PRISMA — voir ci-dessous
 npm run db:deploy           # applique les migrations
 npm run db:seed             # référentiel MEP + administrateur d'amorçage
 npm run db:seed:dev         # comptes de démonstration (développement seulement)
@@ -52,6 +64,21 @@ npm run start:dev           # http://localhost:3001/api
 ```
 
 Documentation OpenAPI : <http://localhost:3001/api/docs>
+
+> **`Property 'tdr' does not exist on type 'PrismaService'`**
+>
+> Le client Prisma est généré à partir du schéma, dans `backend/generated/`, et
+> ce dossier n'est pas versionné. Après tout `git pull` ajoutant des modèles, il
+> est périmé : le compilateur ignore les tables nouvellement déclarées et
+> signale une erreur par appel.
+>
+> ```bash
+> cd backend && npm run db:generate
+> ```
+>
+> Aucune base de données n'est requise pour cette commande — elle ne lit que le
+> schéma. À lancer systématiquement après un `git pull` qui touche
+> `prisma/schema.prisma`.
 
 ## 3. Frontend
 

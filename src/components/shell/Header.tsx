@@ -88,11 +88,9 @@ export function Header({ crumbs = [] }: HeaderProps) {
 
   return (
     <header className={styles.header} role="banner">
-      {/* Le logo remplace le monogramme « PT » improvisé. Lettrage seul : à
-          20 px de haut, les nœuds de la carte tombent sous le pixel et se
-          réduisent à une tache. */}
+      {/* Logo officiel, variante claire : le bandeau Carbon est sombre. */}
       <Link href="/" className={styles.brand} aria-label="UGPTN — accueil">
-        <BrandLockup variant="wordmark" height={18} className="text-white" />
+        <BrandLockup tone="sombre" height={22} />
         <span className={styles.brandPipe} aria-hidden>
           /
         </span>

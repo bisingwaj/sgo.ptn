@@ -34,6 +34,7 @@ import { Asleep, Light, WarningAlt } from "@carbon/icons-react";
 import { useProfile } from "@/components/profile/ProfileContext";
 import { PROFILES, PROFILE_KEYS, type ProfileKey } from "@/lib/profiles";
 import { BrandLockup } from "@/components/brand/BrandLockup";
+import { PartnerMarks } from "@/components/brand/PartnerMarks";
 import { cn } from "@/lib/cn";
 
 /* ------------------------------------------------------------------ */
@@ -119,7 +120,7 @@ export function DesignSystemClient() {
       {/* ---------- Barre de contrôle ---------- */}
       <header className="border-subtle bg-layer sticky top-0 z-10 border-b">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-4 px-6 py-3">
-          <BrandLockup variant="mark" height={24} className="text-primary" />
+          <BrandLockup tone="clair" height={26} />
           <div className="ml-auto flex flex-wrap items-center gap-3">
             <label className="text-caption text-secondary" htmlFor="ds-profile">
               Profil actif
@@ -276,13 +277,16 @@ export function DesignSystemClient() {
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-8">
             <div className="border-subtle bg-layer border p-5">
-              <BrandLockup variant="full" height={72} className="text-primary" />
+              <BrandLockup tone="clair" height={64} />
             </div>
             <div className="border-subtle border bg-[#161616] p-5">
-              <BrandLockup variant="full" height={72} className="text-white" />
+              <BrandLockup tone="sombre" height={64} />
             </div>
             <div className="border-subtle bg-layer flex items-center border p-5">
-              <BrandLockup variant="mark" height={28} className="text-primary" />
+              <PartnerMarks tone="clair" height={30} />
+            </div>
+            <div className="border-subtle flex items-center border bg-[#161616] p-5">
+              <PartnerMarks tone="sombre" height={30} />
             </div>
           </div>
         </Section>

@@ -7,31 +7,27 @@
  *
  * La FAMILLE, et non le profil ni le sous-rôle. C'est ce que `LoginDto`
  * attend (`UGP_GOUV` | `BAILLEURS` | `BENEFICIAIRES` | `CONTROLE`) et ce
- * qu'elle sert à trancher : une personne peut détenir plusieurs
- * habilitations, dans des familles différentes ; la famille choisie décide
- * de celle qui est activée pour la session. Omise, c'est l'habilitation
- * principale qui est chargée.
+ * qu'elle sert à trancher : une personne peut détenir plusieurs habilitations,
+ * dans des familles différentes ; la famille choisie décide de celle qui est
+ * activée pour la session.
  *
  * Le profil, le sous-rôle, l'organisation et les permissions effectifs sont
  * renvoyés par l'API — ils ne se choisissent pas ici.
- *
- * Les quatre familles sont écrites en dur plutôt que chargées depuis
- * `/referentiel/profils` : elles sont fixées par le MEP, et l'écran de
- * connexion doit rester utilisable quand l'API ne répond pas — c'est
- * précisément là qu'il faut un message clair, pas une page vide.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, InlineNotification, PasswordInput, TextInput } from "@carbon/react";
 import { ArrowRight, CheckmarkFilled } from "@carbon/icons-react";
 import { useAuth, toProfileKey } from "@/components/auth/AuthContext";
-import { ApiError, type FamilyKey } from "@/lib/api";
+import { type FamilyKey } from "@/lib/api";
 import { PROFILES } from "@/lib/profiles";
 import { BrandLockup } from "@/components/brand/BrandLockup";
+import { PartnerMarks } from "@/components/brand/PartnerMarks";
 import { LanguagePicker } from "@/components/chrome/LanguagePicker";
 import { cn } from "@/lib/cn";
+import { loginErrorMessage } from "./auth-errors";
 
 interface FamilyOption {
   key: FamilyKey;
@@ -69,6 +65,18 @@ const PUBLIC_LINKS = [
   { href: "/mentions-legales", label: "Mentions légales" },
 ];
 
+/** Chiffres du MEP — repris tels quels, jamais recalculés. */
+const KEY_FIGURES = [
+  { value: "510", unit: "M USD", label: "Enveloppe du projet" },
+  { value: "26", unit: "provinces", label: "Couverture nationale" },
+  { value: "2029", unit: "", label: "Achèvement technique" },
+];
+
+interface FieldErrors {
+  email?: string;
+  password?: string;
+}
+
 interface LoginClientProps {
   /** Résolu côté serveur depuis la chaîne de requête (voir page.tsx). */
   sessionEnded: "expiree" | "inactivite" | null;
@@ -81,15 +89,47 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
   const [family, setFamily] = useState<FamilyKey>("UGP_GOUV");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Validation au moment de l'envoi, jamais à la frappe.
+   *
+   * Signaler « adresse invalide » dès le troisième caractère saisi revient à
+   * reprocher à quelqu'un de ne pas avoir fini d'écrire. On valide quand la
+   * personne dit avoir terminé, puis on efface le reproche dès qu'elle
+   * corrige — c'est la séquence qui déroute le moins un usager peu familier
+   * des formulaires.
+   */
+  const validate = (): FieldErrors => {
+    const errors: FieldErrors = {};
+    if (!email.trim()) {
+      errors.email = "Saisissez votre adresse électronique.";
+    } else if (!email.includes("@")) {
+      errors.email = "Cette adresse semble incomplète — il manque le « @ ».";
+    }
+    if (!password) {
+      errors.password = "Saisissez votre mot de passe.";
+    }
+    return errors;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setFormError(null);
 
-    if (!email.trim() || !password) {
-      setError("Renseignez votre adresse électronique et votre mot de passe.");
+    const errors = validate();
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      // Le focus va au premier champ fautif : sans cela, un usager au clavier
+      // ou au lecteur d'écran doit repartir en quête du problème, et sur un
+      // écran d'accueil c'est le moment où l'on abandonne.
+      (errors.email ? emailRef : passwordRef).current?.focus();
       return;
     }
 
@@ -106,50 +146,107 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
 
       router.push(PROFILES[toProfileKey(result.user.profile)].homePath);
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Service d'authentification injoignable. Vérifiez que l'API est démarrée.",
-      );
+      // Message neutralisé — voir auth-errors.ts.
+      setFormError(loginErrorMessage(err));
       setSubmitting(false);
+      emailRef.current?.focus();
     }
   };
 
+  /** Efface l'erreur d'un champ dès la première correction. */
+  const clearField = (field: keyof FieldErrors) => {
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+  };
+
   return (
-    <div className="grid min-h-screen lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)]">
+    <div className="grid min-h-screen lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)]">
       {/* ================= Panneau institutionnel ================= */}
       <aside
-        className="hidden flex-col justify-between bg-[#161616] p-10 lg:flex xl:p-14"
+        className="relative hidden flex-col justify-between overflow-hidden bg-[#161616] p-10 lg:flex xl:p-14"
         aria-label="Informations institutionnelles"
       >
-        <BrandLockup variant="full" height={104} className="text-white" />
+        {/* Trame discrète : donne de la matière au fond sans rien ajouter à
+            lire. Carbon reste sobre — la grille est à peine perceptible. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.055]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+        {/* Halo du bleu de marque, ancré derrière la signature. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full opacity-25 blur-3xl"
+          style={{ background: "radial-gradient(circle, #1192E8 0%, transparent 70%)" }}
+        />
 
-        <div className="max-w-[38ch]">
+        <div className="relative">
+          <BrandLockup tone="sombre" height={104} priority />
+        </div>
+
+        <div className="relative max-w-[40ch]">
+          {/* Filet aux couleurs du drapeau — marqueur institutionnel discret. */}
+          <span aria-hidden className="mb-6 flex h-1 w-24">
+            <i className="flex-1 bg-[var(--ptn-drc-blue)]" />
+            <i className="flex-1 bg-[var(--ptn-drc-yellow)]" />
+            <i className="flex-1 bg-[var(--ptn-drc-red)]" />
+          </span>
+
+          <p className="text-caption mb-3 tracking-[0.14em] text-white/45 uppercase">
+            Plateforme officielle · accès restreint
+          </p>
           <h1 className="text-heading-05 text-white">Plateforme de gouvernance</h1>
-          <p className="text-body-lg mt-4 text-white/70">
+          <p className="text-body-lg mt-4 text-white/65">
             Passation des marchés, avis de non-objection, sauvegardes et reporting du
             Projet de Transformation Numérique de la République Démocratique du Congo.
           </p>
+
+          {/* Chiffres du MEP : ils situent l'échelle du projet en un regard, et
+              ancrent la crédibilité institutionnelle de l'écran d'accueil.
+              `w-max` les affranchit de la largeur de lecture du paragraphe
+              (40 caractères), qui renvoyait « 2029 » seul à la ligne. */}
+          <dl className="mt-9 grid w-max grid-cols-3 gap-x-10 gap-y-5">
+            {KEY_FIGURES.map((f) => (
+              <div key={f.label} className="flex flex-col gap-0.5">
+                <dt className="sr-only">{f.label}</dt>
+                <dd className="text-heading-04 mono flex items-baseline gap-1.5 text-white">
+                  {f.value}
+                  {f.unit && <span className="text-caption text-white/55">{f.unit}</span>}
+                </dd>
+                <span aria-hidden className="text-caption text-white/45">
+                  {f.label}
+                </span>
+              </div>
+            ))}
+          </dl>
         </div>
 
-        <div className="flex flex-col gap-5">
-          <p className="text-caption text-white/45">
-            P180495 · Financement IDA (Banque mondiale) et AFD · Achèvement 2029
-          </p>
-          {/* Liens ouverts, accessibles sans compte. Le dépôt de plainte relève
-              du Mécanisme de Gestion des Plaintes : il doit rester atteignable
-              par une personne qui n'a précisément pas accès à la plateforme. */}
-          <nav aria-label="Liens publics" className="flex flex-wrap gap-x-6 gap-y-2">
-            {PUBLIC_LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-caption text-white/60 underline-offset-4 hover:text-white hover:underline"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
+        <div className="relative flex flex-col gap-7">
+          <PartnerMarks tone="sombre" height={38} />
+
+          <div className="flex flex-col gap-3 border-t border-white/10 pt-6">
+            <p className="text-caption text-white/40">
+              P180495 · Financement IDA (Banque mondiale) et AFD
+            </p>
+            {/* Liens ouverts, accessibles sans compte. Le dépôt de plainte
+                relève du Mécanisme de Gestion des Plaintes : il doit rester
+                atteignable par une personne qui n'a précisément pas accès à
+                la plateforme. */}
+            <nav aria-label="Liens publics" className="flex flex-wrap gap-x-6 gap-y-2">
+              {PUBLIC_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="text-caption text-white/60 underline-offset-4 hover:text-white hover:underline"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
         </div>
       </aside>
 
@@ -171,7 +268,7 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
 
         <div className="mx-auto flex w-full max-w-[30rem] flex-1 flex-col justify-center py-10">
           <div className="mb-10 lg:hidden">
-            <BrandLockup variant="full" height={80} className="text-primary" />
+            <BrandLockup tone="clair" height={72} priority />
           </div>
 
           <h2 className="text-heading-04 text-primary">Connexion</h2>
@@ -194,15 +291,19 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
             />
           )}
 
-          {error && (
-            <InlineNotification
-              kind="error"
-              lowContrast
-              hideCloseButton
-              className="mt-6 max-w-none"
-              title="Connexion impossible"
-              subtitle={error}
-            />
+          {/* `role="alert"` : l'erreur est annoncée dès son apparition, sans
+              que la personne ait à la chercher. */}
+          {formError && (
+            <div role="alert">
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                className="mt-6 max-w-none"
+                title="Connexion impossible"
+                subtitle={formError}
+              />
+            </div>
           )}
 
           <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-7" noValidate>
@@ -238,9 +339,7 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
                       )}
                     >
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span
-                          className={cn("text-body text-primary", active && "font-semibold")}
-                        >
+                        <span className={cn("text-body text-primary", active && "font-semibold")}>
                           {f.label}
                         </span>
                         <span className="text-caption text-secondary">{f.hint}</span>
@@ -265,29 +364,37 @@ export function LoginClient({ sessionEnded }: LoginClientProps) {
 
             <TextInput
               id="login-email"
+              ref={emailRef}
               type="email"
               labelText="Adresse électronique"
               placeholder="prenom.nom@ptn-rdc.gov.cd"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearField("email");
+              }}
               // `username` plutôt que `email` : c'est ce qu'attendent les
               // gestionnaires de mots de passe pour associer l'identifiant au site.
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
-              required
-              invalid={Boolean(error) && !email.trim()}
+              invalid={Boolean(fieldErrors.email)}
+              invalidText={fieldErrors.email}
             />
 
             <div className="flex flex-col gap-2">
               <PasswordInput
                 id="login-password"
+                ref={passwordRef}
                 labelText="Mot de passe"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearField("password");
+                }}
                 autoComplete="current-password"
-                required
-                invalid={Boolean(error) && !password}
+                invalid={Boolean(fieldErrors.password)}
+                invalidText={fieldErrors.password}
                 showPasswordLabel="Afficher le mot de passe"
                 hidePasswordLabel="Masquer le mot de passe"
               />
