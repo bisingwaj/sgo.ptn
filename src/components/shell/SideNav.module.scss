@@ -30,34 +30,53 @@
   overflow: hidden;
 }
 
-// ----- Bloc d'entité -----
-// Teinté à la couleur du profil : c'est le rappel permanent du cadre dans
-// lequel on agit, et le premier repère visuel qui distingue la colonne.
+// ----- Bloc de contexte -----
+//
+// Il portait un aplat d'accent et une barre latérale — exactement le
+// traitement de l'entrée active. Deux significations opposées, « voici votre
+// cadre » et « voici où vous êtes », partageaient une même apparence : à
+// première vue, le bloc se lisait comme un élément de menu sélectionné.
+//
+// L'aplat teinté et la barre d'accent sont désormais réservés à l'entrée
+// active, et à elle seule. Ici, une surface neutre légèrement en retrait,
+// séparée par un filet — et une simple pastille pour la couleur du profil.
 .entity {
   padding: var(--ptn-space-04);
   border-bottom: 1px solid var(--cds-border-subtle);
-  border-left: 3px solid var(--ptn-accent);
-  background: var(--ptn-accent-surface);
+  background: var(--cds-background);
 }
 
 .entityLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--cds-text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.entityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ptn-accent);
+  flex-shrink: 0;
 }
 
 .entityName {
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--cds-text-primary);
-  line-height: 1.3;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 .entityMeta {
   font-size: 0.75rem;
-  color: var(--cds-text-secondary);
+  color: var(--cds-text-helper);
   margin-top: 4px;
   font-variant-numeric: tabular-nums;
 }

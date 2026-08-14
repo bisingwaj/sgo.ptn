@@ -9,6 +9,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useProfile } from "@/components/profile/ProfileContext";
 import { useOrganisation } from "@/components/profile/OrganisationContext";
+import { useUser } from "@/components/profile/UserContext";
 import { useAuth } from "@/components/auth/AuthContext";
 import type { ProfileKey } from "@/lib/profiles";
 import {
@@ -28,8 +29,6 @@ import {
   IbmCloud,
   Locked,
   Idea,
-  Hospital,
-  Education,
   TaskApproved,
   Voicemail,
   Notification,
@@ -199,6 +198,7 @@ export function SideNav() {
   const pathname = usePathname() ?? "";
   const { profile, config } = useProfile();
   const { org } = useOrganisation();
+  const { user } = useUser();
   const { can } = useAuth();
 
   // L'entrée Administration n'apparaît que pour les habilitations qui la
@@ -225,25 +225,39 @@ export function SideNav() {
     groups.push({ title: "Administration", items: adminItems });
   }
 
-  // Pour le profil partenaire, le label/nom viennent du contexte organisation.
-  // Sinon : config par défaut.
+  /**
+   * Bloc de contexte : sous quelle casquette et pour quelle organisation.
+   *
+   * Il affichait deux fois la même chose — `config.short` valait « UGP » et
+   * `config.label.split(…)` retombait sur « UGP ». Trois lignes empilées dont
+   * deux identiques ne renseignent sur rien.
+   *
+   * Les trois portent désormais une information distincte : le rôle tenu,
+   * l'organisation d'appartenance, puis le rattachement au projet. Le nom de
+   * l'organisation vient de la session quand elle est ouverte.
+   */
   const entity =
     profile === "partenaire"
       ? {
-          label: config.short,
+          role: config.short,
           name: org.fullName,
           meta: `${org.ref} · 2025-2029`,
         }
       : {
-          label: config.short,
-          name: config.label.split(/[(/]/)[0].trim(),
+          role: config.label,
+          name: user.entityShort || config.short,
           meta: profile === "ugp" ? "MPTN · P180495" : "PTN-RDC · 2025-2029",
         };
 
   return (
     <aside className={styles.sn} aria-label="Navigation principale">
       <div className={styles.entity}>
-        <div className={styles.entityLabel}>{entity.label}</div>
+        <div className={styles.entityLabel}>
+          {/* Pastille de profil : elle porte l'identité de couleur sans
+              recourir à un aplat, désormais réservé à l'entrée active. */}
+          <span className={styles.entityDot} aria-hidden />
+          {entity.role}
+        </div>
         <div className={styles.entityName}>{entity.name}</div>
         <div className={`${styles.entityMeta} ptn-mono`}>{entity.meta}</div>
       </div>

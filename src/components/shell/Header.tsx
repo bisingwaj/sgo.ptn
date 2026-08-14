@@ -103,7 +103,7 @@ export function Header({ crumbs = [], onToggleSidePanel, sidePanelOpen }: Header
         aria-label="UGPTN — accueil"
         className="focus-visible:outline-accent border-subtle flex h-full shrink-0 items-center justify-center border-r px-3 min-[1025px]:w-[var(--ptn-shell-sidenav-w)] min-[1025px]:justify-start min-[1025px]:px-4"
       >
-        <BrandLockup tone={isDark ? "sombre" : "clair"} height={28} />
+        <BrandLockup tone={isDark ? "sombre" : "clair"} height={36} />
       </Link>
 
       {crumbs.length > 0 && (
