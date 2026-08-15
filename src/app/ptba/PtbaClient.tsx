@@ -22,9 +22,9 @@ import {
   ptbaApi,
   referentielApi,
   ApiError,
-  type ComponentApi,
   type ProvinceApi,
   type PtbaActivityApi,
+  type PtbaAllocationRowApi,
   type PtbaYearApi,
 } from "@/lib/api";
 import {
@@ -52,13 +52,19 @@ const STATUT: Record<PtbaYearApi["status"], string> = {
   CLOS: "Clos",
 };
 
-/** Teintes de l'écran d'origine, une par composante. */
+/**
+ * Une teinte par composante, prise aux jetons.
+ *
+ * L'écran d'origine les écrivait en dur, donnait à C2 l'accent du profil
+ * connecté — donc une couleur qui changeait d'un utilisateur à l'autre —
+ * et peignait C4 du violet réservé à l'IA. Voir tokens.scss.
+ */
 const TEINTE: Record<string, string> = {
-  C1: "#007d79",
-  C2: "var(--ptn-accent)",
-  C3: "#d02670",
-  C4: "var(--ptn-status-ai)",
-  C5: "var(--cds-text-helper)",
+  C1: "var(--ptn-composante-c1)",
+  C2: "var(--ptn-composante-c2)",
+  C3: "var(--ptn-composante-c3)",
+  C4: "var(--ptn-composante-c4)",
+  C5: "var(--ptn-composante-c5)",
 };
 
 const TAG_CLASS: Record<string, string> = {
@@ -66,6 +72,7 @@ const TAG_CLASS: Record<string, string> = {
   C2: styles.tagC2,
   C3: styles.tagC3,
   C4: styles.tagC4,
+  C5: styles.tagC5,
 };
 
 interface FormState {
@@ -292,9 +299,13 @@ export function PtbaClient() {
 
   const [year, setYear] = useState<PtbaYearApi | null>(null);
   const [activities, setActivities] = useState<PtbaActivityApi[]>([]);
-  const [components, setComponents] = useState<ComponentApi[]>([]);
+  const [allocations, setAllocations] = useState<PtbaAllocationRowApi[]>([]);
   const [provinces, setProvinces] = useState<ProvinceApi[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Le plan n'est pas « vide » tant qu'il n'est pas arrivé. Sans cet état,
+  // le tableau affichait « Aucune activité au plan » à chaque ouverture,
+  // pendant les deux allers-retours — une affirmation nette et fausse.
+  const [chargement, setChargement] = useState(true);
 
   // Ligne dépliée. Une seule à la fois : le contenu d'une activité se lit,
   // il ne se compare pas ligne à ligne.
@@ -307,48 +318,106 @@ export function PtbaClient() {
   const peutEcrire = can("ptba:write");
   const editable = year?.status === "BROUILLON";
 
-  const charger = useCallback(async () => {
-    setError(null);
-    try {
-      const exercices = await ptbaApi.years();
-      const cible = exercices[0]?.year;
-      if (!cible) return;
-      const detail = await ptbaApi.activities(cible);
-      setYear(detail.year);
-      setActivities(detail.activities);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Chargement impossible.");
-    }
+  /**
+   * Relit le plan après une écriture.
+   *
+   * Séparé du premier chargement à dessein : une relecture ne doit pas
+   * repasser par l'état de chargement, sinon le tableau clignote après
+   * chaque inscription. Elle ne se déclenche que depuis un geste, jamais
+   * depuis un effet.
+   */
+  const relire = useCallback(async () => {
+    const exercices = await ptbaApi.years();
+    const cible = exercices[0]?.year;
+    if (!cible) return;
+    // Les allocations suivent le plan : retirer une activité libère du
+    // solde, et le formulaire doit le refléter sans rechargement.
+    const [plan, alloc] = await Promise.allSettled([
+      ptbaApi.activities(cible),
+      ptbaApi.allocations(cible),
+    ]);
+    if (plan.status === "rejected") throw plan.reason;
+    setYear(plan.value.year);
+    setActivities(plan.value.activities);
+    // Une relecture d'allocations en échec ne doit pas faire croire que
+    // l'écriture qui vient d'aboutir a échoué : le plan, lui, est à jour.
+    if (alloc.status === "fulfilled") setAllocations(alloc.value.rows);
   }, []);
 
   useEffect(() => {
     if (authLoading) return;
-    void charger();
-    Promise.all([referentielApi.composantes(), referentielApi.provinces()])
-      .then(([c, p]) => {
-        setComponents(c);
-        setProvinces(p);
-      })
-      .catch(() => undefined);
-  }, [authLoading, charger]);
+    let annule = false;
 
-  const engage = activities.reduce((s, a) => s + Number(a.envelopeUsd), 0);
-  const dotationTotale = components.reduce((s, c) => s + Number(c.totalUsdM) * 1e6, 0);
+    void (async () => {
+      try {
+        const [exercices, prov] = await Promise.all([
+          ptbaApi.years(),
+          referentielApi.provinces(),
+        ]);
+        if (annule) return;
+        setProvinces(prov);
 
-  const parComposante = useMemo(
-    () =>
-      components.map((c) => {
-        const lignes = activities.filter((a) => a.componentCode === c.code);
-        return {
-          code: c.code,
-          label: c.shortLabel,
-          dotation: Number(c.totalUsdM),
-          engage: lignes.reduce((s, a) => s + Number(a.envelopeUsd), 0),
-          nb: lignes.length,
-          reconciliation: c.reconciliation ?? null,
-        };
-      }),
-    [components, activities],
+        const cible = exercices[0]?.year;
+        if (!cible) return;
+
+        // Le plan est le contenu de l'écran ; les allocations en sont le
+        // complément. Les demander ensemble faisait disparaître le plan
+        // entier dès que les allocations échouaient — l'écran affichait
+        // alors « aucun exercice ouvert » alors qu'il y en avait un.
+        const [plan, alloc] = await Promise.allSettled([
+          ptbaApi.activities(cible),
+          ptbaApi.allocations(cible),
+        ]);
+        if (annule) return;
+
+        if (plan.status === "rejected") throw plan.reason;
+        setYear(plan.value.year);
+        setActivities(plan.value.activities);
+
+        if (alloc.status === "fulfilled") {
+          setAllocations(alloc.value.rows);
+        } else {
+          setError(
+            "Les allocations de l’exercice n’ont pas pu être lues : les soldes par composante " +
+              "ne sont pas affichés, et aucune activité ne peut être inscrite tant qu’ils manquent.",
+          );
+        }
+      } catch (e) {
+        if (!annule) setError(e instanceof Error ? e.message : "Chargement impossible.");
+      } finally {
+        if (!annule) setChargement(false);
+      }
+    })();
+
+    return () => {
+      annule = true;
+    };
+  }, [authLoading]);
+
+  /**
+   * Tout se rapporte désormais à l'ALLOCATION DE L'EXERCICE, non à la
+   * dotation de projet du MEP.
+   *
+   * L'écran divisait un plan annuel par une enveloppe quinquennale et
+   * appelait le résultat « % de la dotation ». Le service borne autre
+   * chose : deux chiffres qui ne se répondaient pas, et un refus
+   * incompréhensible quand la saisie dépassait le vrai plafond.
+   *
+   * Les cumuls viennent du service, ils ne sont pas recalculés ici — deux
+   * sources pour un même chiffre finissent toujours par diverger.
+   */
+  const engage = useMemo(
+    () => allocations.reduce((s, r) => s + r.plannedUsd, 0),
+    [allocations],
+  );
+  const alloueTotal = useMemo(
+    () => allocations.reduce((s, r) => s + (r.allocationUsd ?? 0), 0),
+    [allocations],
+  );
+  /** Composantes dont l'allocation n'est pas encore arrêtée. */
+  const nonAllouees = useMemo(
+    () => allocations.filter((r) => r.allocationUsd === null),
+    [allocations],
   );
 
   const soumettre = async () => {
@@ -373,7 +442,7 @@ export function PtbaClient() {
       });
       setForm(FORM_VIDE);
       setOpenForm(false);
-      await charger();
+      await relire();
     } catch (e) {
       setFormError(e instanceof ApiError ? e.message : "Enregistrement impossible.");
     } finally {
@@ -382,9 +451,10 @@ export function PtbaClient() {
   };
 
   const retirer = async (a: PtbaActivityApi) => {
+    setError(null);
     try {
       await ptbaApi.deactivate(a.id);
-      await charger();
+      await relire();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Retrait impossible.");
     }
@@ -403,8 +473,10 @@ export function PtbaClient() {
         title={year ? `${year.label} — exécution & suivi` : "PTBA"}
         subtitle={
           year
-            ? `${activities.length} activité${activities.length > 1 ? "s" : ""} inscrite${activities.length > 1 ? "s" : ""} · ${components.length} composantes · dotation globale ${formatM(dotationTotale)} USD.`
-            : "Chargement du plan…"
+            ? `${activities.length} activité${activities.length > 1 ? "s" : ""} inscrite${activities.length > 1 ? "s" : ""} · ${allocations.length} composantes · ${formatM(alloueTotal)} USD alloués à l’exercice.`
+            : chargement
+              ? "Chargement du plan…"
+              : "Aucun exercice ouvert."
         }
         meta={
           year ? (
@@ -468,15 +540,26 @@ export function PtbaClient() {
                 onChange={(e) => setForm({ ...form, componentCode: e.target.value })}
               >
                 <option value="">— Sélectionner —</option>
-                {parComposante
-                  .filter((c) => c.dotation > 0)
-                  .map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code} · {c.label} — reste{" "}
-                      {(c.dotation - c.engage / 1e6).toFixed(1)} M USD
+                {/* Une composante sans allocation, ou allouée à zéro, ne peut
+                    rien recevoir : le service refuse. La proposer au choix
+                    ferait découvrir le refus après la saisie. */}
+                {allocations
+                  .filter((r) => (r.allocationUsd ?? 0) > 0)
+                  .map((r) => (
+                    <option key={r.componentCode} value={r.componentCode}>
+                      {r.componentCode} · {r.shortLabel} — reste{" "}
+                      {formatM((r.allocationUsd ?? 0) - r.plannedUsd)} USD sur{" "}
+                      {formatM(r.allocationUsd ?? 0)} alloués
                     </option>
                   ))}
               </select>
+              {nonAllouees.length > 0 && (
+                <span className={form_.hint}>
+                  Sans allocation à ce jour :{" "}
+                  {nonAllouees.map((r) => r.componentCode).join(", ")}. Une composante
+                  n’accepte d’activité qu’une fois son allocation arrêtée.
+                </span>
+              )}
             </label>
             <label className={form_.field}>
               <span>Sous-composante</span>
@@ -657,18 +740,28 @@ export function PtbaClient() {
           </div>
           <div className={styles.kpiV}>{activities.length}</div>
           <div className={styles.kpiU}>
-            {parComposante
-              .filter((c) => c.nb > 0)
-              .map((c) => `${c.code} · ${c.nb}`)
+            {allocations
+              .filter((r) => r.activityCount > 0)
+              .map((r) => `${r.componentCode} · ${r.activityCount}`)
               .join(" / ") || "Aucune activité inscrite"}
           </div>
         </div>
         <div className={styles.kpi}>
           <div className={styles.kpiK}>
-            <Money size={14} aria-hidden /> Dotation du projet
+            <Money size={14} aria-hidden /> Alloué à l’exercice
           </div>
-          <div className={styles.kpiV}>{formatM(dotationTotale)}</div>
-          <div className={styles.kpiU}>USD · IDA + AFD, MEP Tableau 2</div>
+          <div className={styles.kpiV}>
+            {allocations.length === 0 ? "—" : formatM(alloueTotal)}
+          </div>
+          <div className={styles.kpiU}>
+            {/* Sans les lignes, on ne sait rien — surtout pas que tout est
+                alloué. Le dire serait une affirmation sans source. */}
+            {allocations.length === 0
+              ? "Allocations indisponibles"
+              : nonAllouees.length > 0
+                ? `USD · ${nonAllouees.length} composante${nonAllouees.length > 1 ? "s" : ""} sans allocation`
+                : "USD · toutes composantes allouées"}
+          </div>
         </div>
         <div className={styles.kpi}>
           <div className={styles.kpiK}>
@@ -678,10 +771,10 @@ export function PtbaClient() {
             {formatM(engage)}
           </div>
           <div className={`${styles.kpiBar} ${styles.kpiBarOk}`}>
-            <i style={{ width: `${dotationTotale ? (engage / dotationTotale) * 100 : 0}%` }} />
+            <i style={{ width: `${alloueTotal ? (engage / alloueTotal) * 100 : 0}%` }} />
           </div>
           <div className={styles.kpiU}>
-            {dotationTotale ? ((engage / dotationTotale) * 100).toFixed(1) : "0"} % de la dotation
+            {alloueTotal ? ((engage / alloueTotal) * 100).toFixed(1) : "0"} % de l’allocation
           </div>
         </div>
         <div className={styles.kpi}>
@@ -724,7 +817,20 @@ export function PtbaClient() {
                 </tr>
               </thead>
               <tbody>
-                {activities.length === 0 ? (
+                {chargement ? (
+                  <tr>
+                    <td colSpan={7} className={styles.date} style={{ padding: 24 }}>
+                      Chargement du plan…
+                    </td>
+                  </tr>
+                ) : !year ? (
+                  <tr>
+                    <td colSpan={7} className={styles.date} style={{ padding: 24 }}>
+                      Aucun exercice PTBA ouvert. Un plan se saisit sur un exercice : il faut
+                      d’abord en ouvrir un.
+                    </td>
+                  </tr>
+                ) : activities.length === 0 ? (
                   <tr>
                     <td colSpan={7} className={styles.date} style={{ padding: 24 }}>
                       Aucune activité au plan. Tant qu’il est vide, aucun TDR ne peut être ouvert :
@@ -755,7 +861,9 @@ export function PtbaClient() {
                       </td>
                       <td>
                         <span
-                          className={`${styles.tag} ${TAG_CLASS[a.componentCode] ?? styles.tagC4}`}
+                          // Une composante inconnue retombe sur le neutre, non
+                          // sur la teinte de C4 — qu'elle empruntait jusqu'ici.
+                          className={`${styles.tag} ${TAG_CLASS[a.componentCode] ?? styles.tagC5}`}
                         >
                           {a.componentCode}
                         </span>
@@ -800,48 +908,61 @@ export function PtbaClient() {
               <Activity size={12} aria-hidden /> Répartition composantes
             </h4>
             <div className={styles.railBody}>
-              {parComposante.map((c) => (
-                <div key={c.code} style={{ marginBottom: 10 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontSize: 12,
-                      marginBottom: 4,
-                    }}
-                  >
-                    <span>
-                      <strong style={{ fontFamily: "var(--font-ibm-plex-mono)", marginRight: 6 }}>
-                        {c.code}
-                      </strong>
-                      {c.label}
-                    </span>
-                    <span
-                      className="ptn-mono"
-                      style={{ fontSize: 11, color: "var(--cds-text-helper)" }}
-                    >
-                      {c.dotation} M
-                    </span>
-                  </div>
-                  <div style={{ height: 4, background: "var(--cds-border-subtle)", overflow: "hidden" }}>
-                    <i
+              {allocations.length === 0 && (
+                <p style={{ fontSize: 12, color: "var(--cds-text-helper)" }}>
+                  {chargement ? "Chargement…" : "Allocations indisponibles."}
+                </p>
+              )}
+              {/* La barre dit le taux d'engagement DANS l'allocation, non la
+                  part de la composante dans le total : c'est le chiffre sur
+                  lequel on agit, et celui que le service oppose à la saisie. */}
+              {allocations.map((r) => {
+                const alloue = r.allocationUsd;
+                const taux = alloue && alloue > 0 ? (r.plannedUsd / alloue) * 100 : 0;
+                return (
+                  <div key={r.componentCode} style={{ marginBottom: 10 }}>
+                    <div
                       style={{
-                        display: "block",
-                        height: "100%",
-                        width: `${dotationTotale ? (c.dotation / (dotationTotale / 1e6)) * 100 : 0}%`,
-                        background: TEINTE[c.code],
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        fontSize: 12,
+                        marginBottom: 4,
                       }}
-                    />
+                    >
+                      <span>
+                        <strong style={{ fontFamily: "var(--font-ibm-plex-mono)", marginRight: 6 }}>
+                          {r.componentCode}
+                        </strong>
+                        {r.shortLabel}
+                      </span>
+                      <span
+                        className="ptn-mono"
+                        style={{ fontSize: 12, color: "var(--cds-text-helper)", whiteSpace: "nowrap" }}
+                      >
+                        {alloue === null ? "non allouée" : `${formatM(r.plannedUsd)} / ${formatM(alloue)}`}
+                      </span>
+                    </div>
+                    <div style={{ height: 4, background: "var(--cds-border-subtle)", overflow: "hidden" }}>
+                      <i
+                        style={{
+                          display: "block",
+                          height: "100%",
+                          width: `${Math.min(taux, 100)}%`,
+                          background: TEINTE[r.componentCode],
+                        }}
+                      />
+                    </div>
+                    {/* Le corpus impose de signaler la réconciliation MEP/PAD
+                        partout où la dotation s'affiche. */}
+                    {r.reconciliation && (
+                      <p style={{ fontSize: 12, lineHeight: 1.4, color: "var(--cds-text-helper)", marginTop: 4 }}>
+                        {r.reconciliation}
+                      </p>
+                    )}
                   </div>
-                  {/* Le corpus impose de signaler la réconciliation MEP/PAD
-                      partout où la dotation s'affiche. */}
-                  {c.reconciliation && (
-                    <p style={{ fontSize: 10, lineHeight: 1.4, color: "var(--cds-text-helper)", marginTop: 3 }}>
-                      {c.reconciliation}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 

@@ -174,6 +174,7 @@ async function tryRefresh(): Promise<boolean> {
 export const api = {
   get: <T>(path: string) => request<T>(path, { method: "GET" }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
   del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   refresh: tryRefresh,
 };
@@ -633,8 +634,41 @@ export const tdrReferentielApi = {
     api.post<{ id: string; status: string }>(`/referentiel-tdr/bibliotheque/${kind}/${id}/archiver`),
 };
 
+/**
+ * Allocation annuelle d'une composante, avec ce qu'elle borne.
+ *
+ * `allocationUsd` à `null` signifie « pas encore arrêtée » — distinct de
+ * zéro, qui veut dire « rien sur cet exercice », comme la CERC.
+ *
+ * Tous les montants sont des USD entiers : l'API transporte des données,
+ * l'interface en fait la présentation.
+ */
+export interface PtbaAllocationRowApi {
+  componentCode: string;
+  label: string;
+  shortLabel: string;
+  reconciliation: string | null;
+  /** Dotation de projet du MEP, 2025-2029 */
+  projectCeilingUsd: number;
+  /** Cumul des allocations de cette composante, tous exercices confondus */
+  allocatedAllYearsUsd: number;
+  allocationUsd: number | null;
+  idaUsd: number | null;
+  afdUsd: number | null;
+  note: string | null;
+  /** Ce que le plan de l'exercice engage déjà sur cette composante */
+  plannedUsd: number;
+  activityCount: number;
+}
+
 export const ptbaApi = {
   years: () => api.get<PtbaYearApi[]>("/ptba/exercices"),
+  allocations: (year: number) =>
+    api.get<{ year: PtbaYearApi; rows: PtbaAllocationRowApi[] }>(
+      `/ptba/exercices/${year}/allocations`,
+    ),
+  setAllocation: (year: number, payload: Record<string, unknown>) =>
+    api.put<unknown>(`/ptba/exercices/${year}/allocations`, payload),
   activities: (year: number) =>
     api.get<{ year: PtbaYearApi; activities: PtbaActivityApi[]; totalUsd: number }>(
       `/ptba/exercices/${year}/activites`,
