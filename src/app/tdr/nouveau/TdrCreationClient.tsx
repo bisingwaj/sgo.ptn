@@ -40,13 +40,14 @@ import {
   Add,
   AiGenerate,
   CheckmarkFilled,
-  Idea,
   Locked,
   TrashCan,
   WarningAltFilled,
 } from "@carbon/icons-react";
 import { MultiDropdownPicker } from "@/components/ui/MultiDropdownPicker";
 import { EtapeType } from "./etapes/EtapeType";
+import { EtapeTexte } from "./etapes/EtapeTexte";
+import { CHAMPS_TEXTE, LIBELLES_ETAPE } from "./etapes/champs-texte";
 import { EtapeRattachement } from "./etapes/EtapeRattachement";
 import { EtapeIdentification } from "./etapes/EtapeIdentification";
 import {
@@ -166,73 +167,6 @@ function hydrate(
   };
 }
 
-
-/**
- * Rédaction assistée par gabarit.
- *
- * L'ancien parcours présentait cette même substitution sous un badge
- * « ✦ IA ». Aucun modèle n'était appelé : le bouton recopiait le gabarit du
- * type dans le champ. Le nommer pour ce qu'il est évite de présenter un
- * texte à valeur contractuelle comme une production d'intelligence
- * artificielle — et laisse la place nette si une vraie assistance
- * rédactionnelle est branchée un jour.
- */
-function TemplateAssist({
-  template,
-  current,
-  onApply,
-}: {
-  template: string;
-  current: string;
-  onApply: (text: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const identical = current.trim() === template.trim();
-
-  return (
-    <aside className={styles.assist}>
-      <div className={styles.assistHead}>
-        <Idea size={16} aria-hidden />
-        <strong>Trame proposée pour ce type d’activité</strong>
-        <button type="button" className={styles.assistToggle} onClick={() => setOpen((v) => !v)}>
-          {open ? "Masquer" : "Voir la trame"}
-        </button>
-      </div>
-
-      <p className={styles.assistHint}>
-        Rédigée d’après le référentiel de passation et les sources du MEP, avec la référence de
-        l’activité PTBA substituée. À reprendre et à adapter — elle n’a pas vocation à être
-        transmise telle quelle.
-      </p>
-
-      {open && <p className={styles.assistPreview}>{template}</p>}
-
-      <div className={styles.assistActions}>
-        <button
-          type="button"
-          className={styles.assistBtn}
-          onClick={() => onApply(template)}
-          disabled={identical}
-        >
-          {identical
-            ? "Trame déjà en place"
-            : current.trim()
-              ? "Remplacer par la trame"
-              : "Insérer la trame"}
-        </button>
-        {current.trim() && !identical && (
-          <button
-            type="button"
-            className={styles.assistBtnGhost}
-            onClick={() => onApply(`${current.trim()}\n\n${template}`)}
-          >
-            Ajouter à la suite
-          </button>
-        )}
-      </div>
-    </aside>
-  );
-}
 
 /**
  * Assistance rédactionnelle.
@@ -581,60 +515,51 @@ export function TdrCreationClient() {
         ),
       },
 
-      // ===== 04 · Cadrage =====
-      {
-        num: "04",
-        label: "Cadrage",
-        sub: "Contexte, justification, bénéficiaires",
-        validate: (s) => (s.context.trim().length < 30 ? "Le contexte doit être rédigé." : null),
-        commit: (s) =>
-          persist(s, {
-            context: s.context,
-            justification: s.justification,
-            beneficiaries: s.beneficiaries,
-          }),
-        render: (s, set) => {
-          const type = typeOf(s);
-          const activity = activities.find((a) => a.id === s.ptbaActivityId);
-          return (
-            <div className={styles.stack}>
-              {type?.contextTemplate && (
-                <TemplateAssist
-                  template={fillTemplate(type.contextTemplate, activity)}
-                  current={s.context}
-                  onApply={(text) => set({ ...s, context: text })}
-                />
-              )}
-
-              <ContextAssist state={s} set={set} />
-              <Field label="Contexte" required>
-                <Textarea rows={7} value={s.context} onChange={(e) => set({ ...s, context: e.target.value })} />
-              </Field>
-              <Field label="Justification" helper="Pourquoi cette activité, maintenant.">
-                <Textarea rows={4} value={s.justification} onChange={(e) => set({ ...s, justification: e.target.value })} />
-              </Field>
-
-              <JustificationAssist state={s} set={set} />
-              <Field
-                label="Bénéficiaires visés"
-                helper="Les populations servies, non l’institution maître d’ouvrage. Quantifier si possible : effectifs, part de femmes, couverture géographique — ces éléments alimentent le cadre de résultats."
-              >
-                <Textarea
-                  rows={3}
-                  value={s.beneficiaries}
-                  onChange={(e) => set({ ...s, beneficiaries: e.target.value })}
-                  placeholder={`Bénéficiaires directs : 800 agents publics
-Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
-                />
-              </Field>
-            </div>
-          );
-        },
-      },
+      // ===== 04 à 07 · Les sections rédigées du cadrage =====
+      //
+      // Un champ, un écran. Les trois tenaient sur une même page, empilés
+      // avec deux panneaux d'assistance intercalés : on y répondait à trois
+      // questions distinctes en faisant défiler entre elles, et les textes
+      // finissaient par se répéter faute de voir ce qu'on avait déjà écrit
+      // ailleurs. Chacun porte maintenant sa question, ses repères et son
+      // assistance.
+      ...(["context", "justification", "beneficiaries", "expectedResults"] as const).map(
+        (cle, i) => ({
+          num: `0${4 + i}`,
+          label: LIBELLES_ETAPE[cle].label,
+          sub: LIBELLES_ETAPE[cle].sub,
+          validate: (s: State) =>
+            cle === "context" && s.context.trim().length < 30
+              ? "Le contexte doit être rédigé."
+              : null,
+          commit: (s: State) =>
+            persist(s, {
+              [cle]: s[cle] || null,
+              // Marque de contribution : le serveur en fait l'union, elle ne
+              // se retire jamais.
+              aiAssisted: s.aiAssistedFields,
+            }),
+          render: (s: State, set: (v: State) => void) => (
+            <EtapeTexte
+              champ={CHAMPS_TEXTE[cle]}
+              state={s}
+              set={set}
+              gabarit={
+                cle === "context" && typeOf(s)?.contextTemplate
+                  ? fillTemplate(
+                      typeOf(s)!.contextTemplate!,
+                      activities.find((a) => a.id === s.ptbaActivityId),
+                    )
+                  : undefined
+              }
+            />
+          ),
+        }),
+      ),
 
       // ===== 03 · Objectifs et livrables =====
       {
-        num: "05",
+        num: "08",
         label: "Objectifs & livrables",
         sub: "Ce qui est attendu, et comment on le constate",
         validate: (s) => {
@@ -653,31 +578,24 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
         render: (s, set) => <OutcomesStep state={s} set={set} />,
       },
 
-      // ===== 04 · Méthodologie =====
-      {
-        num: "06",
-        label: "Méthodologie",
-        sub: "Approche attendue et contraintes",
-        commit: (s) =>
-          persist(s, { approach: s.approach, methodology: s.methodology, constraints: s.constraints }),
-        render: (s, set) => (
-          <div className={styles.stack}>
-            <Field label="Approche générale">
-              <Textarea rows={4} value={s.approach} onChange={(e) => set({ ...s, approach: e.target.value })} />
-            </Field>
-            <Field label="Méthodologie attendue" helper="Ce que le prestataire devra démontrer dans son offre technique.">
-              <Textarea rows={5} value={s.methodology} onChange={(e) => set({ ...s, methodology: e.target.value })} />
-            </Field>
-            <Field label="Contraintes">
-              <Textarea rows={3} value={s.constraints} onChange={(e) => set({ ...s, constraints: e.target.value })} />
-            </Field>
-          </div>
+      // ===== 09 à 11 · L'exécution attendue =====
+      //
+      // Trois questions qui n'en font pas une : par quelle voie, par quelles
+      // étapes, sous quelles limites. Empilées, la première se vidait dans
+      // la deuxième, et la troisième restait vide.
+      ...(["approach", "methodology", "constraints"] as const).map((cle, i) => ({
+        num: `${9 + i}`,
+        label: LIBELLES_ETAPE[cle].label,
+        sub: LIBELLES_ETAPE[cle].sub,
+        commit: (s: State) => persist(s, { [cle]: s[cle] || null, aiAssisted: s.aiAssistedFields }),
+        render: (s: State, set: (v: State) => void) => (
+          <EtapeTexte champ={CHAMPS_TEXTE[cle]} state={s} set={set} />
         ),
-      },
+      })),
 
       // ===== 05 · Calendrier et expertise =====
       {
-        num: "07",
+        num: "12",
         label: "Calendrier & expertise",
         sub: "Durée, couverture et profils requis",
         commit: (s) =>
@@ -755,7 +673,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 06 · Budget =====
       {
-        num: "08",
+        num: "13",
         label: "Budget",
         sub: "Enveloppe et ventilation par source de financement",
         validate: (s) => {
@@ -795,7 +713,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
       // pré-cadrés ». La refonte en avait fait deux étapes ; c'était une
       // marche de plus pour un même geste, répété trois fois.
       {
-        num: "09",
+        num: "14",
         label: "Cadre & risques",
         sub: "Clauses, indicateurs et risques pré-cadrés pour ce type",
         commit: (s) =>
@@ -820,7 +738,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 09 · Sauvegardes E&S =====
       {
-        num: "10",
+        num: "15",
         label: "Sauvegardes E&S",
         sub: "Classification du risque environnemental et social",
         validate: (s) => {
@@ -904,7 +822,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 10 · Revue et soumission =====
       {
-        num: "11",
+        num: "16",
         label: "Revue & transmission",
         sub: "Contrôle de complétude et engagements",
         validate: (s) => {
@@ -1053,65 +971,6 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
 
 
-
-/** Rédaction du contexte, ancrée sur l'activité PTBA du dossier. */
-function ContextAssist({ state, set }: { state: State; set: (s: State) => void }) {
-  const [proposal, setProposal] = useState<string>("");
-
-  return (
-    <AiAssist
-      label="Rédaction assistée du contexte"
-      description="Le modèle reçoit l’activité PTBA, la composante, le type et la couverture géographique de ce dossier — aucune donnée personnelle. Il ne produit ni montant ni référence réglementaire qui ne lui aurait été fournie."
-      disabled={!state.tdrId}
-      disabledReason={!state.tdrId ? "Disponible une fois le brouillon ouvert." : undefined}
-      onGenerate={async () => {
-        const r = await tdrApi.assistContext(state.tdrId!);
-        setProposal(r.proposal);
-        return { groundedOn: r.groundedOn };
-      }}
-      renderProposal={() => <p className={styles.assistText}>{proposal}</p>}
-      onAccept={() => set({ ...state, context: proposal })}
-    />
-  );
-}
-
-/**
- * Justification — rédaction, ou reprise d'un texte existant.
- * Le régime est déterminé par le serveur selon l'état du champ.
- */
-function JustificationAssist({ state, set }: { state: State; set: (s: State) => void }) {
-  const [proposal, setProposal] = useState<string>("");
-  const [mode, setMode] = useState<"redaction" | "reprise">("redaction");
-  const hasText = state.justification.trim().length >= 40;
-
-  return (
-    <AiAssist
-      label={hasText ? "Reprise de votre justification" : "Rédaction assistée de la justification"}
-      description={
-        hasText
-          ? "Le modèle reprend la forme de votre texte — structure, clarté, registre — sans y introduire de fait, de chiffre ni de référence que vous n’auriez pas écrits."
-          : "Pourquoi cette activité, et pourquoi maintenant. S’appuie sur le contexte déjà rédigé et sur le rattachement à la composante."
-      }
-      disabled={!state.tdrId}
-      disabledReason={!state.tdrId ? "Disponible une fois le brouillon ouvert." : undefined}
-      onGenerate={async () => {
-        const r = await tdrApi.assistJustification(state.tdrId!);
-        setProposal(r.proposal);
-        setMode(r.mode);
-        return { groundedOn: r.groundedOn };
-      }}
-      renderProposal={() => (
-        <>
-          {mode === "reprise" && (
-            <p className={styles.assistMode}>Reprise de votre texte, sans ajout de fait.</p>
-          )}
-          <p className={styles.assistText}>{proposal}</p>
-        </>
-      )}
-      onAccept={() => set({ ...state, justification: proposal })}
-    />
-  );
-}
 
 /** Objectifs assortis de leur critère de constatation. */
 function ObjectivesAssist({ state, set }: { state: State; set: (s: State) => void }) {
