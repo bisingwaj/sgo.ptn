@@ -15,7 +15,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { PtbaService } from './ptba.service';
-import { UpsertActivityDto } from './dto/ptba.dto';
+import { UpsertActivityDto, UpsertAllocationDto } from './dto/ptba.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -55,12 +55,44 @@ export class PtbaController {
     return this.ptba.activities(year, { componentCode });
   }
 
+  @Get('exercices/:year/allocations')
+  @RequirePermissions('ptba:read')
+  @ApiOperation({
+    summary: 'Allocations annuelles par composante',
+    description:
+      'Une ligne par composante du MEP, y compris celles qui n’ont pas encore d’allocation — ' +
+      'c’est ce qui reste à arrêter avant que le plan puisse s’écrire. Chaque ligne porte aussi ' +
+      'ce que le plan engage déjà et ce qui reste de la dotation de projet.',
+  })
+  allocations(@Param('year', ParseIntPipe) year: number) {
+    return this.ptba.allocations(year);
+  }
+
+  @Put('exercices/:year/allocations')
+  @RequirePermissions('ptba:write')
+  @ApiOperation({
+    summary: 'Arrêter l’allocation annuelle d’une composante',
+    description:
+      'Le cumul des allocations d’une composante, tous exercices confondus, ne peut excéder sa ' +
+      'dotation de projet (MEP Tableau 2). Une allocation ne peut pas non plus descendre sous ce ' +
+      'que le plan de l’exercice engage déjà.',
+  })
+  setAllocation(
+    @Param('year', ParseIntPipe) year: number,
+    @Body() dto: UpsertAllocationDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.ptba.setAllocation(year, dto, actor, contextOf(req));
+  }
+
   @Post('exercices/:year/activites')
   @RequirePermissions('ptba:write')
   @ApiOperation({
     summary: 'Inscrire une activité au plan',
     description:
-      'Le cumul des enveloppes d’une composante ne peut excéder la dotation que lui attribue le MEP.',
+      'Le cumul des enveloppes d’une composante ne peut excéder son allocation SUR CET EXERCICE. ' +
+      'Une composante sans allocation n’accepte aucune activité.',
   })
   create(
     @Param('year', ParseIntPipe) year: number,

@@ -1,10 +1,10 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import type { UpsertActivityDto } from './dto/ptba.dto';
+import type { UpsertActivityDto, UpsertAllocationDto } from './dto/ptba.dto';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
-import type { ComponentCode } from '../../generated/prisma/enums';
+import type { ComponentCode, PtbaStatus } from '../../generated/prisma/enums';
 
 /**
  * Plan de Travail et Budget Annuel.
@@ -51,21 +51,167 @@ export class PtbaService {
   }
 
   /**
-   * Vérifie la cohérence d'une enveloppe avant enregistrement.
+   * Allocations de l'exercice, une ligne par composante du MEP.
    *
-   * Le cumul des activités d'une composante ne peut excéder l'enveloppe
-   * que le MEP lui attribue : c'est le premier garde-fou budgétaire du
-   * cycle, avant même qu'un TDR ne soit rédigé.
+   * Les composantes sans allocation y figurent aussi, à `null` : c'est
+   * exactement ce qu'il faut voir pour savoir ce qui reste à arrêter
+   * avant que le plan puisse s'écrire.
+   *
+   * Les montants sortent en USD entiers. Le service ne formate rien —
+   * l'interface en fait la présentation.
    */
-  private async assertEnvelopeFits(
+  async allocations(year: number) {
+    const ptbaYear = await this.loadYear(year);
+
+    const [components, rows, activities, allYears] = await Promise.all([
+      this.prisma.component.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.ptbaYearComponentAllocation.findMany({ where: { ptbaYearId: ptbaYear.id } }),
+      this.prisma.ptbaActivity.findMany({
+        where: { ptbaYearId: ptbaYear.id, isActive: true },
+        select: { componentCode: true, envelopeUsd: true },
+      }),
+      // Cumul des allocations d'une composante sur TOUS les exercices :
+      // c'est lui qui dit ce qui reste de la dotation de projet.
+      this.prisma.ptbaYearComponentAllocation.groupBy({
+        by: ['componentCode'],
+        _sum: { allocationUsd: true },
+      }),
+    ]);
+
+    return {
+      year: ptbaYear,
+      rows: components.map((c) => {
+        const allocation = rows.find((r) => r.componentCode === c.code) ?? null;
+        const lines = activities.filter((a) => a.componentCode === c.code);
+        const allocatedAllYears = allYears.find((g) => g.componentCode === c.code);
+
+        return {
+          componentCode: c.code,
+          label: c.label,
+          shortLabel: c.shortLabel,
+          reconciliation: c.reconciliation,
+          /// Dotation de projet du MEP, 2025-2029
+          projectCeilingUsd: Number(c.totalUsdM) * 1_000_000,
+          allocatedAllYearsUsd: Number(allocatedAllYears?._sum.allocationUsd ?? 0),
+          allocationUsd: allocation ? Number(allocation.allocationUsd) : null,
+          idaUsd: allocation?.idaUsd != null ? Number(allocation.idaUsd) : null,
+          afdUsd: allocation?.afdUsd != null ? Number(allocation.afdUsd) : null,
+          note: allocation?.note ?? null,
+          plannedUsd: lines.reduce((sum, a) => sum + Number(a.envelopeUsd), 0),
+          activityCount: lines.length,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Arrête l'allocation annuelle d'une composante.
+   *
+   * Trois refus, dans cet ordre — du plus structurel au plus local :
+   * l'exercice doit être ouvert à l'écriture ; le cumul des allocations
+   * de la composante ne peut excéder sa dotation de projet ; et une
+   * allocation ne peut descendre sous ce qui est déjà inscrit au plan,
+   * sinon l'exercice deviendrait incohérent d'un seul geste.
+   */
+  async setAllocation(
+    year: number,
+    dto: UpsertAllocationDto,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
+    const ptbaYear = await this.loadYear(year);
+    PtbaService.assertContentEditable(ptbaYear);
+
+    const componentCode = dto.componentCode as ComponentCode;
+    const component = await this.prisma.component.findUniqueOrThrow({ where: { code: componentCode } });
+
+    PtbaService.assertSplit(dto.allocationUsd, dto.idaUsd, dto.afdUsd, 'l’allocation');
+
+    // 1. La dotation de projet, tous exercices confondus.
+    const projectCeilingUsd = Number(component.totalUsdM) * 1_000_000;
+    const otherYears = await this.prisma.ptbaYearComponentAllocation.findMany({
+      where: { componentCode, ptbaYearId: { not: ptbaYear.id } },
+      select: { allocationUsd: true },
+    });
+    const allocatedElsewhere = otherYears.reduce((sum, a) => sum + Number(a.allocationUsd), 0);
+
+    if (allocatedElsewhere + dto.allocationUsd > projectCeilingUsd) {
+      const remaining = projectCeilingUsd - allocatedElsewhere;
+      throw new ConflictException(
+        `L’allocation dépasse la dotation de projet de la composante ${componentCode} : ` +
+          `${PtbaService.millions(remaining)} M USD encore disponibles sur ` +
+          `${PtbaService.millions(projectCeilingUsd)} M USD (MEP Tableau 2), ` +
+          `dont ${PtbaService.millions(allocatedElsewhere)} M USD déjà alloués à d’autres exercices.`,
+      );
+    }
+
+    // 2. Ce que le plan de cet exercice porte déjà.
+    const planned = await this.plannedForComponent(ptbaYear.id, componentCode);
+    if (dto.allocationUsd < planned) {
+      throw new ConflictException(
+        `L’allocation ne peut descendre sous les ${PtbaService.millions(planned)} M USD ` +
+          `déjà inscrits au plan ${year} sur la composante ${componentCode}. ` +
+          `Retirez des activités d’abord.`,
+      );
+    }
+
+    const saved = await this.prisma.ptbaYearComponentAllocation.upsert({
+      where: { ptbaYearId_componentCode: { ptbaYearId: ptbaYear.id, componentCode } },
+      create: {
+        ptbaYearId: ptbaYear.id,
+        componentCode,
+        allocationUsd: dto.allocationUsd,
+        idaUsd: dto.idaUsd ?? null,
+        afdUsd: dto.afdUsd ?? null,
+        note: dto.note?.trim() || null,
+      },
+      update: {
+        allocationUsd: dto.allocationUsd,
+        idaUsd: dto.idaUsd ?? null,
+        afdUsd: dto.afdUsd ?? null,
+        note: dto.note?.trim() || null,
+      },
+    });
+
+    await this.audit.record({
+      actorId: actor.userId,
+      actorEmail: actor.email,
+      action: 'ptba.allocation_set',
+      entityType: 'PtbaYearComponentAllocation',
+      entityId: saved.id,
+      payload: { year, componentCode, allocationUsd: dto.allocationUsd, plannedUsd: planned },
+      ...ctx,
+    });
+
+    return saved;
+  }
+
+  /**
+   * Le code de province doit exister au référentiel.
+   *
+   * Sans ce contrôle, un code inconnu remontait en violation de clé
+   * étrangère Prisma — donc une 500 opaque, là où le fautif est une saisie
+   * et mérite une 400 qui le dise.
+   */
+  private async assertProvinceExists(provinceCode?: string): Promise<void> {
+    if (!provinceCode) return;
+    const province = await this.prisma.province.findUnique({ where: { code: provinceCode } });
+    if (!province) {
+      throw new BadRequestException(`Province inconnue au référentiel : ${provinceCode}.`);
+    }
+  }
+
+  /** Millions USD, pour les messages d'erreur. */
+  private static millions(usd: number): string {
+    return (usd / 1_000_000).toFixed(2);
+  }
+
+  /** Cumul des activités actives d'une composante sur un exercice. */
+  private async plannedForComponent(
     ptbaYearId: string,
     componentCode: ComponentCode,
-    envelopeUsd: number,
     excludeActivityId?: string,
-  ): Promise<void> {
-    const component = await this.prisma.component.findUniqueOrThrow({ where: { code: componentCode } });
-    const componentCeilingUsd = Number(component.totalUsdM) * 1_000_000;
-
+  ): Promise<number> {
     const siblings = await this.prisma.ptbaActivity.findMany({
       where: {
         ptbaYearId,
@@ -75,38 +221,105 @@ export class PtbaService {
       },
       select: { envelopeUsd: true },
     });
+    return siblings.reduce((sum, a) => sum + Number(a.envelopeUsd), 0);
+  }
 
-    const alreadyPlanned = siblings.reduce((sum, a) => sum + Number(a.envelopeUsd), 0);
-    if (alreadyPlanned + envelopeUsd > componentCeilingUsd) {
-      const remaining = componentCeilingUsd - alreadyPlanned;
+  /**
+   * Vérifie qu'une enveloppe tient dans l'allocation ANNUELLE de sa
+   * composante.
+   *
+   * Le contrôle portait jusqu'ici sur la dotation de PROJET du MEP —
+   * 385 M USD sur C1, pour cinq ans. Chaque exercice pouvait donc
+   * inscrire l'intégralité de l'enveloppe quinquennale, et rien ne
+   * bornait le cumul d'un exercice à l'autre.
+   *
+   * Une composante sans allocation n'accepte aucune activité. Le refus
+   * est préféré à un repli sur la dotation de projet : ce repli rendrait
+   * le garde-fou silencieusement inopérant, ce qui est précisément le
+   * défaut corrigé ici.
+   */
+  private async assertEnvelopeFits(
+    ptbaYearId: string,
+    year: number,
+    componentCode: ComponentCode,
+    envelopeUsd: number,
+    excludeActivityId?: string,
+  ): Promise<void> {
+    const allocation = await this.prisma.ptbaYearComponentAllocation.findUnique({
+      where: { ptbaYearId_componentCode: { ptbaYearId, componentCode } },
+    });
+    if (!allocation) {
       throw new ConflictException(
-        `L’enveloppe dépasse le solde de la composante ${componentCode} : ` +
-          `${(remaining / 1_000_000).toFixed(2)} M USD encore disponibles sur ` +
-          `${Number(component.totalUsdM)} M USD (MEP Tableau 2).`,
+        `La composante ${componentCode} n’a pas d’allocation sur l’exercice ${year}. ` +
+          `Elle doit être arrêtée avant qu’une activité s’y inscrive.`,
+      );
+    }
+
+    const ceilingUsd = Number(allocation.allocationUsd);
+    const alreadyPlanned = await this.plannedForComponent(ptbaYearId, componentCode, excludeActivityId);
+
+    if (alreadyPlanned + envelopeUsd > ceilingUsd) {
+      const remaining = ceilingUsd - alreadyPlanned;
+      throw new ConflictException(
+        `L’enveloppe dépasse l’allocation ${year} de la composante ${componentCode} : ` +
+          `${PtbaService.millions(remaining)} M USD encore disponibles sur ` +
+          `${PtbaService.millions(ceilingUsd)} M USD alloués.`,
       );
     }
   }
 
-  private static assertDonorSplit(dto: UpsertActivityDto): void {
-    const ida = dto.idaUsd ?? 0;
-    const afd = dto.afdUsd ?? 0;
+  /**
+   * La ventilation par bailleur, quand elle est renseignée, doit totaliser
+   * le montant qu'elle ventile. Vaut pour l'enveloppe d'une activité comme
+   * pour l'allocation d'une composante — c'est la même règle.
+   */
+  private static assertSplit(
+    total: number,
+    idaUsd: number | undefined,
+    afdUsd: number | undefined,
+    noun: string,
+  ): void {
+    const ida = idaUsd ?? 0;
+    const afd = afdUsd ?? 0;
     if (ida === 0 && afd === 0) return;
     // Tolérance d'un dollar : les ventilations viennent souvent d'un
     // tableur et traînent des arrondis.
-    if (Math.abs(ida + afd - dto.envelopeUsd) > 1) {
+    if (Math.abs(ida + afd - total) > 1) {
       throw new BadRequestException(
-        `La ventilation IDA (${ida}) + AFD (${afd}) ne correspond pas à l’enveloppe (${dto.envelopeUsd}).`,
+        `La ventilation IDA (${ida}) + AFD (${afd}) ne correspond pas à ${noun} (${total}).`,
       );
     }
   }
 
-  private async assertEditable(year: number) {
+  private async loadYear(year: number) {
     const ptbaYear = await this.prisma.ptbaYear.findUnique({ where: { year } });
     if (!ptbaYear) throw new NotFoundException(`Aucun exercice PTBA ${year}.`);
-    if (ptbaYear.status === 'CLOS') {
-      throw new BadRequestException(`L’exercice ${year} est clos.`);
-    }
     return ptbaYear;
+  }
+
+  /**
+   * Le plan ne se modifie qu'en préparation.
+   *
+   * La règle était jusqu'ici tenue par le seul écran, qui masque le bouton
+   * hors BROUILLON. Un appel direct passait donc, et altérait un plan que
+   * le COPIL a rendu opposable — sans que rien ne distingue cette écriture
+   * d'une saisie ordinaire. La garde appartient au service : c'est lui qui
+   * répond au bailleur de ce que porte le plan.
+   *
+   * Corriger un exercice validé suppose de le rouvrir en révision. Tant
+   * que cette procédure n'existe pas, le refus est net plutôt que
+   * contournable.
+   */
+  private static assertContentEditable(ptbaYear: { year: number; status: PtbaStatus }): void {
+    if (ptbaYear.status === 'VALIDE') {
+      throw new ConflictException(
+        `Le PTBA ${ptbaYear.year} est validé : il est opposable et ne se modifie plus. ` +
+          `Une correction suppose une révision de l’exercice.`,
+      );
+    }
+    if (ptbaYear.status === 'CLOS') {
+      throw new ConflictException(`L’exercice ${ptbaYear.year} est clos : plus aucune écriture.`);
+    }
   }
 
   /**
@@ -187,8 +400,10 @@ export class PtbaService {
   } as const;
 
   async createActivity(year: number, dto: UpsertActivityDto, actor: AuthenticatedUser, ctx: RequestContext) {
-    const ptbaYear = await this.assertEditable(year);
-    PtbaService.assertDonorSplit(dto);
+    const ptbaYear = await this.loadYear(year);
+    PtbaService.assertContentEditable(ptbaYear);
+    PtbaService.assertSplit(dto.envelopeUsd, dto.idaUsd, dto.afdUsd, 'l’enveloppe');
+    await this.assertProvinceExists(dto.provinceCode);
 
     const existing = await this.prisma.ptbaActivity.findUnique({
       where: { ptbaYearId_code: { ptbaYearId: ptbaYear.id, code: dto.code } },
@@ -197,7 +412,12 @@ export class PtbaService {
       throw new ConflictException(`L’activité ${dto.code} existe déjà dans le PTBA ${year}.`);
     }
 
-    await this.assertEnvelopeFits(ptbaYear.id, dto.componentCode as ComponentCode, dto.envelopeUsd);
+    await this.assertEnvelopeFits(
+      ptbaYear.id,
+      ptbaYear.year,
+      dto.componentCode as ComponentCode,
+      dto.envelopeUsd,
+    );
 
     // Une seule transaction : une activite dont le contenu aurait echoue a
     // s'ecrire serait pire qu'une activite absente, puisqu'elle passerait
@@ -242,13 +462,13 @@ export class PtbaService {
       include: { ptbaYear: true },
     });
     if (!activity) throw new NotFoundException('Activité PTBA introuvable.');
-    if (activity.ptbaYear.status === 'CLOS') {
-      throw new BadRequestException('L’exercice est clos : cette activité n’est plus modifiable.');
-    }
+    PtbaService.assertContentEditable(activity.ptbaYear);
 
-    PtbaService.assertDonorSplit(dto);
+    PtbaService.assertSplit(dto.envelopeUsd, dto.idaUsd, dto.afdUsd, 'l’enveloppe');
+    await this.assertProvinceExists(dto.provinceCode);
     await this.assertEnvelopeFits(
       activity.ptbaYearId,
+      activity.ptbaYear.year,
       dto.componentCode as ComponentCode,
       dto.envelopeUsd,
       id,
@@ -288,10 +508,20 @@ export class PtbaService {
     return updated;
   }
 
-  /** Retrait du plan. L'activité est conservée : un TDR peut déjà la citer. */
+  /**
+   * Retrait du plan. L'activité est conservée : un TDR peut déjà la citer.
+   *
+   * Le retrait est une écriture comme une autre — il enlève une enveloppe
+   * au plan. Il ne contrôlait pourtant rien : une ligne pouvait être
+   * retirée d'un exercice validé, voire clos.
+   */
   async deactivateActivity(id: string, actor: AuthenticatedUser, ctx: RequestContext) {
-    const activity = await this.prisma.ptbaActivity.findUnique({ where: { id } });
+    const activity = await this.prisma.ptbaActivity.findUnique({
+      where: { id },
+      include: { ptbaYear: true },
+    });
     if (!activity) throw new NotFoundException('Activité PTBA introuvable.');
+    PtbaService.assertContentEditable(activity.ptbaYear);
 
     await this.prisma.ptbaActivity.update({ where: { id }, data: { isActive: false } });
 
@@ -310,9 +540,14 @@ export class PtbaService {
 
   /** Validation COPIL : le plan devient opposable. */
   async validateYear(year: number, actor: AuthenticatedUser, ctx: RequestContext) {
-    const ptbaYear = await this.assertEditable(year);
+    // La validation ne passe pas par `assertContentEditable` : elle change
+    // le statut, elle n'écrit pas dans le plan. Ses refus lui sont propres.
+    const ptbaYear = await this.loadYear(year);
     if (ptbaYear.status === 'VALIDE') {
-      throw new BadRequestException(`L’exercice ${year} est déjà validé.`);
+      throw new ConflictException(`L’exercice ${year} est déjà validé.`);
+    }
+    if (ptbaYear.status === 'CLOS') {
+      throw new ConflictException(`L’exercice ${year} est clos : il ne peut plus être validé.`);
     }
 
     const count = await this.prisma.ptbaActivity.count({

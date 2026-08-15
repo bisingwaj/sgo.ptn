@@ -1,6 +1,124 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Matches, Min, MaxLength, MinLength } from 'class-validator';
-import { ComponentCode } from '../../../generated/prisma/enums';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  Min,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
+import { ComponentCode, EsCategory } from '../../../generated/prisma/enums';
+
+/**
+ * Les cinq listes que porte une activite.
+ *
+ * Elles etaient declarees `@IsArray()` sans validation de leur contenu :
+ * n'importe quel objet, et des chaines sans borne, atteignaient
+ * l'ecriture. Le pipe global etant en `whitelist` + `forbidNonWhitelisted`,
+ * ces classes bornent aussi ce qui peut entrer.
+ *
+ * Les lignes vides restent acceptees : un formulaire laisse volontiers une
+ * ligne sans intitule en fin de saisie, et c'est le service qui les ecarte.
+ */
+export class ActivityObjectiveDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiPropertyOptional({ description: 'Comment on constatera l’atteinte' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  criteria?: string;
+}
+
+export class ActivityDeliverableDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  format?: string;
+
+  @ApiPropertyOptional({ description: 'Delai relatif au demarrage — J+15, M+6' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  deadline?: string;
+}
+
+export class ActivityIndicatorDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(300)
+  label!: string;
+
+  @ApiPropertyOptional({ description: 'Unite ou methode de mesure' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  measure?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  target?: string;
+}
+
+export class ActivityRiskDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(300)
+  label!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  mitigation?: string;
+
+  /**
+   * Le formulaire renvoie une chaine vide quand le niveau n'est pas
+   * renseigne — un `<select>` sans choix. `@IsOptional` ne couvre que
+   * `null` et `undefined` ; sans cette condition, une ligne sans niveau
+   * ferait echouer toute la saisie.
+   */
+  @ApiPropertyOptional({ enum: EsCategory })
+  @ValidateIf((o: ActivityRiskDto) => o.level !== undefined && o.level !== '')
+  @IsEnum(EsCategory, { message: 'Niveau de risque inconnu.' })
+  level?: string;
+}
+
+export class ActivityClauseDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(200)
+  label!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  text?: string;
+}
 
 export class UpsertActivityDto {
   @ApiProperty({ example: 'A2.3.1', description: 'Code d’activité PTBA' })
@@ -8,6 +126,7 @@ export class UpsertActivityDto {
   @Matches(/^A\d+(\.\d+)*$/, {
     message: 'Le code doit suivre la forme A2.3.1 — lettre A puis niveaux séparés par des points.',
   })
+  @MaxLength(24)
   code!: string;
 
   @ApiProperty({ example: 'Plateforme nationale d’identité numérique' })
@@ -43,9 +162,15 @@ export class UpsertActivityDto {
   @Min(0)
   afdUsd?: number;
 
+  /**
+   * Code de province du referentiel. La forme est bornee ici, l'existence
+   * est verifiee par le service : une cle etrangere Prisma produirait une
+   * 500 la ou une 400 explicite est attendue.
+   */
   @ApiPropertyOptional({ example: 'KINSHASA' })
   @IsOptional()
   @IsString()
+  @MaxLength(64)
   provinceCode?: string;
 
   /**
@@ -53,28 +178,74 @@ export class UpsertActivityDto {
    * de plan peut s'inscrire avant que son contenu soit arrete, et se
    * completer ensuite.
    */
-  @ApiPropertyOptional({ type: [Object] })
+  @ApiPropertyOptional({ type: [ActivityObjectiveDto] })
   @IsOptional()
   @IsArray()
-  objectives?: Array<{ title: string; criteria?: string }>;
+  @ValidateNested({ each: true })
+  @Type(() => ActivityObjectiveDto)
+  objectives?: ActivityObjectiveDto[];
 
-  @ApiPropertyOptional({ type: [Object] })
+  @ApiPropertyOptional({ type: [ActivityDeliverableDto] })
   @IsOptional()
   @IsArray()
-  deliverables?: Array<{ title: string; format?: string; deadline?: string }>;
+  @ValidateNested({ each: true })
+  @Type(() => ActivityDeliverableDto)
+  deliverables?: ActivityDeliverableDto[];
 
-  @ApiPropertyOptional({ type: [Object] })
+  @ApiPropertyOptional({ type: [ActivityIndicatorDto] })
   @IsOptional()
   @IsArray()
-  indicators?: Array<{ label: string; measure?: string; target?: string }>;
+  @ValidateNested({ each: true })
+  @Type(() => ActivityIndicatorDto)
+  indicators?: ActivityIndicatorDto[];
 
-  @ApiPropertyOptional({ type: [Object] })
+  @ApiPropertyOptional({ type: [ActivityRiskDto] })
   @IsOptional()
   @IsArray()
-  risks?: Array<{ label: string; description?: string; mitigation?: string; level?: string }>;
+  @ValidateNested({ each: true })
+  @Type(() => ActivityRiskDto)
+  risks?: ActivityRiskDto[];
 
-  @ApiPropertyOptional({ type: [Object] })
+  @ApiPropertyOptional({ type: [ActivityClauseDto] })
   @IsOptional()
   @IsArray()
-  clauses?: Array<{ label: string; text?: string }>;
+  @ValidateNested({ each: true })
+  @Type(() => ActivityClauseDto)
+  clauses?: ActivityClauseDto[];
+}
+
+/**
+ * Allocation annuelle d'une composante.
+ *
+ * Le MEP fixe une dotation de projet ; sa repartition par exercice est une
+ * decision de l'UGP, arretee a la preparation du PTBA. Elle ne se deduit
+ * d'aucune source — d'ou une saisie, et non un calcul.
+ */
+export class UpsertAllocationDto {
+  @ApiProperty({ enum: ComponentCode })
+  @IsEnum(ComponentCode, { message: 'Composante inconnue.' })
+  componentCode!: keyof typeof ComponentCode;
+
+  @ApiProperty({ example: 42000000, description: 'Allocation de l’exercice, en USD' })
+  @IsNumber({}, { message: 'L’allocation doit être un montant en USD.' })
+  @Min(0)
+  allocationUsd!: number;
+
+  @ApiPropertyOptional({ description: 'Part IDA en USD' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  idaUsd?: number;
+
+  @ApiPropertyOptional({ description: 'Part AFD en USD' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  afdUsd?: number;
+
+  @ApiPropertyOptional({ description: 'Ce qui justifie ce montant, ou sa dernière révision' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
 }

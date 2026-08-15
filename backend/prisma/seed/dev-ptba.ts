@@ -40,6 +40,30 @@ interface DevActivity {
   provinceCode?: string;
 }
 
+/**
+ * Allocations annuelles de démonstration.
+ *
+ * Le MEP fixe une dotation de PROJET par composante ; il ne dit pas
+ * comment elle se répartit par exercice. Ces montants-là ne proviennent
+ * donc d'aucune source officielle — au même titre que les activités
+ * ci-dessous, et c'est pourquoi ils vivent dans ce fichier et non dans le
+ * seed de production.
+ *
+ * Chacune laisse volontairement de la marge au-dessus des activités
+ * inscrites : c'est ce qui rend le contrôle de plafond éprouvable, en
+ * inscrivant une activité de trop.
+ *
+ * C5 est allouée à zéro, ce qui est exact : la CERC est une réserve non
+ * dotée, et aucune activité ne doit pouvoir s'y rattacher.
+ */
+const DEV_ALLOCATIONS: Record<ComponentCode, number> = {
+  C1: 78,
+  C2: 45,
+  C3: 24,
+  C4: 6.5,
+  C5: 0,
+};
+
 const DEV_ACTIVITIES: DevActivity[] = [
   // --- C1 · Accès et inclusion ---
   { code: 'A1.4.2', title: 'Backbone fibre Goma–Bukavu', componentCode: 'C1', subComponent: '1.4', envelopeM: 12.4, provinceCode: 'NORD_KIVU' },
@@ -79,22 +103,53 @@ async function main(): Promise<void> {
   console.log('\n┌─ PTN-RDC · Activités PTBA de démonstration');
   console.log('│');
 
-  // Contrôle de plafond avant écriture. Le service applique la même règle à
-  // chaque saisie ; la refaire ici évite un seed à moitié appliqué.
+  // Contrôles avant écriture, dans l'ordre où le service les applique.
+  // Les refaire ici évite un seed à moitié appliqué, et garantit que les
+  // données de démonstration respectent les mêmes règles que la saisie.
   const parComposante = new Map<string, number>();
   for (const a of DEV_ACTIVITIES) {
     parComposante.set(a.componentCode, (parComposante.get(a.componentCode) ?? 0) + a.envelopeM);
   }
-  for (const [code, cumul] of parComposante) {
+
+  for (const [code, allocationM] of Object.entries(DEV_ALLOCATIONS)) {
     const component = await prisma.component.findUniqueOrThrow({
       where: { code: code as ComponentCode },
     });
-    if (cumul > Number(component.totalUsdM)) {
+    // 1. L'allocation tient dans la dotation de projet du MEP.
+    if (allocationM > Number(component.totalUsdM)) {
       throw new Error(
-        `Le cumul ${cumul} M USD dépasse la dotation de ${code} (${Number(component.totalUsdM)} M USD).`,
+        `L’allocation ${allocationM} M USD dépasse la dotation de projet de ${code} ` +
+          `(${Number(component.totalUsdM)} M USD).`,
+      );
+    }
+    // 2. Le plan de l'exercice tient dans l'allocation de l'exercice.
+    const cumul = parComposante.get(code) ?? 0;
+    if (cumul > allocationM) {
+      throw new Error(
+        `Le cumul ${cumul} M USD dépasse l’allocation ${YEAR} de ${code} (${allocationM} M USD).`,
       );
     }
   }
+
+  // Les allocations d'abord : sans elles, aucune activité n'a de plafond
+  // auquel se rapporter, et le service refuserait la saisie.
+  for (const [code, allocationM] of Object.entries(DEV_ALLOCATIONS)) {
+    const allocationUsd = Math.round(allocationM * 1_000_000);
+    await prisma.ptbaYearComponentAllocation.upsert({
+      where: {
+        ptbaYearId_componentCode: { ptbaYearId: year.id, componentCode: code as ComponentCode },
+      },
+      update: { allocationUsd, note: 'Allocation de démonstration — hors PTBA officiel.' },
+      create: {
+        ptbaYearId: year.id,
+        componentCode: code as ComponentCode,
+        allocationUsd,
+        note: 'Allocation de démonstration — hors PTBA officiel.',
+      },
+    });
+    console.log(`  ${code}  allocation ${String(allocationM).padStart(5)} M USD`);
+  }
+  console.log('│');
 
   for (const a of DEV_ACTIVITIES) {
     const envelopeUsd = Math.round(a.envelopeM * 1_000_000);
@@ -126,11 +181,10 @@ async function main(): Promise<void> {
 
   console.log('│');
   for (const [code, cumul] of [...parComposante].sort()) {
-    const component = await prisma.component.findUniqueOrThrow({
-      where: { code: code as ComponentCode },
-    });
+    const allocationM = DEV_ALLOCATIONS[code as ComponentCode];
     console.log(
-      `  ${code} — ${cumul} M USD engagés sur ${Number(component.totalUsdM)} M USD de dotation`,
+      `  ${code} — ${cumul} M USD engagés sur ${allocationM} M USD alloués ` +
+        `(reste ${(allocationM - cumul).toFixed(1)} M USD)`,
     );
   }
   console.log(`└─ ${DEV_ACTIVITIES.length} activités · exercice ${YEAR}\n`);

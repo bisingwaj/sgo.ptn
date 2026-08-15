@@ -129,8 +129,9 @@ model Component {
   /// Note de réconciliation lorsque MEP et PAD divergent
   reconciliation String?
 
-  assignments    Assignment[]
-  ptbaActivities PtbaActivity[]
+  assignments     Assignment[]
+  ptbaActivities  PtbaActivity[]
+  ptbaAllocations PtbaYearComponentAllocation[]
 
   @@map("components")
 }
@@ -507,12 +508,57 @@ model PtbaYear {
   validatedAt   DateTime?
   validatedById String?   @db.Uuid
 
-  activities PtbaActivity[]
+  activities  PtbaActivity[]
+  allocations PtbaYearComponentAllocation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("ptba_years")
+}
+
+/// Allocation annuelle d'une composante.
+///
+/// Le MEP fixe une dotation de PROJET, sur 2025-2029 ; il ne dit pas
+/// comment elle se repartit par exercice. Cette repartition est une
+/// decision de l'UGP, arretee a la preparation du PTBA : elle ne se
+/// deduit d'aucune source, et ne s'invente donc pas.
+///
+/// Deux plafonds en decoulent, independants l'un de l'autre :
+///
+///   - le cumul des activites d'une composante, sur un exercice, ne peut
+///     exceder l'allocation de cet exercice ;
+///   - le cumul des allocations d'une composante, tous exercices
+///     confondus, ne peut exceder la dotation de projet du MEP.
+///
+/// Sans ce modele, le controle rapportait un plan ANNUEL a une enveloppe
+/// QUINQUENNALE : chaque exercice pouvait inscrire 385 M USD sur C1, et
+/// le cumul entre exercices n'etait borne par rien.
+model PtbaYearComponentAllocation {
+  id         String   @id @default(uuid()) @db.Uuid
+  ptbaYearId String   @db.Uuid
+  ptbaYear   PtbaYear @relation(fields: [ptbaYearId], references: [id], onDelete: Cascade)
+
+  componentCode ComponentCode
+  component     Component     @relation(fields: [componentCode], references: [code])
+
+  /// Allocation de l'exercice, en USD
+  allocationUsd Decimal @db.Decimal(14, 2)
+
+  /// Ventilation par bailleur. Facultative, comme celle d'une activite :
+  /// une allocation peut etre arretee avant que sa source soit tranchee.
+  idaUsd Decimal? @db.Decimal(14, 2)
+  afdUsd Decimal? @db.Decimal(14, 2)
+
+  /// Ce qui justifie ce montant, ou sa derniere revision
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ptbaYearId, componentCode])
+  @@index([componentCode])
+  @@map("ptba_year_component_allocations")
 }
 
 /// Objectif de l'activite, distinct de celui d'un TDR : l'activite dit ce
