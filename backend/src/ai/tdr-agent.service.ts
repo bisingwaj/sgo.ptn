@@ -32,8 +32,10 @@ interface TourDeParole {
  *
  * Trois principes que le code tient, et non l'invite :
  *
- *  1. Un champ absent du registre n'existe pas pour lui. Les montants, le
- *     rattachement et les attestations lui sont fermés.
+ *  1. Un champ absent du registre n'existe pas pour lui. Le type, l'activité
+ *     de rattachement, la catégorie E&S et les attestations lui sont fermés.
+ *     Les montants, dates et institutions lui sont ouverts à la
+ *     TRANSCRIPTION : il écrit ce qu'on lui dicte, il ne l'invente pas.
  *  2. Toute valeur écrite est contrôlée après génération. Une consigne se
  *     contourne ; un contrôle non.
  *  3. Chaque écriture est marquée et journalisée. L'agent écrivant
@@ -52,6 +54,7 @@ export class TdrAgentService {
     ecrire_champ: 'Écriture en cours…',
     lire_activite_ptba: 'Lecture de l’activité du plan…',
     lire_bibliotheque: 'Consultation du référentiel…',
+    lister_organisations: 'Recherche au référentiel des organisations…',
   };
 
   constructor(
@@ -114,6 +117,23 @@ export class TdrAgentService {
           description:
             "Lit ce que l'activité PTBA de rattachement porte en propre : ses objectifs, ses livrables attendus, ses indicateurs clés, ses risques et ses normes. À consulter avant de rédiger quoi que ce soit qui touche à l'objet du marché.",
           parameters: { type: 'object', properties: {} },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'lister_organisations',
+          description:
+            "Énumère les organisations du référentiel avec leur code. À consulter AVANT d'écrire une maîtrise d'ouvrage bénéficiaire : le champ attend un code, et une institution absente d'ici n'existe pas pour ce projet.",
+          parameters: {
+            type: 'object',
+            properties: {
+              filtre: {
+                type: 'string',
+                description: 'Fragment de nom ou de sigle, pour restreindre la liste.',
+              },
+            },
+          },
         },
       },
       {
@@ -272,7 +292,17 @@ export class TdrAgentService {
     lignes.push(enumerationChamps());
     lignes.push('');
     lignes.push(
-      "Tout autre champ vous est fermé. Les montants, le type, l'activité de rattachement, la catégorie environnementale et les attestations de conformité ne se rédigent pas : ils se décident. Si l'auteur vous en demande un, dites-lui que ce champ ne vous est pas ouvert et pourquoi.",
+      "Tout autre champ vous est fermé : le type de TDR, l'activité de rattachement, la catégorie environnementale et les deux attestations de conformité. Si l'auteur vous en demande un, dites-lui que ce champ ne vous est pas ouvert, et pourquoi.",
+    );
+    lignes.push('');
+    lignes.push(
+      "MONTANTS, DATES ET INSTITUTIONS. Vous les écrivez lorsque l'auteur vous les donne, ou lorsqu'ils figurent dans une pièce du dossier. Vous ne les CHOISISSEZ jamais : « mets le budget à trois millions » est une dictée et s'exécute, « propose un budget » se refuse. Si l'auteur vous demande d'estimer un montant, dites-lui que cette valeur se décide et demandez-la-lui.",
+    );
+    lignes.push(
+      "Les chiffres du référentiel — dotation d'une composante, enveloppe d'une activité, cible d'un indicateur — se citent tels quels et ne se recalculent pas.",
+    );
+    lignes.push(
+      "Pour une institution, appelez d'abord `lister_organisations` : le champ attend un code du référentiel, et une institution qui n'y figure pas n'existe pas pour ce projet.",
     );
     return lignes.join('\n');
   }
@@ -322,6 +352,33 @@ export class TdrAgentService {
             bloc('Normes', a.clauses.map((c) => c.label)),
           ].join('\n'),
           evenement: { type: 'travail', libelle: `Lecture de l’activité ${a.code}` },
+        };
+      }
+
+      case 'lister_organisations': {
+        const filtre = typeof args.filtre === 'string' ? args.filtre.trim() : '';
+        const orgs = await this.prisma.organisation.findMany({
+          where: {
+            isActive: true,
+            ...(filtre
+              ? {
+                  OR: [
+                    { code: { contains: filtre, mode: 'insensitive' as const } },
+                    { name: { contains: filtre, mode: 'insensitive' as const } },
+                    { fullName: { contains: filtre, mode: 'insensitive' as const } },
+                  ],
+                }
+              : {}),
+          },
+          select: { code: true, fullName: true },
+          orderBy: { code: 'asc' },
+          take: 40,
+        });
+        return {
+          resultat: orgs.length
+            ? orgs.map((o) => `${o.code} — ${o.fullName}`).join('\n')
+            : "Aucune organisation ne correspond. N'en inventez pas : dites-le à l'auteur.",
+          evenement: { type: 'travail', libelle: 'Recherche au référentiel des organisations…' },
         };
       }
 
@@ -402,6 +459,32 @@ export class TdrAgentService {
     await this.prisma.$transaction(async (tx) => {
       if (kind === 'texte') {
         await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: valeur as string } });
+      } else if (kind === 'montant') {
+        // Prisma attend un Decimal : une chaîne « 3 000 000 » ou « 3,000,000 »
+        // se ramène au nombre, l'auteur dictant rarement en notation machine.
+        const n = typeof valeur === 'number' ? valeur : Number(String(valeur).replace(/[\s,]/g, ''));
+        await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: n } });
+      } else if (kind === 'entier') {
+        await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: Number(valeur) } });
+      } else if (kind === 'date') {
+        await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: new Date(String(valeur)) } });
+      } else if (kind === 'organisation') {
+        // L'agent donne un CODE ; la clé étrangère attend un identifiant. La
+        // résolution se fait ici, et une organisation inconnue est refusée
+        // plutôt que de remonter en violation de contrainte.
+        const org = await tx.organisation.findFirst({
+          where: { code: String(valeur).trim(), isActive: true },
+          select: { id: true },
+        });
+        if (!org) {
+          throw new BadRequestException(
+            `Aucune organisation active ne porte le code ${String(valeur).trim()} au référentiel.`,
+          );
+        }
+        await tx.tdr.update({
+          where: { id: tdrId },
+          data: { beneficiaryOrganisationId: org.id },
+        });
       } else if (kind === 'liste_objectifs') {
         const rows = normaliseListe(champ(cle)!, valeur as unknown[]);
         await tx.tdrObjective.deleteMany({ where: { tdrId } });

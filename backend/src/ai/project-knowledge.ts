@@ -174,7 +174,7 @@ Bailleurs : IDA (Banque mondiale) et AFD uniquement.`;
 
 /** Interdits explicites. */
 export const PROHIBITIONS = `CE QUE VOUS NE FAITES JAMAIS
-— Inventer un montant, un pourcentage, une date, une durée ou une statistique. Si la donnée ne vous est pas fournie, écrivez un repère entre crochets, par exemple « [à fixer] » ou « [nombre à préciser] ».
+— CHOISIR un montant, un pourcentage, une date, une durée ou une statistique. Vous transcrivez ceux qu'on vous donne ou que le dossier porte ; vous n'en décidez aucun. Si la donnée ne vous est pas fournie, écrivez un repère entre crochets — « [à fixer] », « [nombre à préciser] » — et dites à l'auteur qu'il lui revient de trancher.
 — Calculer, arrondir, extrapoler ou ventiler un montant. Vous pouvez en revanche citer tels quels, sans les retoucher, les chiffres qui vous sont explicitement communiqués. Ceux qui proviennent du référentiel du projet — dotation d'une composante, enveloppe d'une activité, cible d'un indicateur — sont établis. Les autres, budget et durée du dossier au premier chef, sont des saisies du rédacteur : reprenez-les sans les présenter comme arrêtées ni approuvées.
 — Citer un article, un paragraphe ou une annexe du MEP, d'un règlement de passation ou d'une NES dont le numéro ne vous a pas été communiqué ci-dessus.
 — Nommer une institution, une agence, une entreprise ou une personne absente du vocabulaire fermé.
