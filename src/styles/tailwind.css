@@ -41,6 +41,10 @@
   --color-placeholder: var(--cds-text-placeholder);
   --color-on-color: var(--cds-text-on-color);
   --color-inverse: var(--cds-text-inverse);
+  /* Surface inversée — infobulles et notifications discrètes. Distincte de
+   * `--color-inverse`, qui est une couleur de TEXTE : la paire se pose
+   * ensemble, `bg-inverse-surface` + `text-inverse`. */
+  --color-inverse-surface: var(--cds-background-inverse);
 
   /* Couleurs — bordures */
   --color-subtle: var(--cds-border-subtle);

@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useDismissable } from "@/lib/use-dismissable";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 
 interface HeaderMenuProps {
@@ -68,33 +69,36 @@ export function HeaderMenu({
 
   return (
     <div ref={wrapRef} className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={trailing ? undefined : label}
-        title={trailing ? undefined : label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? panelId : undefined}
-        className={cn(
-          "text-secondary hover:bg-layer-hover hover:text-primary focus-visible:outline-accent relative flex h-10 shrink-0 items-center gap-2 focus-visible:outline-2",
-          trailing ? "px-2" : "w-10 justify-center",
-          open && "bg-layer-hover text-primary",
-        )}
-      >
-        <span className="relative flex items-center">
-          {icon}
-          {badge && (
-            <span
-              aria-hidden
-              className="border-layer absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full border-2 bg-[var(--ptn-accent)]"
-            />
+      {/* L'infobulle se tait pendant que le menu est ouvert : le panneau dit
+          déjà de quoi il s'agit, et une bulle par-dessus le recouvrirait. */}
+      <Tooltip label={label} side="bottom" disabled={open} className="shrink-0">
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={trailing ? undefined : label}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          className={cn(
+            "text-secondary hover:bg-layer-hover hover:text-primary focus-visible:outline-accent relative flex h-10 shrink-0 items-center gap-2 focus-visible:outline-2",
+            trailing ? "px-2" : "w-10 justify-center",
+            open && "bg-layer-hover text-primary",
           )}
-        </span>
-        {trailing}
-        {trailing && <span className="sr-only">{label}</span>}
-      </button>
+        >
+          <span className="relative flex items-center">
+            {icon}
+            {badge && (
+              <span
+                aria-hidden
+                className="border-layer absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full border-2 bg-[var(--ptn-accent)]"
+              />
+            )}
+          </span>
+          {trailing}
+          {trailing && <span className="sr-only">{label}</span>}
+        </button>
+      </Tooltip>
 
       {open && (
         <div

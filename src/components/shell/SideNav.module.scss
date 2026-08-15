@@ -173,17 +173,67 @@
   color: var(--cds-text-primary);
 }
 
+// Compteur repris dans l'infobulle, colonne repliée. Fond inversé : la bulle
+// l'est aussi, et la pastille claire de la colonne y serait aveuglante.
+.tipCount {
+  font-size: 0.75rem;
+  padding: 1px 6px;
+  border-radius: 0;
+  color: var(--cds-text-inverse);
+  background: var(--cds-layer-selected-inverse);
+  font-variant-numeric: tabular-nums;
+}
+
 // ----- Pied -----
+//
+// Il ne portait que le numéro de version. Il porte désormais le sélecteur de
+// thème, descendu du bandeau : les deux se lisent l'un sous l'autre, réglage
+// puis mention, et non côte à côte comme deux commandes de même rang.
 .foot {
-  padding: var(--ptn-space-03) var(--ptn-space-04);
   border-top: 1px solid var(--cds-border-subtle);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
+  // Les enfants portent leur propre gouttière : le bouton doit pouvoir
+  // toucher les deux bords, comme une entrée de navigation.
+  padding: 0;
+}
+
+// Même gabarit qu'une entrée de navigation — hauteur, gouttière, filet
+// d'accent. Le pied n'est pas une zone à part : c'est la suite de la colonne,
+// et un bouton d'un autre gabarit s'y lirait comme un corps étranger.
+.themeBtn {
+  display: flex;
   align-items: center;
-  gap: var(--ptn-space-02);
+  gap: var(--ptn-space-03);
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 var(--ptn-space-04);
+  border: 0;
+  border-left: 3px solid transparent;
+  background: none;
+  color: var(--cds-text-secondary);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--ptn-motion-fast-02),
+    color var(--ptn-motion-fast-02);
+
+  &:hover {
+    background: var(--cds-layer-hover);
+    color: var(--cds-text-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
 }
 
 .ver {
+  padding: var(--ptn-space-02) var(--ptn-space-04) var(--ptn-space-03);
   font-size: 0.75rem;
   color: var(--cds-text-helper);
   font-variant-numeric: tabular-nums;
@@ -204,11 +254,15 @@
   .group,
   .itemLabel,
   .itemCount,
-  .foot {
+  .ver {
     display: none;
   }
 
-  .item {
+  // Le pied reste, lui : le sélecteur de thème y vit désormais, et un réglage
+  // qui disparaît au repli est un réglage qu'il faut déplier pour atteindre.
+  // Seule la mention de version s'efface, faute de largeur.
+  .item,
+  .themeBtn {
     justify-content: center;
     padding: 0;
     border-left-width: 2px;

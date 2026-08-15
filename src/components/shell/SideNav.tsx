@@ -13,27 +13,31 @@ import { useUser } from "@/components/profile/UserContext";
 import { useAuth } from "@/components/auth/AuthContext";
 import type { ProfileKey } from "@/lib/profiles";
 import {
+  Activity,
+  Asleep,
+  Catalog,
+  ChartLineSmooth,
   Dashboard,
   Document,
-  ChartLineSmooth,
-  Notebook,
-  Events,
-  Money,
-  Network_3,
   Earth,
-  Catalog,
-  Time,
-  Activity,
-  WatsonHealthMagnify,
+  Events,
   Folders,
   IbmCloud,
-  Locked,
   Idea,
-  TaskApproved,
-  Voicemail,
+  Light,
+  Locked,
+  Money,
+  Network_3,
+  Notebook,
   Notification,
+  TaskApproved,
+  Time,
   UserMultiple,
+  Voicemail,
+  WatsonHealthMagnify,
 } from "@carbon/icons-react";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { useMediaQuery } from "@/lib/use-media-query";
 import styles from "./SideNav.module.scss";
 import type { ReactNode } from "react";
 
@@ -42,6 +46,19 @@ interface NavItem {
   href: string;
   icon: ReactNode;
   count?: string;
+  /**
+   * Forme développée du sigle.
+   *
+   * Le produit en est saturé — PTBA, PPM, TDR, ANO, PEES, EAS/HS, SBP — et un
+   * agent qui prend ses fonctions n'en connaît aucun. Les intitulés restent
+   * courts, la colonne n'a pas la largeur d'une définition ; l'infobulle la
+   * porte, au survol comme au focus.
+   *
+   * Les développés viennent du MEP et du référentiel de la Banque mondiale.
+   * Aucun n'est reformulé : un sigle mal développé est pire qu'un sigle nu,
+   * il donne une certitude fausse.
+   */
+  hint?: string;
 }
 
 interface NavGroup {
@@ -49,22 +66,43 @@ interface NavGroup {
   items: NavItem[];
 }
 
+/**
+ * Sigles développés.
+ *
+ * Déclarés une fois : le même sigle apparaît dans plusieurs profils, et deux
+ * développés divergents du même sigle seraient pires qu'aucun. Ils sont repris
+ * du MEP et du référentiel de la Banque mondiale, sans reformulation.
+ *
+ * En attendant le glossaire annoncé dans le menu d'aide, c'est ici que la
+ * plateforme dit ce que ses intitulés veulent dire.
+ */
+const UGP = "Unité de Gestion du Projet";
+const PTBA = "Plan de Travail et Budget Annuel";
+const PPM = "Plan de Passation des Marchés";
+const TDR = "Termes de Référence";
+const ANO = "Avis de Non-Objection — accord préalable du bailleur";
+const MGP = "Mécanisme de Gestion des Plaintes";
+const EAS_HS = "Exploitation et Abus Sexuels / Harcèlement Sexuel — canal cloisonné";
+const PEES = "Environnemental et Social · Plan d'Engagement Environnemental et Social";
+const SBP = "Subventions Basées sur la Performance";
+const KYC = "Know Your Customer — vérification d'identité de l'entreprise";
+
 function navFor(profile: ProfileKey): NavGroup[] {
   switch (profile) {
     case "ugp":
       return [
         {
           items: [
-            { label: "Cockpit UGP", href: "/cockpit", icon: <Dashboard size={16} /> },
+            { label: "Cockpit UGP", href: "/cockpit", icon: <Dashboard size={16} />, hint: UGP },
           ],
         },
         {
           title: "Cycle de passation",
           items: [
-            { label: "PTBA", href: "/ptba", icon: <ChartLineSmooth size={16} /> },
-            { label: "PPM", href: "/ppm", icon: <Notebook size={16} />, count: "78" },
-            { label: "TDR", href: "/tdr", icon: <Document size={16} /> },
-            { label: "Inbox ANO", href: "/ano", icon: <TaskApproved size={16} />, count: "9" },
+            { label: "PTBA", href: "/ptba", icon: <ChartLineSmooth size={16} />, hint: PTBA },
+            { label: "PPM", href: "/ppm", icon: <Notebook size={16} />, count: "78", hint: PPM },
+            { label: "TDR", href: "/tdr", icon: <Document size={16} />, hint: TDR },
+            { label: "Inbox ANO", href: "/ano", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
             { label: "Commissions", href: "/commissions", icon: <Events size={16} /> },
             { label: "Contrats", href: "/contrats", icon: <Folders size={16} /> },
           ],
@@ -72,16 +110,16 @@ function navFor(profile: ProfileKey): NavGroup[] {
         {
           title: "Sauvegardes & MGP",
           items: [
-            { label: "E&S / PEES", href: "/es", icon: <Earth size={16} /> },
-            { label: "MGP", href: "/mgp-admin", icon: <Voicemail size={16} />, count: "14" },
-            { label: "EAS/HS confidentiel", href: "/mgp-eas-hs", icon: <Locked size={16} /> },
+            { label: "E&S / PEES", href: "/es", icon: <Earth size={16} />, hint: PEES },
+            { label: "MGP", href: "/mgp-admin", icon: <Voicemail size={16} />, count: "14", hint: MGP },
+            { label: "EAS/HS confidentiel", href: "/mgp-eas-hs", icon: <Locked size={16} />, hint: EAS_HS },
           ],
         },
         {
           title: "Pilotage",
           items: [
             { label: "Cadre de résultats", href: "/cadre-resultats", icon: <Activity size={16} /> },
-            { label: "SBP", href: "/sbp-admin", icon: <Idea size={16} /> },
+            { label: "SBP", href: "/sbp-admin", icon: <Idea size={16} />, hint: SBP },
             { label: "Audit interne", href: "/audit-interne", icon: <WatsonHealthMagnify size={16} /> },
             { label: "Fiduciaire", href: "/fiduciaire", icon: <Money size={16} /> },
           ],
@@ -95,7 +133,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
             { label: "Mes initiatives", href: "/dashboard/initiatives", icon: <Document size={16} />, count: "12" },
             { label: "Documents", href: "/dashboard/documents", icon: <Folders size={16} /> },
             { label: "Échéances", href: "/dashboard/echeances", icon: <Time size={16} /> },
-            { label: "MGP", href: "/mgp", icon: <Voicemail size={16} /> },
+            { label: "MGP", href: "/mgp", icon: <Voicemail size={16} />, hint: MGP },
           ],
         },
       ];
@@ -111,7 +149,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
           items: [
             { label: "Mes propositions", href: "/partenaire/propositions", icon: <Document size={16} />, count: "4" },
             { label: "Workflow", href: "/partenaire/workflow", icon: <Network_3 size={16} /> },
-            { label: "Modèles TDR", href: "/partenaire/modeles", icon: <Catalog size={16} />, count: "24" },
+            { label: "Modèles TDR", href: "/partenaire/modeles", icon: <Catalog size={16} />, count: "24", hint: TDR },
           ],
         },
         {
@@ -128,7 +166,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
           items: [
             { label: "Reporting", href: "/partenaire/reporting", icon: <Activity size={16} /> },
             { label: "Organisation", href: "/partenaire/organisation", icon: <Idea size={16} /> },
-            { label: "MGP", href: "/partenaire/mgp", icon: <Voicemail size={16} /> },
+            { label: "MGP", href: "/partenaire/mgp", icon: <Voicemail size={16} />, hint: MGP },
           ],
         },
       ];
@@ -137,7 +175,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
         {
           items: [
             { label: "Dashboard", href: "/bailleur", icon: <Dashboard size={16} /> },
-            { label: "Inbox ANO", href: "/bailleur/ano", icon: <TaskApproved size={16} />, count: "9" },
+            { label: "Inbox ANO", href: "/bailleur/ano", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
             { label: "Portfolio", href: "/bailleur/portfolio", icon: <Catalog size={16} /> },
             { label: "Conditionnalités", href: "/bailleur/conditions", icon: <Document size={16} /> },
             { label: "Décaissements", href: "/bailleur/decaissements", icon: <Money size={16} /> },
@@ -153,7 +191,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
             { label: "Mes soumissions", href: "/soumissionnaire/soumissions", icon: <Document size={16} />, count: "6" },
             { label: "Mes contrats", href: "/soumissionnaire/contrats", icon: <Folders size={16} />, count: "3" },
             { label: "Paiements", href: "/soumissionnaire/paiements", icon: <Money size={16} /> },
-            { label: "KYC entreprise", href: "/soumissionnaire/kyc", icon: <TaskApproved size={16} /> },
+            { label: "KYC entreprise", href: "/soumissionnaire/kyc", icon: <TaskApproved size={16} />, hint: KYC },
           ],
         },
       ];
@@ -161,7 +199,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
       return [
         {
           items: [
-            { label: "Mon programme", href: "/sbp", icon: <Dashboard size={16} /> },
+            { label: "Mon programme", href: "/sbp", icon: <Dashboard size={16} />, hint: SBP },
             { label: "Saisie de données", href: "/sbp/saisie", icon: <Document size={16} /> },
             { label: "Vérifications", href: "/sbp/verifications", icon: <TaskApproved size={16} /> },
             { label: "Paiements", href: "/sbp/paiements", icon: <Money size={16} /> },
@@ -201,10 +239,26 @@ interface SideNavProps {
 
 export function SideNav({ collapsed = false }: SideNavProps) {
   const pathname = usePathname() ?? "";
-  const { profile, config } = useProfile();
+  const { profile, config, theme, setTheme } = useProfile();
   const { org } = useOrganisation();
   const { user } = useUser();
   const { can } = useAuth();
+
+  /**
+   * Repli EFFECTIF, et non repli commandé.
+   *
+   * La colonne se replie aussi d'elle-même sous 1024 px, par une règle CSS
+   * (voir le mixin `collapsed`). S'en tenir à la propriété `collapsed`
+   * revenait à croire la colonne déployée alors qu'elle ne montrait que des
+   * icônes : les infobulles et les noms accessibles manquaient précisément
+   * sur les écrans étroits, là où ils sont indispensables.
+   */
+  const narrow = useMediaQuery("(max-width: 1024px)");
+  const rail = collapsed || narrow;
+
+  const isDark = theme === "g100";
+  const themeAction = isDark ? "Activer le thème clair" : "Activer le thème sombre";
+  const themeLabel = isDark ? "Thème clair" : "Thème sombre";
 
   // L'entrée Administration n'apparaît que pour les habilitations qui la
   // portent — le sous-rôle UGP « IT » (présentation UGPTN § 6.1, poste n°18). En mode
@@ -281,22 +335,37 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                   (item.href !== "/" && pathname.startsWith(item.href + "/"));
                 return (
                   <li key={item.href + item.label}>
-                    <Link
-                      href={item.href}
-                      // L'intitulé disparaît une fois repliée : `title` le
-                      // rend au survol, `aria-label` au lecteur d'écran. Sans
-                      // eux, la colonne repliée n'est qu'une suite de
-                      // pictogrammes à deviner.
-                      title={collapsed ? item.label : undefined}
-                      aria-label={collapsed ? item.label : undefined}
-                      className={`${styles.item} ${active ? styles.itemActive : ""}`}
+                    {/* L'intitulé disparaît une fois la colonne repliée.
+                        L'infobulle le rend au survol et au focus,
+                        `aria-label` au lecteur d'écran. Sans eux, la colonne
+                        repliée n'est qu'une suite de pictogrammes à deviner.
+                        Le compteur, masqué lui aussi, revient dans la bulle :
+                        c'est le même nombre, pas une donnée reconstituée. */}
+                    <Tooltip
+                      label={item.label}
+                      hint={item.hint}
+                      // Repliée, l'infobulle rend l'intitulé — elle est donc
+                      // toujours utile. Déployée, l'intitulé est déjà là et
+                      // seul le développé du sigle justifie encore la bulle.
+                      disabled={!rail && !item.hint}
+                      trailing={
+                        item.count && (
+                          <span className={`${styles.tipCount} ptn-mono`}>{item.count}</span>
+                        )
+                      }
                     >
-                      <span className={styles.itemIcon} aria-hidden>
-                        {item.icon}
-                      </span>
-                      <span className={styles.itemLabel}>{item.label}</span>
-                      {item.count && <span className={`${styles.itemCount} ptn-mono`}>{item.count}</span>}
-                    </Link>
+                      <Link
+                        href={item.href}
+                        aria-label={rail ? item.label : undefined}
+                        className={`${styles.item} ${active ? styles.itemActive : ""}`}
+                      >
+                        <span className={styles.itemIcon} aria-hidden>
+                          {item.icon}
+                        </span>
+                        <span className={styles.itemLabel}>{item.label}</span>
+                        {item.count && <span className={`${styles.itemCount} ptn-mono`}>{item.count}</span>}
+                      </Link>
+                    </Tooltip>
                   </li>
                 );
               })}
@@ -305,7 +374,26 @@ export function SideNav({ collapsed = false }: SideNavProps) {
         ))}
       </nav>
 
+      {/* Le sélecteur de thème a quitté le bandeau, devenu trop chargé pour
+          qu'on y distingue encore quoi que ce soit. Il rejoint le pied de la
+          colonne : c'est un réglage de confort, pas une action sur le
+          dossier en cours, et sa place est avec la version. */}
       <footer className={styles.foot}>
+        <Tooltip label={themeAction} disabled={!rail}>
+          <button
+            type="button"
+            onClick={() => setTheme(isDark ? "g10" : "g100")}
+            // Déployée, l'intitulé visible suffit et se laisse dicter à la
+            // voix. Repliée, il faut nommer l'action en toutes lettres.
+            aria-label={rail ? themeAction : undefined}
+            className={styles.themeBtn}
+          >
+            <span className={styles.itemIcon} aria-hidden>
+              {isDark ? <Light size={16} /> : <Asleep size={16} />}
+            </span>
+            <span className={styles.itemLabel}>{themeLabel}</span>
+          </button>
+        </Tooltip>
         <span className={`ptn-mono ${styles.ver}`}>v 3.0.0</span>
       </footer>
     </aside>

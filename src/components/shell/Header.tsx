@@ -25,13 +25,11 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import {
-  Asleep,
+  ChevronLeft,
+  ChevronRight,
   Help,
-  Light,
   Logout,
   Notification,
-  OpenPanelLeft,
-  OpenPanelFilledLeft,
   OpenPanelRight,
   Renew,
   Search,
@@ -43,6 +41,7 @@ import { PROFILES, type ProfileKey } from "@/lib/profiles";
 import { LanguagePicker } from "@/components/chrome/LanguagePicker";
 import { useCommandPalette } from "@/components/chrome/CommandPalette";
 import { BrandLockup } from "@/components/brand/BrandLockup";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { HeaderMenu } from "./HeaderMenu";
 import { NotificationsPanel } from "./NotificationsPanel";
@@ -69,7 +68,7 @@ export function Header({
   onToggleNav,
   navCollapsed,
 }: HeaderProps) {
-  const { profile, config, theme, setTheme } = useProfile();
+  const { profile, config, theme } = useProfile();
   const { user, assignments, logout, switchAssignment } = useAuth();
   const { open: openPalette } = useCommandPalette();
   const [switching, setSwitching] = useState(false);
@@ -104,38 +103,71 @@ export function Header({
       role="banner"
       className="bg-layer border-subtle relative z-30 flex h-14 items-center gap-1 border-b pr-2"
     >
-      {/* Déployée, la navigation et le bloc de marque partagent la même
-          largeur : le filet du bandeau prolonge le bord de la colonne, et les
-          deux ne forment qu'une verticale.
-          
-          Repliée, cette largeur n'aurait plus rien à prolonger — le filet
-          tomberait à 264 px quand la colonne s'arrête à 56, soit deux
-          verticales voisines et concurrentes. Le bloc reprend alors sa
-          largeur naturelle et renonce à son filet. */}
-      <Link
-        href={homePath}
-        aria-label="UGPTN — accueil"
+      {/* CRÉNEAU DE TÊTE — la marque et la commande de repli, dans un seul
+          bloc et sans rien qui les sépare.
+
+          Déployé, ce bloc a exactement la largeur de la navigation : le filet
+          du bandeau prolonge le bord de la colonne, et les deux ne forment
+          qu'une verticale. La commande se pose au bout de ce bloc, contre le
+          filet — donc contre la colonne qu'elle referme. Elle ne porte ni
+          bordure ni compartiment : seul le survol la révèle, et le créneau
+          reste lu comme un ensemble.
+
+          Replié, la largeur tombe à 56 px : la marque n'y tient plus et
+          s'efface, la commande prend seule le créneau. Elle se retrouve alors
+          exactement au-dessus de la colonne d'icônes, dans le prolongement de
+          la même verticale.
+
+          Sous 1025 px, la colonne est repliée par le CSS et le repli n'a plus
+          de sens à commander : la marque reste, seule et sans filet. */}
+      <div
         className={cn(
-          "focus-visible:outline-accent border-subtle flex h-full shrink-0 items-center justify-center px-4",
-          !navCollapsed && "border-r min-[1025px]:w-[var(--ptn-shell-sidenav-w)]",
+          "border-subtle relative flex h-full shrink-0 items-center justify-center",
+          navCollapsed
+            ? "min-[1025px]:w-[var(--ptn-shell-sidenav-collapsed-w)] min-[1025px]:border-r"
+            : "border-r min-[1025px]:w-[var(--ptn-shell-sidenav-w)]",
         )}
       >
-        <BrandLockup tone={isDark ? "sombre" : "clair"} height={36} />
-      </Link>
+        <Link
+          href={homePath}
+          aria-label="UGPTN — accueil"
+          className={cn(
+            "focus-visible:outline-accent flex h-full items-center px-4",
+            navCollapsed && "min-[1025px]:hidden",
+          )}
+        >
+          <BrandLockup tone={isDark ? "sombre" : "clair"} height={36} />
+        </Link>
 
-      {/* Placé contre la colonne qu'il commande : la commande est là où se
-          trouve ce qu'elle affecte, pas reléguée à l'autre bout du bandeau. */}
-      {onToggleNav && (
-        <div className="ml-2 hidden min-[1025px]:block">
-          <IconButton
-            label={navCollapsed ? "Déployer la navigation" : "Replier la navigation"}
-            onClick={onToggleNav}
-            pressed={navCollapsed}
+        {/* Déployée, la commande est SORTIE DU FLUX. En simple élément de
+            flexbox, elle décalait la marque vers la gauche de la moitié de sa
+            propre largeur : centrée dans la place restante, donc jamais
+            centrée dans le créneau. Posée en absolu contre le bord, elle
+            laisse la marque au milieu des 264 px.
+
+            Repliée, la marque a disparu : la commande redevient un élément
+            ordinaire et le `justify-center` du créneau la centre à son tour
+            sur les 56 px, dans l'axe de la colonne d'icônes. */}
+        {onToggleNav && (
+          <div
+            className={cn(
+              "hidden min-[1025px]:flex",
+              !navCollapsed && "absolute right-1",
+            )}
           >
-            {navCollapsed ? <OpenPanelLeft size={20} aria-hidden /> : <OpenPanelFilledLeft size={20} aria-hidden />}
-          </IconButton>
-        </div>
-      )}
+            <IconButton
+              label={navCollapsed ? "Déployer la navigation" : "Replier la navigation"}
+              onClick={onToggleNav}
+            >
+              {navCollapsed ? (
+                <ChevronRight size={20} aria-hidden />
+              ) : (
+                <ChevronLeft size={20} aria-hidden />
+              )}
+            </IconButton>
+          </div>
+        )}
+      </div>
 
       {crumbs.length > 0 && (
         <nav
@@ -205,14 +237,9 @@ export function Header({
         </IconButton>
       )}
 
-      {/* ---------- Thème ---------- */}
-      <IconButton
-        label={isDark ? "Activer le thème clair" : "Activer le thème sombre"}
-        onClick={() => setTheme(isDark ? "g10" : "g100")}
-        pressed={isDark}
-      >
-        {isDark ? <Light size={20} aria-hidden /> : <Asleep size={20} aria-hidden />}
-      </IconButton>
+      {/* Le sélecteur de thème vivait ici. Il est descendu au pied de la
+          navigation (voir SideNav.tsx) : c'est un réglage de confort, il
+          n'avait pas à disputer la place aux commandes du dossier ouvert. */}
 
       {/* ---------- Aide ---------- */}
       <HeaderMenu
@@ -363,21 +390,24 @@ function IconButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      aria-pressed={pressed}
-      className={cn(
-        // 40 px de cible : au-dessus du minimum de 24 px du WCAG 2.2, et
-        // confortable pour une main peu assurée sur une souris.
-        "text-secondary hover:bg-layer-hover hover:text-primary focus-visible:outline-accent flex h-10 w-10 shrink-0 items-center justify-center focus-visible:outline-2",
-        pressed && "bg-accent-surface text-accent",
-      )}
-    >
-      {children}
-    </button>
+    // Pas de `title` : le navigateur superposerait sa propre bulle à la nôtre.
+    // Voir Tooltip.tsx.
+    <Tooltip label={label} side="bottom" className="shrink-0">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        aria-pressed={pressed}
+        className={cn(
+          // 40 px de cible : au-dessus du minimum de 24 px du WCAG 2.2, et
+          // confortable pour une main peu assurée sur une souris.
+          "text-secondary hover:bg-layer-hover hover:text-primary focus-visible:outline-accent flex h-10 w-10 shrink-0 items-center justify-center focus-visible:outline-2",
+          pressed && "bg-accent-surface text-accent",
+        )}
+      >
+        {children}
+      </button>
+    </Tooltip>
   );
 }
 
