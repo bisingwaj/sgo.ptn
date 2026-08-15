@@ -181,3 +181,57 @@
   color: var(--cds-text-helper);
   text-align: center;
 }
+
+/* ===== Sélection multiple =====
+   La case remplace la coche de droite : elle annonce avant le clic que
+   l'entrée est cochable, là où une coche ne le dit qu'après. */
+
+.caseCocher {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+  border: 1px solid var(--cds-border-strong, #8d8d8d);
+  background: var(--cds-background, #fff);
+  color: var(--ptn-accent);
+}
+
+.optionActive .caseCocher {
+  border-color: var(--ptn-accent);
+}
+
+/* Le pied reste visible pendant qu'on coche : c'est là que se lit le
+   compte, et que l'on se dédit d'un coup. */
+.menuPied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-layer, #f4f4f4);
+  font-size: 11px;
+  color: var(--cds-text-helper, #6f6f6f);
+
+  button {
+    font: inherit;
+    font-size: 11px;
+    padding: 2px 6px;
+    background: transparent;
+    border: 1px solid var(--cds-border-subtle, #e0e0e0);
+    color: var(--cds-text-primary, #161616);
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--ptn-status-danger);
+      color: var(--ptn-status-danger-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ptn-accent);
+      outline-offset: 1px;
+    }
+  }
+}

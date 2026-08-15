@@ -56,6 +56,7 @@ import {
   TrashCan,
   WarningAltFilled,
 } from "@carbon/icons-react";
+import { MultiDropdownPicker } from "@/components/ui/MultiDropdownPicker";
 import { AgentPanel, type Ecriture } from "./AgentPanel";
 import styles from "./tdr-creation.module.scss";
 
@@ -1877,12 +1878,15 @@ function FrameworkStep({
 /**
  * Couverture géographique du marché.
  *
- * Vingt-six provinces ne tiennent pas dans une liste à cocher lisible : on
- * les range par ordre alphabétique, on remonte les dix provinces
- * prioritaires du Cadre de Partenariat-Pays, et un filtre de saisie
- * évite de parcourir la liste entière pour en trouver une.
+ * Liste déroulante à cases plutôt qu'une grille : vingt-six provinces
+ * étalées occupaient tout l'écran d'une étape qui en porte déjà six
+ * champs. Le menu se replie, la recherche filtre, et le déclencheur
+ * résume ce qui est retenu.
  *
- * Aucune sélection vaut couverture nationale, et l'écran le dit — c'est un
+ * Les dix provinces prioritaires du Cadre de Partenariat-Pays remontent en
+ * tête et le disent : c'est ce qui oriente le choix.
+ *
+ * Aucune sélection vaut couverture nationale, et l'aide le dit — c'est un
  * cas fréquent, pas un oubli.
  */
 function CouvertureStep({
@@ -1892,74 +1896,51 @@ function CouvertureStep({
   retenues: string[];
   onChange: (codes: string[]) => void;
 }) {
-  const [filtre, setFiltre] = useState("");
-
-  const visibles = useMemo(() => {
-    const q = filtre.trim().toLowerCase();
-    return provinces
-      .filter((p) => !q || p.label.toLowerCase().includes(q))
-      .sort((a, b) => {
-        if (a.isPriorityCpf !== b.isPriorityCpf) return a.isPriorityCpf ? -1 : 1;
-        return a.label.localeCompare(b.label, "fr");
-      });
-  }, [provinces, filtre]);
-
-  const basculer = (code: string) =>
-    onChange(retenues.includes(code) ? retenues.filter((c) => c !== code) : [...retenues, code]);
+  const options = useMemo(
+    () =>
+      [...provinces]
+        .sort((a, b) => {
+          if (a.isPriorityCpf !== b.isPriorityCpf) return a.isPriorityCpf ? -1 : 1;
+          return a.label.localeCompare(b.label, "fr");
+        })
+        .map((p) => ({
+          value: p.code,
+          label: p.label,
+          sub: p.isPriorityCpf ? "Province prioritaire du Cadre de Partenariat-Pays" : undefined,
+        })),
+    [provinces],
+  );
 
   const prioritaires = retenues.filter(
     (c) => provinces.find((p) => p.code === c)?.isPriorityCpf,
   ).length;
 
   return (
-    <div>
-      <h3 className={styles.sectionTitle}>Couverture géographique</h3>
-      <p className={styles.hint}>
-        {retenues.length === 0
-          ? "Aucune province retenue : le marché est réputé de couverture nationale."
+    <Field
+      label="Couverture géographique"
+      helper={
+        retenues.length === 0
+          ? "Sans province retenue, le marché est réputé de couverture nationale."
           : `${retenues.length} province${retenues.length > 1 ? "s" : ""} retenue${retenues.length > 1 ? "s" : ""}` +
             (prioritaires
               ? `, dont ${prioritaires} prioritaire${prioritaires > 1 ? "s" : ""} au Cadre de Partenariat-Pays.`
-              : ".")}
-      </p>
-
-      <div className={styles.couvertureBarre}>
-        <input
-          className={styles.couvertureFiltre}
-          value={filtre}
-          onChange={(e) => setFiltre(e.target.value)}
-          placeholder="Filtrer les provinces"
-          aria-label="Filtrer les provinces"
-        />
-        {retenues.length > 0 && (
-          <button type="button" className={styles.btnGhost} onClick={() => onChange([])}>
-            Tout retirer
-          </button>
-        )}
-      </div>
-
-      <div className={styles.couvertureGrille}>
-        {visibles.map((p) => {
-          const on = retenues.includes(p.code);
-          return (
-            <button
-              key={p.code}
-              type="button"
-              className={`${styles.province} ${on ? styles.provinceOn : ""}`}
-              onClick={() => basculer(p.code)}
-              aria-pressed={on}
-            >
-              <span className={styles.provinceCase} aria-hidden>
-                {on && <CheckmarkFilled size={12} />}
-              </span>
-              <span className={styles.provinceLabel}>{p.label}</span>
-              {p.isPriorityCpf && <span className={styles.provinceCpf}>CPF</span>}
-            </button>
-          );
-        })}
-      </div>
-      {visibles.length === 0 && <p className={styles.hint}>Aucune province ne correspond.</p>}
-    </div>
+              : ".")
+      }
+    >
+      <MultiDropdownPicker
+        options={options}
+        values={retenues}
+        onChange={onChange}
+        searchable
+        placeholder="Couverture nationale"
+        ariaLabel="Provinces couvertes par le marché"
+        resume={(choisis) =>
+          choisis.length <= 2
+            ? choisis.map((o) => o.label).join(", ")
+            : `${choisis.length} provinces`
+        }
+      />
+    </Field>
   );
 }
 

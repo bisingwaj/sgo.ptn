@@ -1,63 +1,54 @@
 "use client";
 
 /**
- * DropdownPicker — composant unifié remplaçant les <select> natifs.
- * Aligné sur le design system Carbon DS v11 / Claude Design.
+ * Sélecteur déroulant à choix multiple.
  *
- * - Recherche live optionnelle
- * - Navigation clavier complète (↑ ↓ Enter Esc Tab)
- * - Click outside pour fermer
- * - Sub-labels pour options enrichies
+ * Même allure que `DropdownPicker` — même déclencheur, même recherche, même
+ * clavier, même feuille de style — mais le menu ne se referme pas au choix :
+ * on coche plusieurs entrées d'affilée, et Espace bascule celle qui a le
+ * focus.
+ *
+ * Une case à cocher plutôt qu'une coche à droite : elle dit AVANT le clic
+ * que l'entrée est cochable, là où une coche ne le dit qu'après.
+ *
+ * Le déclencheur résume au lieu d'énumérer. Au-delà de deux entrées, une
+ * liste complète déborde du champ et cesse d'être lisible.
  */
 
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { ChevronDown, Checkmark, CheckmarkFilled, Search } from "@carbon/icons-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { ChevronDown, Checkmark, Search } from "@carbon/icons-react";
+import type { DropdownOption } from "./DropdownPicker";
 import styles from "./DropdownPicker.module.scss";
 
-export interface DropdownOption {
-  value: string;
-  label: string;
-  /** Sous-libellé optionnel (ex. "Banque mondiale · IDA") */
-  sub?: string;
-  /** Icône / élément à gauche du label */
-  prefix?: ReactNode;
-  disabled?: boolean;
-}
-
-interface DropdownPickerProps {
+interface MultiDropdownPickerProps {
   options: DropdownOption[];
-  value: string;
-  onChange: (v: string) => void;
+  values: string[];
+  onChange: (v: string[]) => void;
   placeholder?: string;
-  /** Active la zone de recherche en haut du menu */
+  /** Affiche la zone de recherche — indispensable au-delà d'une dizaine */
   searchable?: boolean;
   disabled?: boolean;
-  error?: boolean;
   ariaLabel?: string;
   className?: string;
+  /** Ce qu'affiche le déclencheur quand plusieurs entrées sont retenues */
+  resume?: (choisis: DropdownOption[]) => string;
 }
 
-export function DropdownPicker({
+export function MultiDropdownPicker({
   options,
-  value,
+  values,
   onChange,
   placeholder = "Sélectionner",
   searchable,
   disabled,
-  error,
   ariaLabel,
   className,
-}: DropdownPickerProps) {
+  resume,
+}: MultiDropdownPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [focusedIdx, setFocusedIdx] = useState(0);
+
   const wrapRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -74,21 +65,17 @@ export function DropdownPicker({
     );
   }, [options, query]);
 
-  const current = options.find((o) => o.value === value);
+  const choisis = options.filter((o) => values.includes(o.value));
 
-  // Click outside
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  // Focus search when opening
   useEffect(() => {
     if (open && searchable && searchRef.current) {
       const t = setTimeout(() => searchRef.current?.focus(), 30);
@@ -96,37 +83,31 @@ export function DropdownPicker({
     }
   }, [open, searchable]);
 
-  // Reset query and focus when opening
   useEffect(() => {
     if (open) {
       setQuery("");
-      const idx = options.findIndex((o) => o.value === value);
-      setFocusedIdx(idx >= 0 ? idx : 0);
+      setFocusedIdx(0);
     }
-  }, [open, options, value]);
+  }, [open]);
 
-  // Scroll focused option into view
+  // L'entrée qui a le focus reste visible pendant la navigation au clavier.
   useEffect(() => {
     if (!open || !listRef.current) return;
     const list = listRef.current;
-    const target = list.querySelectorAll("[role=option]")[focusedIdx] as HTMLElement | undefined;
-    if (target) {
-      const top = target.offsetTop;
-      const bottom = top + target.offsetHeight;
-      if (top < list.scrollTop) list.scrollTop = top;
-      else if (bottom > list.scrollTop + list.clientHeight) {
-        list.scrollTop = bottom - list.clientHeight;
-      }
-    }
+    const cible = list.querySelectorAll("[role=option]")[focusedIdx] as HTMLElement | undefined;
+    if (!cible) return;
+    const haut = cible.offsetTop;
+    const bas = haut + cible.offsetHeight;
+    if (haut < list.scrollTop) list.scrollTop = haut;
+    else if (bas > list.scrollTop + list.clientHeight) list.scrollTop = bas - list.clientHeight;
   }, [focusedIdx, open]);
 
-  const handleSelect = (v: string) => {
-    onChange(v);
-    setOpen(false);
-  };
+  const basculer = (v: string) =>
+    onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
+
     if (e.key === "Escape") {
       e.preventDefault();
       setOpen(false);
@@ -145,24 +126,31 @@ export function DropdownPicker({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setFocusedIdx((i) => Math.max(0, i - 1));
-    } else if (e.key === "Enter") {
+    } else if (e.key === "Enter" || e.key === " ") {
+      // Le menu reste ouvert, à la différence du sélecteur simple : on coche
+      // plusieurs entrées sans le rouvrir à chaque fois.
       e.preventDefault();
       const opt = filtered[focusedIdx];
-      if (opt && !opt.disabled) handleSelect(opt.value);
+      if (opt && !opt.disabled) basculer(opt.value);
     } else if (e.key === "Tab") {
       setOpen(false);
     }
   };
 
+  const etiquette =
+    choisis.length === 0
+      ? null
+      : resume
+        ? resume(choisis)
+        : choisis.length <= 2
+          ? choisis.map((o) => o.label).join(", ")
+          : `${choisis.length} sélectionnés`;
+
   return (
-    <div
-      ref={wrapRef}
-      className={`${styles.wrap} ${className ?? ""}`}
-      onKeyDown={onKeyDown}
-    >
+    <div ref={wrapRef} className={`${styles.wrap} ${className ?? ""}`} onKeyDown={onKeyDown}>
       <button
         type="button"
-        className={`${styles.trigger} ${open ? styles.triggerOpen : ""} ${error ? styles.triggerError : ""}`}
+        className={`${styles.trigger} ${open ? styles.triggerOpen : ""}`}
         onClick={() => !disabled && setOpen((o) => !o)}
         disabled={disabled}
         aria-haspopup="listbox"
@@ -170,10 +158,9 @@ export function DropdownPicker({
         aria-controls={listboxId}
         aria-label={ariaLabel}
       >
-        {current?.prefix && <span aria-hidden>{current.prefix}</span>}
-        {current ? (
-          <span className={styles.value} title={current.label}>
-            {current.label}
+        {etiquette ? (
+          <span className={styles.value} title={choisis.map((o) => o.label).join(", ")}>
+            {etiquette}
           </span>
         ) : (
           <span className={styles.placeholder}>{placeholder}</span>
@@ -186,12 +173,17 @@ export function DropdownPicker({
       <div
         className={`${styles.menu} ${open ? styles.menuOpen : ""}`}
         role="listbox"
+        aria-multiselectable
         id={listboxId}
         aria-hidden={!open}
       >
         {searchable && (
           <div className={styles.menuSearch}>
-            <Search size={14} aria-hidden style={{ color: "var(--cds-text-helper)", flexShrink: 0 }} />
+            <Search
+              size={14}
+              aria-hidden
+              style={{ color: "var(--cds-text-helper)", flexShrink: 0 }}
+            />
             <input
               ref={searchRef}
               type="search"
@@ -206,41 +198,52 @@ export function DropdownPicker({
             />
           </div>
         )}
+
         <div className={styles.menuList} ref={listRef}>
           {filtered.length === 0 ? (
             <div className={styles.optionEmpty}>Aucun résultat</div>
           ) : (
             filtered.map((opt, i) => {
-              const isActive = opt.value === value;
-              const isFocused = i === focusedIdx;
+              const coche = values.includes(opt.value);
+              const focus = i === focusedIdx;
               return (
                 <button
                   key={opt.value}
                   type="button"
                   role="option"
-                  aria-selected={isActive}
+                  aria-selected={coche}
                   disabled={opt.disabled}
-                  className={`${styles.option} ${isActive ? styles.optionActive : ""} ${
-                    isFocused && !isActive ? styles.optionFocused : ""
+                  className={`${styles.option} ${coche ? styles.optionActive : ""} ${
+                    focus && !coche ? styles.optionFocused : ""
                   }`}
-                  onClick={() => !opt.disabled && handleSelect(opt.value)}
+                  onClick={() => !opt.disabled && basculer(opt.value)}
                   onMouseEnter={() => setFocusedIdx(i)}
                 >
-                  {opt.prefix && <span aria-hidden>{opt.prefix}</span>}
+                  <span className={styles.caseCocher} aria-hidden>
+                    {coche && <Checkmark size={12} />}
+                  </span>
                   <div className={styles.optionMain}>
                     <div className={styles.optionLabel}>{opt.label}</div>
                     {opt.sub && <div className={styles.optionSub}>{opt.sub}</div>}
                   </div>
-                  {isActive && (
-                    <span className={styles.optionCheck}>
-                      <CheckmarkFilled size={14} aria-hidden />
-                    </span>
-                  )}
                 </button>
               );
             })
           )}
         </div>
+
+        {/* Le pied reste visible pendant qu'on coche : c'est là que se lit le
+            compte, et que l'on se dédit d'un coup. */}
+        {values.length > 0 && (
+          <div className={styles.menuPied}>
+            <span>
+              {values.length} retenue{values.length > 1 ? "s" : ""}
+            </span>
+            <button type="button" onClick={() => onChange([])}>
+              Tout retirer
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
