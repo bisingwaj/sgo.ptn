@@ -302,3 +302,61 @@ samp,
     display: none !important;
   }
 }
+
+// ============================================================
+// Assistant de saisie — PTBA
+// ============================================================
+
+@layer components {
+  // Entrée d'une ligne ajoutée à une liste répétable.
+  //
+  // `opacity` + `transform` seulement : animer `height` ou `margin`
+  // déclencherait un recalcul de mise en page à chaque image, ce que la
+  // fondation Motion de Carbon proscrit explicitement. Les jetons sont
+  // remis à 0 ms sous `prefers-reduced-motion` — rien à ajouter ici.
+  .ptn-entree-ligne {
+    animation: ptn-entree-ligne var(--ptn-motion-moderate-01)
+      var(--ptn-motion-easing-entrance) both;
+  }
+
+  @keyframes ptn-entree-ligne {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  // Carte d'une liste de contenu.
+  //
+  // Seuls `background` et `border-color` transitent : ni la taille, ni la
+  // position. Une carte qui se soulève au survol déplacerait ses voisines
+  // dans la grille. Productive, non expressive — le geste se répète.
+  .ptn-carte-liste {
+    transition:
+      background-color var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive),
+      border-color var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
+  }
+
+  // Teinte de composante sur une tuile Carbon sélectionnée.
+  //
+  // Carbon colore l'état sélectionné en bleu interactif, ce qui écraserait
+  // les cinq teintes de composante. On ne redéfinit pas le composant : on
+  // vise le seul sélecteur concerné, une règle par composante — la
+  // différence entre une surcharge légitime et casser Carbon.
+  @each $code, $jeton in (c1: 'c1', c2: 'c2', c3: 'c3', c4: 'c4', c5: 'c5') {
+    [data-composante='#{$code}'] {
+      .cds--tile--is-selected {
+        border-color: var(--ptn-composante-#{$jeton});
+        background: var(--ptn-composante-#{$jeton}-surface);
+      }
+
+      .cds--tile__checkmark svg {
+        fill: var(--ptn-composante-#{$jeton});
+      }
+    }
+  }
+}

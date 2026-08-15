@@ -15,7 +15,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { PtbaService } from './ptba.service';
-import { UpsertActivityDto, UpsertAllocationDto } from './dto/ptba.dto';
+import { DeactivateActivityDto, UpsertActivityDto, UpsertAllocationDto } from './dto/ptba.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -53,6 +53,18 @@ export class PtbaController {
     @Query('composante') componentCode?: string,
   ) {
     return this.ptba.activities(year, { componentCode });
+  }
+
+  @Get('activites/:id')
+  @RequirePermissions('ptba:read')
+  @ApiOperation({
+    summary: 'Fiche d’une activité, avec les TDR qui s’y rattachent',
+    description:
+      'Le nombre de marchés découlant d’une ligne du plan, et leur état, est la question ' +
+      'qu’on vient poser à cette fiche.',
+  })
+  activity(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ptba.activity(id);
   }
 
   @Get('exercices/:year/allocations')
@@ -120,14 +132,17 @@ export class PtbaController {
   @RequirePermissions('ptba:write')
   @ApiOperation({
     summary: 'Retirer une activité du plan',
-    description: 'Conservée en base : un TDR peut déjà la citer.',
+    description:
+      'Conservée en base : un TDR peut déjà la citer. Le motif est exigé et journalisé — ' +
+      'l’opération n’a pas de réciproque côté produit.',
   })
   deactivate(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeactivateActivityDto,
     @CurrentUser() actor: AuthenticatedUser,
     @Req() req: Request,
   ) {
-    return this.ptba.deactivateActivity(id, actor, contextOf(req));
+    return this.ptba.deactivateActivity(id, dto.motif.trim(), actor, contextOf(req));
   }
 
   @Post('exercices/:year/valider')

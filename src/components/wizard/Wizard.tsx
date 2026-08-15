@@ -74,6 +74,14 @@ export interface WizardProps<T = unknown> {
    * l'application — une fonction seule ne dit pas quand elle a changé.
    */
   patch?: { nonce: number; fn: (state: T) => T };
+  /**
+   * Affiche « Brouillon enregistré ».
+   *
+   * Par défaut, seulement si un brouillon est réellement tenu. La puce était
+   * jusqu'ici rendue en toutes circonstances — y compris sur un assistant qui
+   * ne persiste rien, où elle promettait une reprise qui n'existait pas.
+   */
+  draftChip?: boolean;
 }
 
 export function Wizard<T>({
@@ -90,10 +98,22 @@ export function Wizard<T>({
   patch,
   onFinish,
   onDraftChange,
+  draftChip,
 }: WizardProps<T>) {
   const [state, setStateInternal] = useState<T>(initialState);
   const [step, setStep] = useState(0);
-  const [done, setDone] = useState<Set<number>>(new Set());
+  /**
+   * Étapes franchies, repérées par leur `num` et non par leur position.
+   *
+   * La liste est recalculée à chaque changement d'état : une étape
+   * conditionnelle qui apparaît ou disparaît décale toutes les positions
+   * suivantes. Repérer par indice faisait alors pointer « franchi » sur la
+   * mauvaise étape — et si la liste raccourcissait sous l'étape courante,
+   * `steps[step]` devenait `undefined` et le rendu plantait. Le cas nominal,
+   * dès qu'un aiguillage oui/non se trouve en milieu de parcours et que
+   * l'utilisateur change d'avis.
+   */
+  const [done, setDone] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,6 +121,9 @@ export function Wizard<T>({
     () => rawSteps.filter((s) => !s.visibleIf || s.visibleIf(state)),
     [rawSteps, state],
   );
+
+  // Filet : la liste peut raccourcir sous l'étape courante.
+  const stepSafe = Math.min(step, Math.max(steps.length - 1, 0));
 
   const setState = (next: T) => {
     setStateInternal(next);
@@ -130,7 +153,8 @@ export function Wizard<T>({
   };
 
   const goNext = async () => {
-    const current = steps[step];
+    const current = steps[stepSafe];
+    if (!current) return;
     const validation = current.validate?.(state) ?? null;
     if (validation) {
       setError(validation);
@@ -150,9 +174,9 @@ export function Wizard<T>({
       }
     }
 
-    if (step < steps.length - 1) {
-      setDone((d) => new Set(d).add(step));
-      allerA(step + 1);
+    if (stepSafe < steps.length - 1) {
+      setDone((d) => new Set(d).add(current.num));
+      allerA(stepSafe + 1);
       return;
     }
 
@@ -161,7 +185,7 @@ export function Wizard<T>({
       setSubmitting(true);
       try {
         await onFinish(state);
-        setDone((d) => new Set(d).add(step));
+        setDone((d) => new Set(d).add(current.num));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erreur lors de la soumission.");
       } finally {
@@ -171,21 +195,21 @@ export function Wizard<T>({
   };
 
   const goPrev = () => {
-    if (step > 0) {
-      allerA(step - 1);
+    if (stepSafe > 0) {
+      allerA(stepSafe - 1);
       setError(null);
     }
   };
 
   const jumpTo = (n: number) => {
-    if (n < step || done.has(n)) {
+    if (n < stepSafe || done.has(steps[n]?.num ?? "")) {
       allerA(n);
       setError(null);
     }
   };
 
-  const isLast = step === steps.length - 1;
-  const currentStep = steps[step];
+  const isLast = stepSafe === steps.length - 1;
+  const currentStep = steps[stepSafe];
 
   return (
     <div className={styles.shell}>
@@ -210,9 +234,9 @@ export function Wizard<T>({
 
           <ol className={styles.stepper}>
             {steps.map((s, i) => {
-              const isDone = done.has(i);
-              const isActive = i === step;
-              const canJump = isDone || i < step;
+              const isDone = done.has(s.num);
+              const isActive = i === stepSafe;
+              const canJump = isDone || i < stepSafe;
               return (
                 <li
                   key={s.num}
@@ -244,7 +268,7 @@ export function Wizard<T>({
           </ol>
 
           <p className={styles.railFoot}>
-            Étape <span className="ptn-mono">{step + 1}</span> sur{" "}
+            Étape <span className="ptn-mono">{stepSafe + 1}</span> sur{" "}
             <span className="ptn-mono">{steps.length}</span>
           </p>
         </nav>
@@ -255,7 +279,13 @@ export function Wizard<T>({
             <h2 className={styles.bodyTitle}>{currentStep.label}</h2>
             {currentStep.sub && <p className={styles.bodySub}>{currentStep.sub}</p>}
           </div>
-          <div className={styles.bodyContent}>{currentStep.render(state, setState)}</div>
+          {/* `key` sur l'etape : le corps est remonte, donc l'animation
+              d'entree rejoue a chaque changement. Opacite seule — un
+              glissement provoque un recalcul de mise en page percu comme
+              un a-coup a 150 % de zoom. */}
+          <div key={currentStep.num} className={styles.bodyContent}>
+            {currentStep.render(state, setState)}
+          </div>
         </main>
 
         {aside}
@@ -267,7 +297,9 @@ export function Wizard<T>({
           <Link href={cancelHref} className={styles.cancelLink}>
             Annuler et quitter
           </Link>
-          <span className={`${styles.draft} ptn-mono`}>● Brouillon enregistré</span>
+          {(draftChip ?? Boolean(onDraftChange)) && (
+            <span className={`${styles.draft} ptn-mono`}>● Brouillon enregistré</span>
+          )}
         </div>
         <div className={styles.footerRight}>
           {error && (
@@ -276,7 +308,7 @@ export function Wizard<T>({
               <span>{error}</span>
             </div>
           )}
-          {step > 0 && (
+          {stepSafe > 0 && (
             <button
               type="button"
               className={styles.btnGhost}

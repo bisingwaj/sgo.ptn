@@ -41,13 +41,36 @@ export class PtbaService {
       orderBy: [{ componentCode: 'asc' }, { code: 'asc' }],
       include: {
         component: { select: { code: true, shortLabel: true } },
-        province: { select: { code: true, label: true } },
         ...PtbaService.CONTENT_INCLUDE,
       },
     });
 
     const totalUsd = activities.reduce((sum, a) => sum + Number(a.envelopeUsd), 0);
     return { year: ptbaYear, activities, totalUsd };
+  }
+
+  /**
+   * Une activité et ce qui s'y rattache.
+   *
+   * Les TDR sont joints parce que c'est la question qu'on vient poser à une
+   * ligne de plan : combien de marchés en découlent, et où ils en sont.
+   * La relation existait au schéma sans qu'aucun écran ne l'expose.
+   */
+  async activity(id: string) {
+    const activity = await this.prisma.ptbaActivity.findUnique({
+      where: { id },
+      include: {
+        component: { select: { code: true, shortLabel: true, label: true } },
+        ptbaYear: { select: { year: true, label: true, status: true, validatedAt: true } },
+        tdrs: {
+          select: { id: true, reference: true, title: true, status: true, updatedAt: true },
+          orderBy: { updatedAt: 'desc' },
+        },
+        ...PtbaService.CONTENT_INCLUDE,
+      },
+    });
+    if (!activity) throw new NotFoundException('Activité PTBA introuvable.');
+    return activity;
   }
 
   /**
@@ -187,17 +210,24 @@ export class PtbaService {
   }
 
   /**
-   * Le code de province doit exister au référentiel.
+   * Les codes de province doivent exister au référentiel.
    *
    * Sans ce contrôle, un code inconnu remontait en violation de clé
    * étrangère Prisma — donc une 500 opaque, là où le fautif est une saisie
-   * et mérite une 400 qui le dise.
+   * et mérite une 400 qui le nomme.
    */
-  private async assertProvinceExists(provinceCode?: string): Promise<void> {
-    if (!provinceCode) return;
-    const province = await this.prisma.province.findUnique({ where: { code: provinceCode } });
-    if (!province) {
-      throw new BadRequestException(`Province inconnue au référentiel : ${provinceCode}.`);
+  private async assertProvincesExist(codes?: string[]): Promise<void> {
+    if (!codes || codes.length === 0) return;
+    const uniques = [...new Set(codes)];
+    const connues = await this.prisma.province.findMany({
+      where: { code: { in: uniques } },
+      select: { code: true },
+    });
+    const inconnues = uniques.filter((c) => !connues.some((p) => p.code === c));
+    if (inconnues.length > 0) {
+      throw new BadRequestException(
+        `Province${inconnues.length > 1 ? 's' : ''} inconnue${inconnues.length > 1 ? 's' : ''} au référentiel : ${inconnues.join(', ')}.`,
+      );
     }
   }
 
@@ -380,6 +410,14 @@ export class PtbaService {
           })),
       });
     }
+    if (dto.provinceCodes) {
+      // Remplacement en bloc, comme les cinq listes : l'écran renvoie la
+      // couverture complète, jamais un différentiel.
+      await tx.ptbaActivityProvince.deleteMany({ where: { activityId } });
+      await tx.ptbaActivityProvince.createMany({
+        data: [...new Set(dto.provinceCodes)].map((provinceCode) => ({ activityId, provinceCode })),
+      });
+    }
     if (dto.clauses) {
       await tx.ptbaActivityClause.deleteMany({ where: { activityId } });
       await tx.ptbaActivityClause.createMany({
@@ -392,6 +430,7 @@ export class PtbaService {
 
   /** Les cinq listes, ordonnees, pour tout renvoi d'activite. */
   private static readonly CONTENT_INCLUDE = {
+    provinces: { include: { province: { select: { code: true, label: true } } } },
     objectives: { orderBy: { position: 'asc' } },
     deliverables: { orderBy: { position: 'asc' } },
     indicators: { orderBy: { position: 'asc' } },
@@ -403,7 +442,7 @@ export class PtbaService {
     const ptbaYear = await this.loadYear(year);
     PtbaService.assertContentEditable(ptbaYear);
     PtbaService.assertSplit(dto.envelopeUsd, dto.idaUsd, dto.afdUsd, 'l’enveloppe');
-    await this.assertProvinceExists(dto.provinceCode);
+    await this.assertProvincesExist(dto.provinceCodes);
 
     const existing = await this.prisma.ptbaActivity.findUnique({
       where: { ptbaYearId_code: { ptbaYearId: ptbaYear.id, code: dto.code } },
@@ -433,7 +472,6 @@ export class PtbaService {
           envelopeUsd: dto.envelopeUsd,
           idaUsd: dto.idaUsd ?? null,
           afdUsd: dto.afdUsd ?? null,
-          provinceCode: dto.provinceCode || null,
         },
       });
       await PtbaService.writeContent(tx, created.id, dto);
@@ -465,7 +503,7 @@ export class PtbaService {
     PtbaService.assertContentEditable(activity.ptbaYear);
 
     PtbaService.assertSplit(dto.envelopeUsd, dto.idaUsd, dto.afdUsd, 'l’enveloppe');
-    await this.assertProvinceExists(dto.provinceCode);
+    await this.assertProvincesExist(dto.provinceCodes);
     await this.assertEnvelopeFits(
       activity.ptbaYearId,
       activity.ptbaYear.year,
@@ -485,7 +523,6 @@ export class PtbaService {
           envelopeUsd: dto.envelopeUsd,
           idaUsd: dto.idaUsd ?? null,
           afdUsd: dto.afdUsd ?? null,
-          provinceCode: dto.provinceCode || null,
         },
       });
       await PtbaService.writeContent(tx, id, dto);
@@ -515,7 +552,12 @@ export class PtbaService {
    * au plan. Il ne contrôlait pourtant rien : une ligne pouvait être
    * retirée d'un exercice validé, voire clos.
    */
-  async deactivateActivity(id: string, actor: AuthenticatedUser, ctx: RequestContext) {
+  async deactivateActivity(
+    id: string,
+    motif: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
     const activity = await this.prisma.ptbaActivity.findUnique({
       where: { id },
       include: { ptbaYear: true },
@@ -531,7 +573,7 @@ export class PtbaService {
       action: 'ptba.activity_deactivated',
       entityType: 'PtbaActivity',
       entityId: id,
-      payload: { code: activity.code },
+      payload: { code: activity.code, motif, envelopeUsd: Number(activity.envelopeUsd) },
       ...ctx,
     });
 

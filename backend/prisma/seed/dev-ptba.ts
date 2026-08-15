@@ -37,7 +37,8 @@ interface DevActivity {
   subComponent: string;
   /** En millions USD, comme l'ancien écran les portait. */
   envelopeM: number;
-  provinceCode?: string;
+  /** Couverture. Vide = nationale. */
+  provinceCodes?: string[];
 }
 
 /**
@@ -66,13 +67,13 @@ const DEV_ALLOCATIONS: Record<ComponentCode, number> = {
 
 const DEV_ACTIVITIES: DevActivity[] = [
   // --- C1 · Accès et inclusion ---
-  { code: 'A1.4.2', title: 'Backbone fibre Goma–Bukavu', componentCode: 'C1', subComponent: '1.4', envelopeM: 12.4, provinceCode: 'NORD_KIVU' },
+  { code: 'A1.4.2', title: 'Backbone fibre Goma–Bukavu', componentCode: 'C1', subComponent: '1.4', envelopeM: 12.4, provinceCodes: ['NORD_KIVU', 'SUD_KIVU'] },
   { code: 'A1.4.3', title: 'Réseau dernier kilomètre — 145 territoires', componentCode: 'C1', subComponent: '1.4', envelopeM: 28 },
   { code: 'A1.5.1', title: 'Connexion de 1 000 institutions publiques', componentCode: 'C1', subComponent: '1.5', envelopeM: 22 },
 
   // --- C2 · Fondations numériques ---
   { code: 'A2.3.1', title: 'Plateforme nationale d’identité numérique', componentCode: 'C2', subComponent: '2.3', envelopeM: 8.7 },
-  { code: 'A2.5.1', title: 'Centre de données Tier III', componentCode: 'C2', subComponent: '2.5', envelopeM: 18, provinceCode: 'KINSHASA' },
+  { code: 'A2.5.1', title: 'Centre de données Tier III', componentCode: 'C2', subComponent: '2.5', envelopeM: 18, provinceCodes: ['KINSHASA'] },
   { code: 'A2.7.2', title: 'SOC national de cybersécurité', componentCode: 'C2', subComponent: '2.7', envelopeM: 14.2 },
 
   // --- C3 · Compétences et innovation ---
@@ -160,7 +161,6 @@ async function main(): Promise<void> {
         componentCode: a.componentCode,
         subComponent: a.subComponent,
         envelopeUsd,
-        provinceCode: a.provinceCode ?? null,
         isActive: true,
       },
       create: {
@@ -171,9 +171,21 @@ async function main(): Promise<void> {
         componentCode: a.componentCode,
         subComponent: a.subComponent,
         envelopeUsd,
-        provinceCode: a.provinceCode ?? null,
       },
     });
+
+    // Couverture geographique : remplacement en bloc, comme le service.
+    await prisma.ptbaActivityProvince.deleteMany({
+      where: { activityId: idFor.ptbaActivity(`${YEAR}:${a.code}`) },
+    });
+    if (a.provinceCodes?.length) {
+      await prisma.ptbaActivityProvince.createMany({
+        data: a.provinceCodes.map((provinceCode) => ({
+          activityId: idFor.ptbaActivity(`${YEAR}:${a.code}`),
+          provinceCode,
+        })),
+      });
+    }
     console.log(
       `  ${a.code.padEnd(8)} ${a.componentCode}  ${String(a.envelopeM).padStart(5)} M USD  ${a.title}`,
     );

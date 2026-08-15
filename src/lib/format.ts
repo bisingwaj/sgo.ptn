@@ -49,6 +49,34 @@ export function formatMoneyCompact(money: Money, locale: Locale = "fr"): string 
   }).format(toMajor(money));
 }
 
+/**
+ * Montant en USD entiers, abrégé : « 8,7 M USD ».
+ *
+ * Doublon assumé de `formatMoneyCompact` : les enveloppes du PTBA circulent
+ * en USD entiers et non en unités mineures — ce sont des dotations
+ * budgétaires, jamais des écritures comptables au centime.
+ *
+ * Passer par `Intl` plutôt que par une division corrige au passage le
+ * séparateur : l'écran écrivait « 12.4 M » à un lecteur francophone.
+ */
+export function formatUsdCompact(usd: number, locale: Locale = "fr"): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    currencyDisplay: "code",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(usd);
+}
+
+/** Même chose sans le code devise, pour les colonnes déjà intitulées. */
+export function formatUsdCompactBare(usd: number, locale: Locale = "fr"): string {
+  return new Intl.NumberFormat(locale, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(usd);
+}
+
 /* ------------------------------------------------------------------ */
 /* Dates                                                               */
 /* ------------------------------------------------------------------ */

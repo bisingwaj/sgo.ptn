@@ -137,7 +137,9 @@ export class TdrAssistService {
       where: { id: tdrId },
       include: {
         tdrType: { include: { defaultMethod: true } },
-        ptbaActivity: { include: { component: true, province: true } },
+        ptbaActivity: {
+          include: { component: true, provinces: { include: { province: true } } },
+        },
         organisation: { select: { name: true, fullName: true, type: true } },
         beneficiaryOrganisation: { select: { name: true, fullName: true } },
         provinces: { include: { province: true } },
@@ -188,12 +190,10 @@ export class TdrAssistService {
     }
 
     // La couverture peut porter sur plusieurs provinces ; à défaut, celle de
-    // l'activité du plan sert de repère.
+    // l'activité du plan sert de repère — devenue elle aussi multiple.
     const provinces = tdr.provinces.length
       ? tdr.provinces.map((c) => c.province)
-      : tdr.ptbaActivity?.province
-        ? [tdr.ptbaActivity.province]
-        : [];
+      : (tdr.ptbaActivity?.provinces ?? []).map((c) => c.province);
     if (provinces.length > 0) {
       const prioritaires = provinces.filter((p) => p.isPriorityCpf).length;
       lines.push(

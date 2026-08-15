@@ -163,15 +163,20 @@ export class UpsertActivityDto {
   afdUsd?: number;
 
   /**
-   * Code de province du referentiel. La forme est bornee ici, l'existence
-   * est verifiee par le service : une cle etrangere Prisma produirait une
-   * 500 la ou une 400 explicite est attendue.
+   * Couverture geographique. Une activite en traverse souvent plusieurs —
+   * un backbone Goma-Bukavu en concerne trois — et le champ unique
+   * obligeait a en choisir une au detriment des autres.
+   *
+   * Liste vide ou absente = couverture nationale. L'existence des codes est
+   * verifiee par le service : une cle etrangere Prisma produirait une 500 la
+   * ou une 400 explicite est attendue.
    */
-  @ApiPropertyOptional({ example: 'KINSHASA' })
+  @ApiPropertyOptional({ example: ['KINSHASA', 'NORD_KIVU'], type: [String] })
   @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  provinceCode?: string;
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(64, { each: true })
+  provinceCodes?: string[];
 
   /**
    * Ce que l'activite porte en propre. Facultatif a la creation : une ligne
@@ -212,6 +217,22 @@ export class UpsertActivityDto {
   @ValidateNested({ each: true })
   @Type(() => ActivityClauseDto)
   clauses?: ActivityClauseDto[];
+}
+
+/**
+ * Retrait d'une activite du plan.
+ *
+ * Le motif est exige : retirer une ligne enleve une enveloppe a un plan
+ * que d'autres lisent, et l'operation n'a pas de reciproque cote produit.
+ * Un journal qui dit qui a retire quoi, sans dire pourquoi, ne repond a
+ * aucune des questions qu'on lui posera.
+ */
+export class DeactivateActivityDto {
+  @ApiProperty({ example: 'Activité reportée à l’exercice suivant.' })
+  @IsString()
+  @MinLength(5, { message: 'Le motif du retrait est requis.' })
+  @MaxLength(500)
+  motif!: string;
 }
 
 /**

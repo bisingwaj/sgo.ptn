@@ -143,10 +143,10 @@ model Province {
   label         String
   isPriorityCpf Boolean @default(false)
 
-  organisations  Organisation[]
-  assignments    Assignment[]
-  ptbaActivities PtbaActivity[]
-  tdrCoverage    TdrProvince[]
+  organisations   Organisation[]
+  assignments     Assignment[]
+  ptbaCoverage    PtbaActivityProvince[]
+  tdrCoverage     TdrProvince[]
 
   @@map("provinces")
 }
@@ -640,6 +640,20 @@ model PtbaActivityClause {
   @@map("ptba_activity_clauses")
 }
 
+/// Couverture geographique d'une activite du plan. Meme forme que
+/// TdrProvince : cle composite, pas d'identifiant propre — la ligne n'a
+/// aucune existence en dehors du couple qu'elle porte.
+model PtbaActivityProvince {
+  activityId   String       @db.Uuid
+  activity     PtbaActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  provinceCode String
+  province     Province     @relation(fields: [provinceCode], references: [code])
+
+  @@id([activityId, provinceCode])
+  @@index([provinceCode])
+  @@map("ptba_activity_provinces")
+}
+
 model PtbaActivity {
   id         String   @id @default(uuid()) @db.Uuid
   ptbaYearId String   @db.Uuid
@@ -659,8 +673,12 @@ model PtbaActivity {
   idaUsd      Decimal? @db.Decimal(14, 2)
   afdUsd      Decimal? @db.Decimal(14, 2)
 
-  provinceCode String?
-  province     Province? @relation(fields: [provinceCode], references: [code])
+  /// Couverture geographique. Une activite en traverse souvent plusieurs —
+  /// un backbone Goma-Bukavu en concerne trois — et le champ unique
+  /// obligeait a en choisir une au detriment des autres. Aligne sur
+  /// TdrProvince : aucune ligne ne vaut couverture nationale, et c'est une
+  /// valeur, non une absence.
+  provinces PtbaActivityProvince[]
 
   isActive Boolean @default(true)
 

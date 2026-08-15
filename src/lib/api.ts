@@ -591,9 +591,12 @@ export interface PtbaActivityApi {
   envelopeUsd: string;
   idaUsd: string | null;
   afdUsd: string | null;
-  provinceCode: string | null;
+  /**
+   * Couverture géographique. Liste vide = couverture nationale, et c'est
+   * une valeur, non une absence.
+   */
+  provinces?: Array<{ province: { code: string; label: string } }>;
   component?: { code: string; shortLabel: string };
-  province?: { code: string; label: string } | null;
   objectives?: PtbaObjectiveApi[];
   deliverables?: PtbaDeliverableApi[];
   indicators?: PtbaIndicatorApi[];
@@ -661,8 +664,22 @@ export interface PtbaAllocationRowApi {
   activityCount: number;
 }
 
+/** Fiche d'activité : l'activité, son exercice, et les TDR qui en découlent. */
+export interface PtbaActivityDetailApi extends PtbaActivityApi {
+  component?: { code: string; shortLabel: string; label: string };
+  ptbaYear: { year: number; label: string; status: PtbaYearApi["status"]; validatedAt: string | null };
+  tdrs: Array<{
+    id: string;
+    reference: string;
+    title: string;
+    status: TdrStatusApi;
+    updatedAt: string;
+  }>;
+}
+
 export const ptbaApi = {
   years: () => api.get<PtbaYearApi[]>("/ptba/exercices"),
+  activity: (id: string) => api.get<PtbaActivityDetailApi>(`/ptba/activites/${id}`),
   allocations: (year: number) =>
     api.get<{ year: PtbaYearApi; rows: PtbaAllocationRowApi[] }>(
       `/ptba/exercices/${year}/allocations`,
@@ -675,7 +692,11 @@ export const ptbaApi = {
     ),
   createActivity: (year: number, payload: Record<string, unknown>) =>
     api.post<PtbaActivityApi>(`/ptba/exercices/${year}/activites`, payload),
-  deactivate: (id: string) => api.post<{ id: string }>(`/ptba/activites/${id}/retirer`),
+  updateActivity: (id: string, payload: Record<string, unknown>) =>
+    api.put<PtbaActivityApi>(`/ptba/activites/${id}`, payload),
+  /** Le motif est exigé par le service : il est consigné au journal d'audit. */
+  deactivate: (id: string, motif: string) =>
+    api.post<{ id: string }>(`/ptba/activites/${id}/retirer`, { motif }),
   validateYear: (year: number) => api.post<PtbaYearApi>(`/ptba/exercices/${year}/valider`),
 };
 

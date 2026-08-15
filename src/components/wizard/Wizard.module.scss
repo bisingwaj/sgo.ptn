@@ -115,6 +115,11 @@
 
 .stepItem {
   border-left: 2px solid transparent;
+  // Le marqueur changeait d'état sans transition. Productive, non
+  // expressive : ce produit est dense et l'étape se franchit souvent.
+  transition:
+    color var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive),
+    border-left-color var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
 }
 
 .stepBtn {
@@ -310,6 +315,21 @@
   width: 100%;
   margin: 0 auto;
   flex: 1;
+
+  // Entrée d'étape. Opacité seule, jamais de translation : à 150 % de zoom,
+  // un glissement fait recalculer la mise en page et se perçoit comme un
+  // à-coup. La durée vient des jetons, remis à 0 ms sous
+  // `prefers-reduced-motion` — l'accessibilité vient avec.
+  animation: entreeEtape var(--ptn-motion-moderate-01) var(--ptn-motion-easing-entrance) both;
+}
+
+@keyframes entreeEtape {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 1024px) {
