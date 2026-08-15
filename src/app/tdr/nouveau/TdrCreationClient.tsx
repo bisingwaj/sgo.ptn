@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Wizard, type WizardStep } from "@/components/wizard/Wizard";
-import { Field, Input, Textarea, Select, Note, SelectableTile, CheckRow, Segmented } from "@/components/wizard/WizardFields";
+import { Field, Input, Textarea, Select, Note, CheckRow, Segmented } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import {
   tdrApi,
@@ -39,206 +39,36 @@ import {
 import {
   Add,
   AiGenerate,
-  Analytics,
-  Bullhorn,
   CheckmarkFilled,
-  Construction,
-  Delivery,
-  Education,
-  Events,
   Idea,
   Locked,
-  Money,
-  Partnership,
-  Plane,
-  Rule,
-  Tools,
   TrashCan,
   WarningAltFilled,
 } from "@carbon/icons-react";
 import { MultiDropdownPicker } from "@/components/ui/MultiDropdownPicker";
+import { EtapeType } from "./etapes/EtapeType";
+import { EtapeRattachement } from "./etapes/EtapeRattachement";
+import { EtapeIdentification } from "./etapes/EtapeIdentification";
+import {
+  INITIAL,
+  fillTemplate,
+  isClause,
+  isIndicator,
+  isRisk,
+  type State,
+} from "./etat";
+import {
+  CATALOG_IDS,
+  DEADLINE_CONVENTION,
+  DELIVERABLE_FORMATS,
+  ES_LEVELS,
+  ES_RISK_CATALOG,
+  PROFIL_KEYS,
+  REPORTING_RHYTHMS,
+  freeRisks,
+} from "./referentiel-ecran";
 import { AgentPanel, type Ecriture } from "./AgentPanel";
 import styles from "./tdr-creation.module.scss";
-
-interface State {
-  tdrId: string | null;
-  reference: string | null;
-  tdrTypeCode: string;
-  ptbaActivityId: string;
-  /**
-   * Composante servant a reduire la liste des activites. Ce n'est pas une
-   * donnee du dossier : la composante d'un TDR est celle de son activite
-   * PTBA, deja connue en base. La saisir a part ouvrirait une contradiction
-   * que rien n'empecherait.
-   */
-  componentFilter: string;
-  beneficiaryOrganisationId: string;
-  title: string;
-  /**
-   * L'auteur a-t-il ecrit l'intitule lui-meme ? Tant que non, changer de
-   * type ou d'activite le recompose. Ce drapeau ne part pas en base : il ne
-   * decrit pas le dossier, seulement l'etat de la saisie.
-   */
-  titleTouched: boolean;
-
-  context: string;
-  justification: string;
-  beneficiaries: string;
-
-  objectives: { title: string; criteria: string }[];
-  deliverables: { title: string; format: string; deadline: string }[];
-  expectedResults: string;
-  deliverableFormat: string;
-  reportingRhythm: string;
-
-  approach: string;
-  methodology: string;
-  constraints: string;
-
-  startDate: string;
-  durationMonths: string;
-  /** Couverture geographique : une ou plusieurs provinces, ou aucune */
-  provinceCodes: string[];
-  expertise: string;
-  effortDays: string;
-  keyProfiles: string[];
-
-  budgetTotalUsd: string;
-  budgetIdaUsd: string;
-  budgetAfdUsd: string;
-  budgetGovUsd: string;
-
-  clauses: ClauseApi[];
-  indicators: IndicatorApi[];
-  risks: RiskApi[];
-
-  esCategory: string;
-  esRisks: string[];
-  /** Champs auxquels l'assistant a contribue — marque persistante */
-  aiAssistedFields: string[];
-
-  consentMep: boolean;
-  consentRgpd: boolean;
-
-  blockers: string[];
-}
-
-const INITIAL: State = {
-  tdrId: null, reference: null, tdrTypeCode: "", ptbaActivityId: "", componentFilter: "", beneficiaryOrganisationId: "", title: "", titleTouched: false,
-  context: "", justification: "", beneficiaries: "",
-  objectives: [], deliverables: [], expectedResults: "", deliverableFormat: "", reportingRhythm: "",
-  approach: "", methodology: "", constraints: "",
-  startDate: "", durationMonths: "", provinceCodes: [], expertise: "", effortDays: "", keyProfiles: [],
-  budgetTotalUsd: "", budgetIdaUsd: "", budgetAfdUsd: "", budgetGovUsd: "",
-  clauses: [], indicators: [], risks: [],
-  esCategory: "", esRisks: [], aiAssistedFields: [],
-  consentMep: false, consentRgpd: false,
-  blockers: [],
-};
-
-const ES_LEVELS = [
-  { value: "FAIBLE", label: "Faible — clauses contractuelles seules" },
-  { value: "MODERE", label: "Modéré — NIES + PGES allégé" },
-  { value: "SUBSTANTIEL", label: "Substantiel — EIES allégée + PGES" },
-  { value: "ELEVE", label: "Élevé — EIES complète + PGES" },
-];
-
-/**
- * Signes distinctifs des onze types.
- *
- * L'ancien sélecteur `/tdr` — supprimé, il faisait double emploi avec cette
- * étape — portait une icône et des repères métier par type. Il les avait
- * dans du code, sans source ; on reprend ceux qui décrivent une pièce
- * réellement attendue, et on écarte « ISA » et « Manuel SBP », que l'audit
- * a établis comme non attestés au corpus.
- *
- * Le reste des pastilles n'est plus écrit à la main : nombre d'étapes,
- * exigence de PGES, méthode par défaut et origines ouvertes viennent du
- * référentiel, où ils sont déjà tenus à jour.
- */
-const TYPE_SIGNES: Record<string, { icon: typeof Construction; hint?: string }> = {
-  "TDR-TX": { icon: Construction, hint: "Métré et bordereau de prix" },
-  "TDR-FN": { icon: Delivery, hint: "Spécifications et service après-vente" },
-  "TDR-CS": { icon: Partnership, hint: "Profils-clés et CV nominatifs" },
-  "TDR-SN": { icon: Tools, hint: "Niveaux de service et indicateurs qualité" },
-  "TDR-AT": { icon: Events, hint: "Programme et per diem" },
-  "TDR-FO": { icon: Education, hint: "Curriculum et évaluation des acquis" },
-  "TDR-MI": { icon: Plane, hint: "Délégation et indemnités de séjour" },
-  "TDR-ET": { icon: Analytics, hint: "Question évaluative et méthode" },
-  "TDR-CO": { icon: Bullhorn, hint: "Messages, publics et canaux" },
-  "TDR-SB": { icon: Money, hint: "Jalons et critères de décaissement" },
-  "TDR-AU": { icon: Rule, hint: "Périmètre et échantillonnage" },
-};
-
-/**
- * Convention d'échéance des livrables.
- *
- * Les deux anciens parcours n'en disaient pas la même chose : le wizard
- * MDA annonçait « S+N · M+N », celui du partenaire et le document produit
- * écrivaient « J+N ». Un même dossier pouvait donc porter deux
- * conventions selon l'écran qui l'avait rempli. La grammaire est ici
- * unique et couvre les trois unités — c'est l'union de ce qui existait,
- * énoncée une fois.
- */
-const DEADLINE_CONVENTION = {
-  helper:
-    "Échéances en délai relatif au démarrage du contrat : J+15, S+4, M+6. Jamais de date ferme — le marché n’est pas encore attribué.",
-  placeholder: "M+6",
-};
-
-/**
- * Profils-clés — catalogue du parcours partenaire, repris tel quel.
- *
- * Le champ existait déjà en base (`keyProfiles`) sans qu'aucun écran ne
- * l'expose. La règle des trois minimum était vérifiée dans le navigateur ;
- * elle est désormais tenue par le contrôle de complétude, côté serveur.
- */
-const PROFIL_KEYS = [
-  { id: "chef", label: "Chef de mission", description: "Dix ans d’expérience au minimum" },
-  { id: "expert-tech", label: "Expert technique sénior", description: "Domaine principal de la mission" },
-  { id: "expert-junior", label: "Expert technique junior", description: "Appui à la mission" },
-  { id: "expert-es", label: "Expert E&S", description: "Sauvegardes environnementales et sociales" },
-  { id: "expert-genre", label: "Expert genre et inclusion", description: "Activités sensibles" },
-];
-
-/**
- * Risques E&S du CGES, avec leur niveau. Le parcours partenaire les
- * présentait ainsi ; la fusion les avait réduits à un champ libre, où ils
- * ne se recensent ni ne se comparent d'un dossier à l'autre.
- */
-const ES_RISK_CATALOG: {
-  id: string;
-  title: string;
-  level: { label: string; tone: "green" | "yellow" | "red" };
-}[] = [
-  { id: "deplacement", title: "Déplacement involontaire ou acquisition foncière", level: { label: "Élevé", tone: "red" } },
-  { id: "biodiversite", title: "Biodiversité et aires protégées", level: { label: "Modéré", tone: "yellow" } },
-  { id: "patrimoine", title: "Patrimoine culturel", level: { label: "Faible", tone: "green" } },
-  { id: "travail", title: "Conditions de travail, EAS et HS", level: { label: "Modéré", tone: "yellow" } },
-  { id: "sante", title: "Santé et sécurité communautaire", level: { label: "Faible", tone: "green" } },
-];
-
-const CATALOG_IDS = new Set(ES_RISK_CATALOG.map((r) => r.id));
-
-/** Les entrées qui ne correspondent à aucun identifiant du catalogue. */
-function freeRisks(list: string[]): string[] {
-  return list.filter((x) => !CATALOG_IDS.has(x));
-}
-
-/** Reprises telles quelles du wizard partenaire, seul à les porter. */
-const DELIVERABLE_FORMATS = [
-  { value: "docx-pdf", label: "DOCX éditable + PDF signé — standard UGP" },
-  { value: "pdf", label: "PDF signé uniquement — lecture seule" },
-  { value: "structured", label: "Données structurées + PDF" },
-  { value: "mixed", label: "Mixte, selon le livrable" },
-];
-
-const REPORTING_RHYTHMS = [
-  { value: "weekly", label: "Hebdomadaire — missions courtes" },
-  { value: "biweekly", label: "Bimensuel" },
-  { value: "monthly", label: "Mensuel — au-delà de six mois" },
-  { value: "milestone", label: "À chaque jalon, sans périodicité fixe" },
-];
 
 /**
  * Reconstitue l'état du parcours depuis un dossier enregistré.
@@ -336,16 +166,6 @@ function hydrate(
   };
 }
 
-/**
- * Substitue les marqueurs du gabarit de contexte par l'activité rattachée.
- * Le gabarit est stocké en base avec `{{ptbaCode}}` et `{{ptbaTitle}}`,
- * pour que le référentiel reste indépendant d'un dossier particulier.
- */
-function fillTemplate(template: string, activity?: PtbaActivityApi): string {
-  return template
-    .replace(/\{\{ptbaCode\}\}/g, activity?.code ?? "—")
-    .replace(/\{\{ptbaTitle\}\}/g, activity?.title ?? "—");
-}
 
 /**
  * Rédaction assistée par gabarit.
@@ -529,9 +349,6 @@ function AiAssist({
   );
 }
 
-function isClause(e: LibraryEntry): e is ClauseApi { return "text" in e; }
-function isIndicator(e: LibraryEntry): e is IndicatorApi { return "measure" in e; }
-function isRisk(e: LibraryEntry): e is RiskApi { return "mitigation" in e; }
 
 export function TdrCreationClient() {
   const router = useRouter();
@@ -689,23 +506,43 @@ export function TdrCreationClient() {
         label: "Type d’activité",
         sub: "La nature du marché commande le parcours et les bibliothèques",
         validate: (s) => (s.tdrTypeCode ? null : "Sélectionnez un type d’activité."),
-        render: (s, set) => <TypeStep state={s} set={set} types={types} activities={activities} />,
+        render: (s, set) => <EtapeType state={s} set={set} types={types} activities={activities} />,
       },
 
-      // ===== 02 · Rattachement =====
+      // ===== 02 · Rattachement au plan =====
       //
-      // C'est ici que le brouillon naît : sa création exige le type, l'intitulé
-      // et l'activité, or seul le type est connu à l'étape précédente.
+      // Un seul choix ici. La composante n'est plus demandée : elle se déduit
+      // de l'activité, et la réclamer à part ouvrait la possibilité d'une
+      // divergence entre les deux.
       {
         num: "02",
         label: "Rattachement",
-        sub: "Ligne du plan annuel, intitulé du marché et maîtrise d’ouvrage",
-        validate: (s) => {
-          if (!s.ptbaActivityId)
-            return "Rattachez une activité PTBA : sans ligne au plan, il n’y a pas d’enveloppe.";
-          if (s.title.trim().length < 5) return "Renseignez un intitulé.";
-          return null;
-        },
+        sub: "La ligne du plan annuel dont ce marché relève",
+        validate: (s) =>
+          s.ptbaActivityId
+            ? null
+            : "Rattachez une activité PTBA : sans ligne au plan, il n’y a pas d’enveloppe.",
+        render: (s, set) => (
+          <EtapeRattachement
+            state={s}
+            set={set}
+            types={types}
+            activities={activities}
+            components={components}
+          />
+        ),
+      },
+
+      // ===== 03 · Identification =====
+      //
+      // C'est ici que le brouillon naît, et non à l'étape précédente : sa
+      // création exige le type, l'activité ET l'intitulé, or l'intitulé se
+      // compose de ce qui précède et ne peut donc pas être demandé plus tôt.
+      {
+        num: "03",
+        label: "Identification",
+        sub: "L’intitulé du marché et la maîtrise d’ouvrage bénéficiaire",
+        validate: (s) => (s.title.trim().length < 5 ? "Renseignez un intitulé." : null),
         commit: async (s) => {
           if (s.tdrId) {
             await persist(s, {
@@ -734,20 +571,19 @@ export function TdrCreationClient() {
           await loadLibrary(s.tdrTypeCode);
         },
         render: (s, set) => (
-          <RattachementStep
+          <EtapeIdentification
             state={s}
             set={set}
             types={types}
             activities={activities}
             organisations={organisations}
-            components={components}
           />
         ),
       },
 
-      // ===== 02 · Cadrage =====
+      // ===== 04 · Cadrage =====
       {
-        num: "03",
+        num: "04",
         label: "Cadrage",
         sub: "Contexte, justification, bénéficiaires",
         validate: (s) => (s.context.trim().length < 30 ? "Le contexte doit être rédigé." : null),
@@ -798,7 +634,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 03 · Objectifs et livrables =====
       {
-        num: "04",
+        num: "05",
         label: "Objectifs & livrables",
         sub: "Ce qui est attendu, et comment on le constate",
         validate: (s) => {
@@ -819,7 +655,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 04 · Méthodologie =====
       {
-        num: "05",
+        num: "06",
         label: "Méthodologie",
         sub: "Approche attendue et contraintes",
         commit: (s) =>
@@ -841,7 +677,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 05 · Calendrier et expertise =====
       {
-        num: "06",
+        num: "07",
         label: "Calendrier & expertise",
         sub: "Durée, couverture et profils requis",
         commit: (s) =>
@@ -919,7 +755,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 06 · Budget =====
       {
-        num: "07",
+        num: "08",
         label: "Budget",
         sub: "Enveloppe et ventilation par source de financement",
         validate: (s) => {
@@ -959,7 +795,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
       // pré-cadrés ». La refonte en avait fait deux étapes ; c'était une
       // marche de plus pour un même geste, répété trois fois.
       {
-        num: "08",
+        num: "09",
         label: "Cadre & risques",
         sub: "Clauses, indicateurs et risques pré-cadrés pour ce type",
         commit: (s) =>
@@ -984,7 +820,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 09 · Sauvegardes E&S =====
       {
-        num: "09",
+        num: "10",
         label: "Sauvegardes E&S",
         sub: "Classification du risque environnemental et social",
         validate: (s) => {
@@ -1068,7 +904,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
       // ===== 10 · Revue et soumission =====
       {
-        num: "10",
+        num: "11",
         label: "Revue & transmission",
         sub: "Contrôle de complétude et engagements",
         validate: (s) => {
@@ -1161,7 +997,16 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
       title={resume ? `Reprise de ${resume.reference}` : "Nouveau TDR"}
       subtitle={`Vous rédigez au titre de ${user.organisationName} · ${user.subroleLabel}`}
       steps={steps}
-      initialState={resume ?? { ...INITIAL, tdrTypeCode: preselected }}
+      initialState={
+        resume ?? {
+          ...INITIAL,
+          tdrTypeCode: preselected,
+          // Le filtre part de la composante de l'utilisateur quand son
+          // habilitation en designe une — RC1, RC2, RC3. Les autres profils
+          // n'en portent pas, et voient alors tout le plan.
+          componentFilter: user.componentCode ?? "",
+        }
+      }
       cancelHref="/tdr"
       finishLabel="Transmettre à l’UGP"
       asideOpen={agentOuvert}
@@ -1206,286 +1051,7 @@ Bénéficiaires indirects : 95 millions de citoyens, dont 48 % de femmes`}
 
 // ============================================================
 
-/**
- * Étape 01 — la nature du marché, et rien d'autre.
- *
- * Le type commande le parcours entier : bibliothèques chargées, exigence de
- * PGES, catégorie de passation, convention d'intitulé. Il mérite un écran
- * où l'on compare onze tuiles sans rien d'autre à lire.
- */
-/**
- * Composition de l'intitulé depuis la convention du type et le libellé de
- * l'activité. Hissée hors des composants : les deux premières étapes en ont
- * besoin — changer de type à l'étape 01 doit recomposer un intitulé déjà
- * formé à l'étape 02 — et deux copies auraient fini par diverger.
- *
- * Le référentiel porte le gabarit ; l'écran ne fait que le substituer.
- */
-function composeTitle(
-  state: State,
-  types: TdrTypeApi[],
-  activities: PtbaActivityApi[],
-): string {
-  const type = types.find((t) => t.code === state.tdrTypeCode);
-  const activity = activities.find((a) => a.id === state.ptbaActivityId);
-  if (!type?.titleTemplate || !activity) return "";
-  return fillTemplate(type.titleTemplate, activity);
-}
 
-/**
- * Recompose tant que l'auteur n'a pas écrit lui-même. Changer de type après
- * coup doit corriger l'intitulé, sinon un TDR de travaux resterait annoncé
- * comme une étude — mais jamais au prix d'une saisie effacée.
- */
-function withComposedTitle(
-  next: State,
-  types: TdrTypeApi[],
-  activities: PtbaActivityApi[],
-): State {
-  if (next.titleTouched) return next;
-  const compose = composeTitle(next, types, activities);
-  return compose ? { ...next, title: compose } : next;
-}
-
-/**
- * Étape 01 — la nature du marché, et rien d'autre.
- *
- * Le type commande le parcours entier : bibliothèques chargées, exigence de
- * PGES, catégorie de passation, convention d'intitulé. Il mérite un écran où
- * l'on compare onze tuiles sans rien d'autre à lire.
- */
-function TypeStep({
-  state, set, types, activities,
-}: {
-  state: State;
-  set: (s: State) => void;
-  types: TdrTypeApi[];
-  activities: PtbaActivityApi[];
-}) {
-  const families = [...new Set(types.map((t) => t.family))].sort();
-
-  return (
-    <div className={styles.stack}>
-      <fieldset className={styles.typeFieldset}>
-        <legend className={styles.typeLegend}>
-          Type d’activité <span className={styles.required}>*</span>
-        </legend>
-        <p className={styles.typeHint}>
-          {state.tdrId
-            ? "Le type est figé : il détermine les bibliothèques et le parcours de ce brouillon."
-            : "Seuls les types ouverts à votre profil sont proposés."}
-        </p>
-
-        {types.length === 0 ? (
-          <p className={styles.hint}>Aucun type disponible.</p>
-        ) : (
-          families.map((f) => (
-            <div key={f} className={styles.familyBlock}>
-              <span className={styles.familyLabel}>
-                {types.find((t) => t.family === f)?.familyLabel}
-              </span>
-              <div className={styles.tileGrid}>
-                {types
-                  .filter((t) => t.family === f)
-                  .map((t) => (
-                    <SelectableTile
-                      key={t.code}
-                      selected={state.tdrTypeCode === t.code}
-                      onClick={() => set(withComposedTitle({ ...state, tdrTypeCode: t.code }, types, activities))}
-                      disabled={Boolean(state.tdrId)}
-                      tag={t.code}
-                      title={t.name}
-                      icon={TYPE_SIGNES[t.code]?.icon}
-                      description={TYPE_SIGNES[t.code]?.hint}
-                      metrics={
-                        <span className={styles.tileTags}>
-                          <span className={styles.tag}>{t.stepCount} étapes</span>
-                          {t.defaultMethod && (
-                            <span className={styles.tag}>{t.defaultMethod.code}</span>
-                          )}
-                          {t.requiresPges && (
-                            <span className={`${styles.tag} ${styles.tagPges}`}>PGES</span>
-                          )}
-                          {t.allowedOrigins.length > 1 && (
-                            <span className={`${styles.tag} ${styles.tagOpen}`}>
-                              Ouvert hors UGP
-                            </span>
-                          )}
-                        </span>
-                      }
-                    />
-                  ))}
-              </div>
-            </div>
-          ))
-        )}
-      </fieldset>
-    </div>
-  );
-}
-
-/**
- * Étape 02 — rattacher le marché au plan.
- *
- * C'est ici que le brouillon naît : sa création exige le type, l'intitulé et
- * l'activité, et seul le type était connu à l'étape précédente. L'intitulé
- * vient en dernier parce qu'il se compose de ce qui précède.
- */
-function RattachementStep({
-  state, set, types, activities, organisations, components,
-}: {
-  state: State;
-  set: (s: State) => void;
-  types: TdrTypeApi[];
-  activities: PtbaActivityApi[];
-  organisations: OrganisationApi[];
-  components: ComponentApi[];
-}) {
-  const composed = useMemo(
-    () => composeTitle(state, types, activities),
-    [state, types, activities],
-  );
-  const recompose = (next: State) => withComposedTitle(next, types, activities);
-
-  const stillGeneric = composed !== "" && state.title.trim() === composed;
-
-  const visibles = state.componentFilter
-    ? activities.filter((a) => a.componentCode === state.componentFilter)
-    : activities;
-
-  const parComposante = useMemo(() => {
-    const n: Record<string, number> = {};
-    for (const a of activities) n[a.componentCode] = (n[a.componentCode] ?? 0) + 1;
-    return n;
-  }, [activities]);
-
-  const type = types.find((t) => t.code === state.tdrTypeCode);
-
-  return (
-    <div className={styles.stack}>
-      {state.reference && (
-        <Note tone="info" title={`Brouillon ${state.reference}`}>
-          Vos saisies sont enregistrées à chaque étape.
-        </Note>
-      )}
-
-      {type && (
-        <p className={styles.hint}>
-          Type retenu : <strong>{type.code} · {type.name}</strong>. Il est figé une fois le
-          brouillon ouvert — il commande les bibliothèques et le parcours.
-        </p>
-      )}
-
-      <div className={styles.row2}>
-        <Field
-          label="Composante d’affectation"
-          helper="Réduit la liste des activités. La composante retenue reste celle de l’activité choisie."
-        >
-          <Select
-            value={state.componentFilter}
-            onChange={(e) =>
-              // Changer de composante invalide l'activite si elle n'en releve
-              // plus : sans cela le dossier garderait une ligne devenue
-              // invisible a l'ecran.
-              set(
-                recompose({
-                  ...state,
-                  componentFilter: e.target.value,
-                  ptbaActivityId: activities.some(
-                    (a) => a.id === state.ptbaActivityId && a.componentCode === e.target.value,
-                  )
-                    ? state.ptbaActivityId
-                    : "",
-                }),
-              )
-            }
-            placeholder="Toutes les composantes"
-            options={components.map((c) => ({
-              value: c.code,
-              label: `${c.code} · ${c.shortLabel} — ${parComposante[c.code] ?? 0} activité${(parComposante[c.code] ?? 0) > 1 ? "s" : ""}`,
-            }))}
-          />
-        </Field>
-
-        <Field
-          label="Activité PTBA de rattachement"
-          required
-          helper={
-            activities.length === 0
-              ? "Aucune activité au plan de l’exercice en cours. Elle doit y être inscrite d’abord."
-              : visibles.length === 0
-                ? "Aucune activité sur cette composante."
-                : "L’enveloppe de cette activité plafonne le budget du TDR."
-          }
-        >
-          <Select
-            value={state.ptbaActivityId}
-            onChange={(e) => set(recompose({ ...state, ptbaActivityId: e.target.value }))}
-            placeholder="Sélectionner une activité"
-            options={visibles.map((a) => ({
-              value: a.id,
-              label: `${a.code} · ${a.title} — ${(Number(a.envelopeUsd) / 1e6).toFixed(2)} M USD`,
-            }))}
-          />
-        </Field>
-      </div>
-
-      {/* L'intitulé suit l'activité, et non l'inverse : il se compose de ce
-          qui précède. Le placer avant reviendrait à demander de nommer un
-          marché dont ni la nature ni l'objet ne sont encore choisis. */}
-      <Field
-        label="Intitulé du marché"
-        required
-        helper={
-          composed
-            ? "Composé depuis le type et l’activité. Remplacez le libellé de l’activité par l’objet précis du marché."
-            : "Choisissez le type et l’activité : un intitulé conforme à la convention vous sera proposé."
-        }
-      >
-        <Input
-          value={state.title}
-          onChange={(e) =>
-            // Vider le champ rend la main à la composition : l'auteur qui
-            // efface veut repartir de la proposition, pas d'un champ mort.
-            set({
-              ...state,
-              title: e.target.value,
-              titleTouched: e.target.value.trim().length > 0,
-            })
-          }
-          placeholder="Travaux — aménagement du centre des opérations de sécurité"
-        />
-      </Field>
-
-      {stillGeneric && (
-        <Note tone="warning" title="Cet intitulé reprend le libellé de l’activité">
-          Une activité du PTBA porte souvent plusieurs marchés — travaux, puis
-          fournitures, puis supervision. S’ils partagent tous le même intitulé,
-          ni le plan de passation ni les avis de la Banque ne les distinguent.
-          Nommez ce que ce marché achète.
-        </Note>
-      )}
-
-      {/* Maîtrise d'ouvrage bénéficiaire — distincte de l'organisation qui
-          rédige, et distincte des bénéficiaires visés, qui sont des
-          populations. Sans elle, l'assistance rédactionnelle devine. */}
-      <Field
-        label="Maîtrise d’ouvrage bénéficiaire"
-        helper="L’entité pour laquelle l’activité est conduite, si elle diffère de la vôtre. À ne pas confondre avec les bénéficiaires visés, qui sont les populations servies."
-      >
-        <Select
-          value={state.beneficiaryOrganisationId}
-          onChange={(e) => set({ ...state, beneficiaryOrganisationId: e.target.value })}
-          placeholder="Aucune — l’activité est conduite pour votre propre compte"
-          options={organisations.map((o) => ({
-            value: o.id,
-            label: `${o.code} — ${o.fullName}`,
-          }))}
-        />
-      </Field>
-    </div>
-  );
-}
 
 
 /** Rédaction du contexte, ancrée sur l'activité PTBA du dossier. */
