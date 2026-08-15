@@ -284,10 +284,13 @@
 .tagOk { background: var(--ptn-status-success-surface); color: var(--ptn-status-success-text); }
 .tagErr { background: var(--ptn-status-danger-surface); color: var(--ptn-status-danger-text); }
 .tagAi { background: var(--ptn-status-ai-surface); color: var(--ptn-status-ai-text); }
-.tagC1 { background: #d9fbfb; color: #007d79; }
-.tagC2 { background: var(--ptn-accent-light); color: var(--ptn-accent); }
-.tagC3 { background: #fff0f7; color: #d02670; }
-.tagC4 { background: var(--ptn-status-ai-surface); color: var(--ptn-status-ai); }
+// Composantes — jetons universels. C4 portait le violet réservé à l'IA,
+// et C2 suivait l'accent du profil connecté. Voir tokens.scss.
+.tagC1 { background: var(--ptn-composante-c1-surface); color: var(--ptn-composante-c1); }
+.tagC2 { background: var(--ptn-composante-c2-surface); color: var(--ptn-composante-c2); }
+.tagC3 { background: var(--ptn-composante-c3-surface); color: var(--ptn-composante-c3); }
+.tagC4 { background: var(--ptn-composante-c4-surface); color: var(--ptn-composante-c4); }
+.tagC5 { background: var(--ptn-composante-c5-surface); color: var(--ptn-composante-c5); }
 
 .dot {
   width: 6px;

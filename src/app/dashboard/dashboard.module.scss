@@ -552,10 +552,13 @@ table.dt {
   border-radius: 12px;
 }
 
-.tagC1 { background: #d9fbfb; color: #007d79; }
-.tagC2 { background: #edf5ff; color: #0043ce; }
-.tagC3 { background: #fff0f7; color: #d02670; }
-.tagC4 { background: #f6f2ff; color: #8a3ffc; }
+// Mêmes jetons que ugp-shared : la composante ne change pas de couleur
+// d'un écran à l'autre. C4 portait ici aussi le violet de l'IA.
+.tagC1 { background: var(--ptn-composante-c1-surface); color: var(--ptn-composante-c1); }
+.tagC2 { background: var(--ptn-composante-c2-surface); color: var(--ptn-composante-c2); }
+.tagC3 { background: var(--ptn-composante-c3-surface); color: var(--ptn-composante-c3); }
+.tagC4 { background: var(--ptn-composante-c4-surface); color: var(--ptn-composante-c4); }
+.tagC5 { background: var(--ptn-composante-c5-surface); color: var(--ptn-composante-c5); }
 
 /* Status pills */
 .status {

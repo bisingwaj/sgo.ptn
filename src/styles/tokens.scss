@@ -35,6 +35,24 @@
   --ptn-status-ai-surface: #f6f2ff;
   --ptn-status-ai-text: #6929c4;
 
+  // ----- Composantes du projet (C1–C5) -----
+  // Échelle catégorielle, pas une échelle de statut : elle identifie une
+  // composante du MEP, elle ne dit rien de son état.
+  //
+  // Universelle comme les couleurs de statut : jamais repeinte par le
+  // profil. C2 empruntait --ptn-accent, donc changeait de couleur selon
+  // l'utilisateur connecté — une composante n'est pas une préférence.
+  //
+  // Trois teintes sont exclues d'office : le violet appartient à l'IA, le
+  // cyan de marque identifie l'institution, et le vert / le jaune / le
+  // rouge appartiennent aux statuts. Les valeurs viennent de la palette
+  // catégorielle Carbon, choisies pour rester distinguables entre elles.
+  --ptn-composante-c1: #005d5d; // Teal 70   · Accès & Inclusion
+  --ptn-composante-c2: #002d9c; // Blue 80   · Fondations Numériques
+  --ptn-composante-c3: #9f1853; // Magenta 70 · Compétences & Innovation
+  --ptn-composante-c4: #8a3800; // Orange 70 · Coordination & Gestion
+  --ptn-composante-c5: #525252; // Gray 70   · CERC, réserve non dotée
+
   // ----- Identité institutionnelle UGPTN -----
   // Relevés sur le logo. Le bleu du réseau cartographique coïncide
   // avec Carbon Cyan 50 — la marque et le design system sont donc
@@ -130,6 +148,14 @@
   --ptn-status-danger-text: #ff8389;
   --ptn-status-info-text: #78a9ff;
   --ptn-status-ai-text: #be95ff;
+
+  // Composantes — teintes claires de la même palette catégorielle.
+  // Les valeurs du thème clair descendent sous 4,5:1 sur fond sombre.
+  --ptn-composante-c1: #08bdba; // Teal 40
+  --ptn-composante-c2: #78a9ff; // Blue 40
+  --ptn-composante-c3: #ff7eb6; // Magenta 40
+  --ptn-composante-c4: #ff832b; // Orange 40
+  --ptn-composante-c5: #a8a8a8; // Gray 40
 }
 
 // ----- Profile-specific themes (overrides --ptn-accent*) -----
@@ -188,4 +214,13 @@
 [data-carbon-theme='g100'] {
   --ptn-accent-surface: color-mix(in srgb, var(--ptn-accent) 12%, var(--cds-background));
   --ptn-accent-surface-strong: color-mix(in srgb, var(--ptn-accent) 22%, var(--cds-background));
+
+  // Surfaces de composante, dérivées du fond du thème courant — comme
+  // l'accent, et pour la même raison : dix valeurs de moins à tenir à la
+  // main, et une pastille lisible dans les deux thèmes sans arbitrage.
+  --ptn-composante-c1-surface: color-mix(in srgb, var(--ptn-composante-c1) 14%, var(--cds-background));
+  --ptn-composante-c2-surface: color-mix(in srgb, var(--ptn-composante-c2) 14%, var(--cds-background));
+  --ptn-composante-c3-surface: color-mix(in srgb, var(--ptn-composante-c3) 14%, var(--cds-background));
+  --ptn-composante-c4-surface: color-mix(in srgb, var(--ptn-composante-c4) 14%, var(--cds-background));
+  --ptn-composante-c5-surface: color-mix(in srgb, var(--ptn-composante-c5) 14%, var(--cds-background));
 }
