@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AiService, type GenerationResult } from './ai.service';
 import { buildSystemPrompt } from './project-knowledge';
+import { FIELDS } from './field-registry';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
@@ -521,5 +522,122 @@ Répondez par un objet JSON de la forme :
 
     await this.record(tdrId, 'livrables', result.model, actor, ctx);
     return { proposal: parsed, model: result.model, groundedOn: grounded };
+  }
+  /**
+   * Consignes de rédaction, une par champ de texte.
+   *
+   * Elles portent ce que le registre ne dit pas : la longueur attendue, et
+   * surtout ce qu'il ne faut PAS écrire là. Sans elles, le modèle traite
+   * chaque champ comme une invitation à tout redire, et les six sections
+   * finissent par se répéter.
+   */
+  private static readonly CONSIGNES: Record<string, string> = {
+    beneficiaries: `Attendu : un paragraphe, 60 à 110 mots.
+
+Les POPULATIONS servies, jamais l'institution maître d'ouvrage — c'est la confusion la plus fréquente sur ce champ. Quantifiez lorsque le dossier porte un chiffre ; à défaut, laissez « [nombre à préciser] » plutôt que d'avancer une estimation. Distinguez les bénéficiaires directs des bénéficiaires indirects si la distinction a un sens ici.`,
+
+    expectedResults: `Attendu : trois à six résultats, un par ligne, sans numérotation ni puce.
+
+Chaque ligne énonce ce qui SERA CONSTATÉ à l'issue, avec son horizon. Un résultat n'est ni une action ni un livrable : « le centre de supervision traite les incidents 24 h/24 » est un résultat, « installer les serveurs » n'en est pas un. Les valeurs cibles absentes du dossier restent entre crochets.`,
+
+    approach: `Attendu : deux paragraphes, 120 à 200 mots.
+
+L'approche générale attendue du prestataire : par quelle voie il s'y prend, et pourquoi elle convient à cet objet. Ne détaillez pas les étapes — la méthodologie les porte, dans une section distincte. N'imposez pas d'outil ni de fournisseur nommé.`,
+
+    methodology: `Attendu : les étapes attendues, une par ligne, dans l'ordre.
+
+Chaque ligne nomme une phase et ce qu'elle produit. Restez sur ce que le prestataire doit faire, non sur ce que l'administration fera de son côté. Ne fixez pas de dates : le calendrier fait l'objet d'une section propre.`,
+
+    constraints: `Attendu : les contraintes réelles, une par ligne.
+
+Ce qui borne l'exécution : accès aux sites, disponibilité des données, saisonnalité, interopérabilité avec l'existant, sécurité. N'inventez aucune contrainte réglementaire ni aucun texte de loi que le dossier ne mentionne pas. Une contrainte qui n'en est pas une affaiblit celles qui en sont.`,
+
+    expertise: `Attendu : les profils-clés, un par ligne, avec pour chacun le domaine et l'expérience minimale attendue.
+
+Restez sur des qualifications vérifiables. Ne nommez aucune personne, aucun cabinet, aucune certification propriétaire qui restreindrait la concurrence — la mise en concurrence ouverte est la règle du projet.`,
+  };
+
+  /**
+   * Assistance sur un champ de texte quelconque du dossier.
+   *
+   * Un seul point d'entrée plutôt qu'un endpoint par champ : le registre
+   * `FIELDS` porte déjà la description et la nature de chacun, et huit
+   * routes qui ne diffèrent que par leur consigne auraient divergé à la
+   * première correction.
+   *
+   * Les champs de MONTANT et de DATE en sont exclus, et ce n'est pas un
+   * oubli : le socle distingue la dictée de la fabrication, et proscrit la
+   * seconde. Un budget ne se propose pas.
+   */
+  async proposeField(
+    tdrId: string,
+    champ: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ): Promise<Proposal<string> & { mode?: 'redaction' | 'reprise' }> {
+    const spec = FIELDS.find((f) => f.cle === champ);
+    if (!spec) {
+      throw new BadRequestException(`Champ inconnu du dossier : ${champ}.`);
+    }
+
+    // Les deux premiers ont leur propre régime — le contexte pose le cadre,
+    // la justification distingue rédaction et reprise. Y déléguer évite de
+    // maintenir deux fois la même consigne.
+    if (champ === 'context') return this.proposeContext(tdrId, actor, ctx);
+    if (champ === 'justification') return this.proposeJustification(tdrId, actor, ctx);
+
+    if (spec.kind === 'liste_objectifs' || spec.kind === 'liste_livrables') {
+      throw new BadRequestException(
+        `Le champ ${champ} est une liste : il a sa propre route d’assistance, qui renvoie des entrées structurées.`,
+      );
+    }
+    if (spec.kind !== 'texte') {
+      throw new BadRequestException(
+        `Le champ ${champ} porte une valeur chiffrée ou une date. Ces valeurs ne se génèrent pas : ` +
+          `l’assistant les transcrit lorsqu’on les lui dicte, il ne les propose jamais.`,
+      );
+    }
+
+    const consigne = TdrAssistService.CONSIGNES[champ];
+    if (!consigne) {
+      throw new BadRequestException(`Aucune consigne de rédaction n’est définie pour ${champ}.`);
+    }
+
+    const tdr = await this.loadContext(tdrId);
+    const { text, grounded } = TdrAssistService.describe(tdr);
+    const live = await this.liveGrounding(tdr);
+
+    // Reprise ou rédaction, comme pour la justification : sur un texte
+    // existant, améliorer ne doit pas servir à ajouter des affirmations que
+    // l'auteur n'a pas écrites et ne relira pas.
+    const existant = (tdr as unknown as Record<string, unknown>)[champ];
+    const dejaEcrit = typeof existant === 'string' && existant.trim().length > 0;
+
+    const result = await this.ai.generate({
+      system: TdrAssistService.system(tdr.tdrType.requiresPges),
+      maxTokens: 900,
+      user: `${dejaEcrit ? 'Reprenez' : 'Rédigez'} la section « ${spec.description.split(' :')[0]} » de ce TDR.
+
+${text}${live}
+
+${consigne}
+
+${
+  dejaEcrit
+    ? `TEXTE EXISTANT, à reprendre dans sa forme sans y introduire aucun fait nouveau :
+${String(existant).trim()}`
+    : ''
+}
+
+Répondez par le texte seul, sans titre ni commentaire.`,
+    });
+
+    await this.record(tdrId, `champ:${champ}`, result.model, actor, ctx);
+    return {
+      proposal: result.text.trim(),
+      model: result.model,
+      groundedOn: grounded,
+      mode: dejaEcrit ? 'reprise' : 'redaction',
+    };
   }
 }

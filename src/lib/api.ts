@@ -810,6 +810,20 @@ export const tdrApi = {
    * enregistré tant que l'auteur ne l'a pas reprise. Répond 503 si aucune
    * clé n'est configurée côté serveur — le parcours reste utilisable.
    */
+  /**
+   * Assistance sur un champ de texte quelconque.
+   *
+   * Point d'entrée unique : le registre du backend porte la nature de chaque
+   * champ. Les montants et les dates sont refusés par le service — ils se
+   * dictent, ils ne se proposent pas.
+   */
+  assistField: (id: string, champ: string) =>
+    api.post<{
+      proposal: string;
+      model: string;
+      groundedOn: string[];
+      mode?: "redaction" | "reprise";
+    }>(`/tdr/${id}/assistance/champ`, { champ }),
   assistContext: (id: string) =>
     api.post<{ proposal: string; model: string; groundedOn: string[] }>(
       `/tdr/${id}/assistance/contexte`,

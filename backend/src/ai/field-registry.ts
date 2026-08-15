@@ -56,7 +56,15 @@ export interface FieldSpec {
   description: string;
   /** Étape du parcours qui le porte, pour situer l'écriture à l'écran */
   etape: string;
-  /** Longueur maximale acceptée, en caractères */
+  /**
+   * Longueur maximale acceptée, en caractères.
+   *
+   * Ce n'est plus une contrainte rédactionnelle : les plafonds bornaient la
+   * rédaction bien avant ce qu'un dossier réel demande, et un auteur s'y
+   * heurtait en écrivant normalement. Ce qui subsiste est un garde-fou
+   * technique — une réponse de modèle partie en boucle ne doit pas écrire
+   * un demi-mégaoctet dans un champ.
+   */
   max?: number;
 }
 
@@ -65,7 +73,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'context',
     kind: 'texte',
     etape: 'Cadrage',
-    max: 6000,
+    max: 40000,
     description:
       "Contexte du dossier : ce qui motive l'activité, son rattachement à la composante et au plan annuel. Deux à trois paragraphes.",
   },
@@ -73,7 +81,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'justification',
     kind: 'texte',
     etape: 'Cadrage',
-    max: 4000,
+    max: 30000,
     description:
       "Justification : pourquoi ce marché maintenant, et ce que son report coûterait. Un à deux paragraphes.",
   },
@@ -81,7 +89,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'beneficiaries',
     kind: 'texte',
     etape: 'Cadrage',
-    max: 2000,
+    max: 16000,
     description:
       "Bénéficiaires visés : les populations servies, non l'institution maître d'ouvrage. Quantifier si possible.",
   },
@@ -89,7 +97,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'expectedResults',
     kind: 'texte',
     etape: 'Objectifs & livrables',
-    max: 3000,
+    max: 24000,
     description:
       "Résultats attendus : ce qui sera constaté, avec son horizon. Un par ligne.",
   },
@@ -111,28 +119,28 @@ export const FIELDS: FieldSpec[] = [
     cle: 'approach',
     kind: 'texte',
     etape: 'Méthodologie',
-    max: 4000,
+    max: 30000,
     description: "Approche générale : la démarche retenue, son phasage.",
   },
   {
     cle: 'methodology',
     kind: 'texte',
     etape: 'Méthodologie',
-    max: 4000,
+    max: 30000,
     description: "Méthodes et outils : standards, référentiels, instruments mobilisés.",
   },
   {
     cle: 'constraints',
     kind: 'texte',
     etape: 'Méthodologie',
-    max: 3000,
+    max: 24000,
     description: "Contraintes : dépendances, ressources critiques, fenêtres de décision.",
   },
   {
     cle: 'expertise',
     kind: 'texte',
     etape: 'Calendrier & expertise',
-    max: 3000,
+    max: 24000,
     description:
       "Expertise requise : qualifications et expérience attendues de l'institution ou de l'équipe.",
   },

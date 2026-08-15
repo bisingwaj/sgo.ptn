@@ -64,6 +64,19 @@ export class AgentTurnDto {
   historique?: TourDeParoleDto[];
 }
 
+/**
+ * Champ visé par une demande d'assistance.
+ *
+ * Une chaine bornee : le service la confronte au registre FIELDS, seule
+ * autorite sur ce qui existe dans le monde de l'assistant.
+ */
+export class AssistFieldDto {
+  @ApiProperty({ example: 'methodology' })
+  @IsString()
+  @MaxLength(64)
+  champ!: string;
+}
+
 export class CreateDraftDto {
   @ApiProperty({ example: 'TDR-CS' })
   @IsString()
@@ -156,6 +169,26 @@ export class TdrController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.tdr.updateDraft(id, body, actor);
+  }
+
+  @Post(':id/assistance/champ')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Proposer la rédaction d’un champ de texte du dossier',
+    description:
+      'Point d’entrée unique pour les champs de texte : le registre FIELDS porte déjà la nature ' +
+      'et la description de chacun. Les champs de montant et de date en sont exclus — l’assistant ' +
+      'transcrit une valeur qu’on lui dicte, il n’en propose jamais. Rien n’est enregistré : ' +
+      'la proposition n’entre au dossier que si l’auteur la reprend.',
+  })
+  assistField(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssistFieldDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.assist.proposeField(id, dto.champ, actor, contextOf(req));
   }
 
   @Post(':id/assistance/contexte')
