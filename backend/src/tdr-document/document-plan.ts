@@ -61,6 +61,34 @@ const prose = (v: string | null | undefined): Bloc =>
   v && v.trim() ? { genre: 'paragraphe', texte: v.trim() } : { genre: 'absent', mention: VIDE };
 
 /**
+ * Champs qui s'écrivent une entrée par ligne.
+ *
+ * Résultats attendus, méthodologie, contraintes, expertise : la consigne de
+ * rédaction demande une entrée par ligne, l'écran offre une mise en liste,
+ * et le document les rendait pourtant en un seul paragraphe. Le tiret posé
+ * par l'auteur s'y retrouvait littéralement, au milieu du texte.
+ *
+ * Une seule ligne reste de la prose : forcer une liste d'un élément
+ * fabriquerait une puce là où il n'y a qu'une phrase.
+ *
+ * Les marqueurs de tête sont retirés — tiret, cadratin, puce, numérotation.
+ * Ils servent à voir la structure pendant la saisie ; le document, lui,
+ * porte sa propre puce, et deux puces valent une faute de composition.
+ */
+const listeOuProse = (v: string | null | undefined): Bloc => {
+  if (!v?.trim()) return { genre: 'absent', mention: VIDE };
+
+  const entrees = v
+    .split('\n')
+    .map((l) => l.trim().replace(/^(?:[-–—•*]|\d+[.)])\s*/, '').trim())
+    .filter(Boolean);
+
+  return entrees.length > 1
+    ? { genre: 'liste', entrees }
+    : { genre: 'paragraphe', texte: v.trim() };
+};
+
+/**
  * Compose le plan depuis le dossier.
  *
  * La numérotation suit celle d'un TDR de la Banque mondiale : objet et
@@ -101,7 +129,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
           }
         : { genre: 'absent', mention: 'Aucun objectif défini.' },
       ...(tdr.expectedResults?.trim()
-        ? ([{ genre: 'paragraphe', texte: tdr.expectedResults.trim() }] as Bloc[])
+        ? ([listeOuProse(tdr.expectedResults)] as Bloc[])
         : []),
     ],
   });
@@ -142,7 +170,9 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   sections.push({
     numero: '6',
     titre: 'Méthodologie',
-    blocs: [prose(tdr.approach), prose(tdr.methodology), prose(tdr.constraints)],
+    // L'approche reste de la prose : elle expose une voie, elle ne
+    // s'énumère pas. Les étapes et les contraintes, si.
+    blocs: [prose(tdr.approach), listeOuProse(tdr.methodology), listeOuProse(tdr.constraints)],
   });
 
   sections.push({
@@ -169,7 +199,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
           },
         ],
       },
-      prose(tdr.expertise),
+      listeOuProse(tdr.expertise),
       tdr.keyProfiles.length
         ? { genre: 'liste', entrees: tdr.keyProfiles.map((p) => PROFILS[p] ?? p) }
         : { genre: 'absent', mention: 'Aucun profil-clé désigné.' },

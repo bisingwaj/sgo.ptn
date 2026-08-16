@@ -282,14 +282,14 @@ export function AgentPanel({
           <IconButton
             type="submit"
             align="top-right"
-            size="md"
+            size="sm"
             label={
               occupe
                 ? "L’assistant répond…"
                 : "Envoyer — Entrée pour envoyer, Maj+Entrée pour aller à la ligne"
             }
             disabled={!tdrId || occupe || !saisie.trim()}
-            className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center disabled:hover:bg-ai disabled:opacity-30"
+            className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste mb-0.5 flex !h-8 !max-h-8 !min-h-8 !w-8 !max-w-8 !min-w-8 shrink-0 items-center justify-center !p-0 disabled:hover:bg-ai disabled:opacity-30"
           >
             {occupe ? (
               <span className="ptn-points" aria-hidden>
