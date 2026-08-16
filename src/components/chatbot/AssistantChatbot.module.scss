@@ -8,7 +8,7 @@
   width: 52px;
   height: 52px;
   background: var(--ptn-status-ai, #8a3ffc);
-  color: #fff;
+  color: var(--cds-text-on-color);
   border: 0;
   cursor: pointer;
   display: grid;
@@ -20,7 +20,7 @@
 
 .fab:hover {
   transform: scale(1.05);
-  background: #6929c4;
+  background: var(--ptn-status-ai-hover);
 }
 
 .fab:active {
@@ -102,7 +102,7 @@
 /* Header */
 .header {
   background: var(--ptn-status-ai, #8a3ffc);
-  color: #fff;
+  color: var(--cds-text-on-color);
   padding: 14px 16px;
   display: flex;
   align-items: center;
@@ -131,7 +131,7 @@
 }
 
 .headerSub {
-  font-size: 11px;
+  font-size: 12px;
   opacity: 0.85;
   font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
   margin-top: 2px;
@@ -140,7 +140,7 @@
 .headerClose {
   background: transparent;
   border: 0;
-  color: #fff;
+  color: var(--cds-text-on-color);
   width: 28px;
   height: 28px;
   display: grid;
@@ -189,7 +189,7 @@
 }
 
 .chipsTitle {
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.32px;
   color: var(--cds-text-helper);
@@ -224,68 +224,61 @@
 }
 
 /* Messages */
-.msg {
+/* Le fil ------------------------------------------------------------------
+   Deux traitements asymétriques, comme dans le panneau du parcours TDR :
+   la QUESTION est une bulle courte alignée à droite, la RÉPONSE est le corps
+   du panneau — pleine largeur, sans cadre, sans avatar.
+
+   Ce n'est pas une préférence. Une réponse porte des listes, des montants et
+   ses sources ; enfermée dans une bulle de 80 % bordée, elle se lit deux
+   fois moins bien. Et deux bulles en vis-à-vis suggèrent une conversation
+   entre égaux, là où l'un demande et l'autre renseigne.
+
+   Les avatars sont retirés : « ✦ » n'apprend rien, et le « M » de l'auteur
+   était une initiale inventée — celui qui lit peut s'appeler autrement. */
+
+.tourAuteur {
   display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  justify-content: flex-end;
 }
 
-.msgUser {
-  flex-direction: row-reverse;
+.tourAi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
 }
 
-.msgAvatar {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 500;
-  flex-shrink: 0;
-  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
-}
-
-.msgAvatarAi {
-  background: var(--ptn-status-ai-surface);
-  color: var(--ptn-status-ai);
-}
-
-.msgAvatarUser {
-  background: var(--ptn-accent);
-  color: #fff;
-}
-
-.msgBubble {
-  max-width: 80%;
+.bulleAuteur {
+  max-width: 85%;
   background: var(--cds-layer);
-  padding: 10px 12px;
-  font-size: 13px;
   color: var(--cds-text-primary);
+  font-size: 13px;
   line-height: 1.5;
-  word-wrap: break-word;
-  border: 1px solid var(--cds-border-subtle);
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+
+  p {
+    margin: 0;
+  }
 }
 
-.msgBubbleUser {
-  background: var(--ptn-accent);
-  color: #fff;
-  border-color: var(--ptn-accent);
-}
 
-.msgBubble p { margin: 0 0 6px; }
-.msgBubble p:last-child { margin-bottom: 0; }
-
+/* Ce qui a servi à répondre.
+   Un filet les détache de la réponse sans les enfermer : ce ne sont pas des
+   mots de la réponse, ce sont les tables qui l'ont nourrie. */
 .msgSources {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: var(--ptn-space-03);
+  padding-top: var(--ptn-space-02);
   border-top: 1px solid var(--cds-border-subtle);
 }
 
 .msgSource {
-  font-size: 10px;
+  /* 11 px, plancher du dépôt : ces usagers travaillent à 125-150 % de zoom,
+     et une source illisible ne vaut pas mieux qu'une source absente. */
+  font-size: 12px;
   background: var(--cds-layer-accent-01);
   color: var(--cds-text-helper);
   padding: 2px 6px;
@@ -362,7 +355,7 @@
   width: 36px;
   height: 36px;
   background: var(--ptn-status-ai, #8a3ffc);
-  color: #fff;
+  color: var(--cds-text-on-color);
   border: 0;
   display: grid;
   place-items: center;
@@ -370,7 +363,7 @@
   flex-shrink: 0;
 
   &:hover {
-    background: #6929c4;
+    background: var(--ptn-status-ai-hover);
   }
 
   &:disabled {
@@ -381,7 +374,7 @@
 }
 
 .disclaimer {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--cds-text-helper);
   margin-top: 6px;
   text-align: center;

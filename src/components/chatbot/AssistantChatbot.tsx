@@ -264,22 +264,19 @@ export function AssistantChatbot() {
           ) : (
             <>
               {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`${styles.msg} ${m.role === "user" ? styles.msgUser : ""}`}
-                >
-                  <div
-                    className={`${styles.msgAvatar} ${
-                      m.role === "user" ? styles.msgAvatarUser : styles.msgAvatarAi
-                    }`}
-                  >
-                    {m.role === "user" ? "M" : "✦"}
-                  </div>
-                  <div
-                    className={`${styles.msgBubble} ${
-                      m.role === "user" ? styles.msgBubbleUser : ""
-                    }`}
-                  >
+                /* Deux traitements asymétriques, et c'est délibéré : la
+                   question est une bulle courte, alignée à droite ; la
+                   réponse est le corps du panneau, pleine largeur et sans
+                   cadre. Une réponse qui porte des listes et des sources
+                   ne tient pas dans une bulle de 80 %, et la mettre en
+                   vis-à-vis de la question suggère une conversation entre
+                   égaux là où l'un demande et l'autre renseigne.
+
+                   Même vocabulaire que le panneau du parcours TDR : deux
+                   surfaces d'assistance dans le même produit ne doivent pas
+                   se lire différemment. */
+                <div key={m.id} className={m.role === "user" ? styles.tourAuteur : styles.tourAi}>
+                  <div className={m.role === "user" ? styles.bulleAuteur : undefined}>
                     {/* Ce qu'il consulte, pendant qu'il le fait. Disparaît
                         une fois la réponse close : c'est un signe de vie,
                         pas une trace à conserver. */}
