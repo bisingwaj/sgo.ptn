@@ -532,6 +532,18 @@ Répondez par un objet JSON de la forme :
    * finissent par se répéter.
    */
   private static readonly CONSIGNES: Record<string, string> = {
+    context: `Attendu : deux à trois paragraphes, 180 à 260 mots au total.
+
+Le premier paragraphe situe le besoin dans le cadre du projet. Les suivants traitent de l'objet du PRÉSENT TDR tel que défini plus haut — pas de l'activité du plan dans son ensemble, qui le dépasse.
+
+N'énumérez ni objectifs ni livrables : ils font l'objet de sections distinctes. Ne concluez pas par une formule d'ouverture.`,
+
+    justification: `Attendu : un à deux paragraphes, 120 à 180 mots.
+
+La section « Contexte » précède celle-ci dans le document et a déjà exposé la situation, le rattachement à la composante et les enjeux. Ne les redites pas. Vous répondez à une autre question : qu'est-ce qui rend cette action nécessaire MAINTENANT, et que coûterait son report ?
+
+Ne recitez ni le code de l'activité, ni les montants, ni les indicateurs déjà mentionnés au contexte — le lecteur vient de les lire.`,
+
     beneficiaries: `Attendu : un paragraphe, 60 à 110 mots.
 
 Les POPULATIONS servies, jamais l'institution maître d'ouvrage — c'est la confusion la plus fréquente sur ce champ. Quantifiez lorsque le dossier porte un chiffre ; à défaut, laissez « [nombre à préciser] » plutôt que d'avancer une estimation. Distinguez les bénéficiaires directs des bénéficiaires indirects si la distinction a un sens ici.`,
@@ -604,9 +616,17 @@ Restez sur des qualifications vérifiables. Ne nommez aucune personne, aucun cab
     const existant = (tdr as unknown as Record<string, unknown>)[champ];
     const dejaEcrit = typeof existant === 'string' && existant.trim().length > 0;
 
+    // Le contexte précède toutes les autres sections dans le document : le
+    // donner évite qu'elles le redisent, ce qui est le défaut le plus
+    // fréquent des dossiers reçus.
+    const contexteDeja =
+      champ !== 'context' && tdr.context?.trim()
+        ? `\n\nCONTEXTE DÉJÀ RÉDIGÉ, que le lecteur aura lu avant votre texte — ne le répétez pas :\n${tdr.context.trim()}`
+        : '';
+
     const user = `${dejaEcrit ? 'Reprenez' : 'Rédigez'} la section « ${spec.description.split(' :')[0]} » de ce TDR.
 
-${text}${live}
+${text}${live}${contexteDeja}
 
 ${consigne}
 
@@ -676,70 +696,23 @@ Répondez par le texte seul, sans titre ni commentaire.`;
     champ: string,
     actor: AuthenticatedUser,
     ctx: RequestContext,
-  ): Promise<Proposal<string> & { mode?: 'redaction' | 'reprise' }> {
-    const spec = FIELDS.find((f) => f.cle === champ);
-    if (!spec) {
-      throw new BadRequestException(`Champ inconnu du dossier : ${champ}.`);
-    }
-
-    // Les deux premiers ont leur propre régime — le contexte pose le cadre,
-    // la justification distingue rédaction et reprise. Y déléguer évite de
-    // maintenir deux fois la même consigne.
-    if (champ === 'context') return this.proposeContext(tdrId, actor, ctx);
-    if (champ === 'justification') return this.proposeJustification(tdrId, actor, ctx);
-
-    if (spec.kind === 'liste_objectifs' || spec.kind === 'liste_livrables') {
-      throw new BadRequestException(
-        `Le champ ${champ} est une liste : il a sa propre route d’assistance, qui renvoie des entrées structurées.`,
-      );
-    }
-    if (spec.kind !== 'texte') {
-      throw new BadRequestException(
-        `Le champ ${champ} porte une valeur chiffrée ou une date. Ces valeurs ne se génèrent pas : ` +
-          `l’assistant les transcrit lorsqu’on les lui dicte, il ne les propose jamais.`,
-      );
-    }
-
-    const consigne = TdrAssistService.CONSIGNES[champ];
-    if (!consigne) {
-      throw new BadRequestException(`Aucune consigne de rédaction n’est définie pour ${champ}.`);
-    }
-
-    const tdr = await this.loadContext(tdrId);
-    const { text, grounded } = TdrAssistService.describe(tdr);
-    const live = await this.liveGrounding(tdr);
-
-    // Reprise ou rédaction, comme pour la justification : sur un texte
-    // existant, améliorer ne doit pas servir à ajouter des affirmations que
-    // l'auteur n'a pas écrites et ne relira pas.
-    const existant = (tdr as unknown as Record<string, unknown>)[champ];
-    const dejaEcrit = typeof existant === 'string' && existant.trim().length > 0;
+  ): Promise<Proposal<string> & { mode: 'redaction' | 'reprise' }> {
+    // La demande est préparée par `prepareField`, partagée avec le flux :
+    // le texte produit ne doit pas dépendre du chemin emprunté.
+    const prep = await this.prepareField(tdrId, champ);
 
     const result = await this.ai.generate({
-      system: TdrAssistService.system(tdr.tdrType.requiresPges),
+      system: prep.system,
       maxTokens: 900,
-      user: `${dejaEcrit ? 'Reprenez' : 'Rédigez'} la section « ${spec.description.split(' :')[0]} » de ce TDR.
-
-${text}${live}
-
-${consigne}
-
-${
-  dejaEcrit
-    ? `TEXTE EXISTANT, à reprendre dans sa forme sans y introduire aucun fait nouveau :
-${String(existant).trim()}`
-    : ''
-}
-
-Répondez par le texte seul, sans titre ni commentaire.`,
+      user: prep.user,
     });
 
     await this.record(tdrId, `champ:${champ}`, result.model, actor, ctx);
     return {
       proposal: result.text.trim(),
       model: result.model,
-      groundedOn: grounded,
-      mode: dejaEcrit ? 'reprise' : 'redaction',
+      groundedOn: prep.grounded,
+      mode: prep.mode,
     };
   }
 }
