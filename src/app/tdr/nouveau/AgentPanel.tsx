@@ -16,25 +16,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parlerAgent, type AgentEvent, type TourDeParole } from "@/lib/agent-stream";
 import { AiGenerate, Close, SendAlt, Undo, WarningAltFilled } from "@carbon/icons-react";
-import styles from "./agent.module.scss";
+import { useAssistant, type Bulle, type Ecriture } from "./assistant-contexte";
 
 /** Une écriture faite par l'assistant, et de quoi la défaire. */
-export interface Ecriture {
-  champ: string;
-  etape: string;
-  valeur: unknown;
-  avant: unknown;
-}
-
-interface Bulle {
-  role: "user" | "assistant";
-  texte: string;
-  /** Ce que l'assistant a fait pendant ce tour */
-  actes: Array<{ genre: "travail" | "ecriture" | "refus"; libelle: string; champ?: string }>;
-  /** Écritures de ce tour, pour l'annulation */
-  ecritures: Ecriture[];
-  encours?: boolean;
-}
+export type { Ecriture } from "./assistant-contexte";
 
 const SUGGESTIONS = [
   "Rédige le contexte à partir de l’activité du plan.",
@@ -44,22 +29,20 @@ const SUGGESTIONS = [
 
 export function AgentPanel({
   tdrId,
-  ouvert,
-  onToggle,
   onEcriture,
   onAnnuler,
   etapeCourante,
 }: {
   tdrId: string | null;
-  ouvert: boolean;
-  onToggle: () => void;
   /** Le parcours recharge le champ écrit depuis la base */
   onEcriture: (e: Ecriture) => void;
   /** Restaure la valeur précédente */
   onAnnuler: (e: Ecriture) => void;
   etapeCourante: string;
 }) {
-  const [bulles, setBulles] = useState<Bulle[]>([]);
+  // Le fil vit dans le contexte : une génération lancée depuis un champ s'y
+  // inscrit aussi, et le panneau n'en est qu'une vue.
+  const { ouvert, fermer, bulles, setBulles, champCourant } = useAssistant();
   const [saisie, setSaisie] = useState("");
   const [occupe, setOccupe] = useState(false);
   const [apercu, setApercu] = useState<{ champ: string; texte: string } | null>(null);
@@ -112,111 +95,145 @@ export function AgentPanel({
     [tdrId, occupe, bulles, onEcriture],
   );
 
-  if (!ouvert) {
-    return (
-      <aside className={styles.replie}>
-        <button
-          type="button"
-          className={styles.poignee}
-          onClick={onToggle}
-          aria-label="Ouvrir l’assistant"
-          title="Assistant du dossier"
-        >
-          <AiGenerate size={18} aria-hidden />
-        </button>
-      </aside>
-    );
-  }
+  // Fermé, il n'occupe rien : plus de poignée flottante en permanence.
+  // L'assistance s'ouvre depuis la barre d'outils du champ, là où l'on
+  // écrit — c'est le seul endroit où l'on en a besoin.
+  if (!ouvert) return null;
+
+  const vide = bulles.length === 0;
 
   return (
-    <aside className={styles.panneau} aria-label="Assistant du dossier">
-      <header className={styles.tete}>
-        <AiGenerate size={16} aria-hidden />
-        <div className={styles.teteTexte}>
-          <strong>Assistant du dossier</strong>
-          <span>{etapeCourante}</span>
-        </div>
-        <button type="button" className={styles.fermer} onClick={onToggle} aria-label="Replier">
+    <aside
+      className="border-subtle bg-background flex h-full w-full flex-col border-l"
+      aria-label="Assistant du dossier"
+    >
+      {/* ---------- En-tête ---------- */}
+      <header className="border-subtle flex items-center gap-3 border-b px-4 py-3">
+        <span className="bg-ai-surface text-ai flex h-8 w-8 shrink-0 items-center justify-center">
+          <AiGenerate size={18} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="text-body text-primary block font-medium">Assistant du dossier</span>
+          <span className="text-caption text-helper block truncate">
+            {champCourant ?? etapeCourante}
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={fermer}
+          aria-label="Fermer l’assistant"
+          className="ptn-carte-liste text-secondary hover:bg-layer hover:text-primary flex h-8 w-8 items-center justify-center"
+        >
           <Close size={16} aria-hidden />
         </button>
       </header>
 
-      <div className={styles.fil} ref={filRef}>
-        {bulles.length === 0 && (
-          <div className={styles.accueil}>
-            <p>
-              Dites-lui ce que vous attendez. Il écrit directement dans les champs du dossier, et
-              signale ce qu’il a touché.
+      {/* ---------- Fil ---------- */}
+      <div ref={filRef} className="scroll-region flex flex-1 flex-col gap-5 overflow-y-auto p-4">
+        {vide && (
+          <div className="flex flex-col gap-4 py-6">
+            <p className="text-body text-secondary">
+              Dites-lui ce que vous attendez. Il écrit directement dans les champs du dossier
+              et signale ce qu’il a touché.
             </p>
-            <p className={styles.limite}>
-              Les montants, le rattachement au plan et les attestations de conformité ne lui sont
-              pas ouverts : ils se décident, ils ne se rédigent pas.
+            <p className="text-caption text-helper border-subtle border-l-2 pl-3">
+              Les montants, le rattachement au plan et les attestations de conformité ne lui
+              sont pas ouverts : ils se décident, ils ne se rédigent pas.
             </p>
-            <div className={styles.suggestions}>
-              {SUGGESTIONS.map((s) => (
+            <div className="flex flex-col gap-2">
+              {SUGGESTIONS.map((sug) => (
                 <button
-                  key={s}
+                  key={sug}
                   type="button"
-                  className={styles.suggestion}
-                  onClick={() => void envoyer(s)}
+                  onClick={() => void envoyer(sug)}
                   disabled={!tdrId}
+                  className="ptn-carte-liste border-subtle text-body text-primary hover:border-ai hover:bg-ai-surface border px-3 py-2.5 text-left disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {s}
+                  {sug}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {bulles.map((b, i) => (
-          <div key={i} className={b.role === "user" ? styles.bulleAuteur : styles.bulleAgent}>
-            {b.actes.length > 0 && (
-              <ul className={styles.actes}>
-                {b.actes.map((a, j) => (
-                  <li key={j} className={a.genre === "refus" ? styles.acteRefus : undefined}>
-                    {a.libelle}
-                  </li>
-                ))}
-              </ul>
-            )}
+        {bulles.map((b, i) =>
+          b.role === "user" ? (
+            <div key={i} className="flex justify-end">
+              <p className="bg-layer text-body text-primary ptn-entree-ligne max-w-[85%] px-3 py-2">
+                {b.texte}
+              </p>
+            </div>
+          ) : (
+            <div key={i} className="ptn-entree-ligne flex flex-col gap-2">
+              {/* Ce que l'assistant fait, à mesure : sans cela l'auteur
+                  regardait un écran immobile pendant vingt secondes. */}
+              {b.actes.length > 0 && (
+                <ul className="flex flex-col gap-1">
+                  {b.actes.map((a, j) => (
+                    <li
+                      key={j}
+                      className={`text-caption flex items-center gap-2 ${
+                        a.genre === "refus" ? "text-danger-text" : "text-helper"
+                      }`}
+                    >
+                      <i
+                        aria-hidden
+                        className={`inline-block h-1.5 w-1.5 shrink-0 ${
+                          a.genre === "refus" ? "bg-danger" : "bg-ai"
+                        }`}
+                      />
+                      {a.libelle}
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            {b.texte && <p className={styles.texte}>{b.texte}</p>}
+              {b.texte && (
+                <p className="text-body text-primary whitespace-pre-wrap">{b.texte}</p>
+              )}
 
-            {b.encours && !b.texte && b.actes.length === 0 && (
-              <span className={styles.points} aria-label="L’assistant travaille">
-                <i />
-                <i />
-                <i />
-              </span>
-            )}
-
-            {b.ecritures.map((e) => (
-              <div key={e.champ} className={styles.annuler}>
-                <span>
-                  <strong>{e.champ}</strong> · étape {e.etape}
+              {b.encours && !b.texte && b.actes.length === 0 && (
+                <span className="text-caption text-helper" aria-label="L’assistant travaille">
+                  L’assistant travaille…
                 </span>
-                <button type="button" onClick={() => onAnnuler(e)}>
-                  <Undo size={13} aria-hidden /> Annuler
-                </button>
-              </div>
-            ))}
-          </div>
-        ))}
+              )}
+
+              {b.ecritures.map((e) => (
+                <div
+                  key={e.champ}
+                  className="border-ai bg-ai-surface flex flex-wrap items-center gap-2 border px-3 py-2"
+                >
+                  <span className="text-caption text-ai-text flex-1">
+                    Écrit dans <strong>{e.champ}</strong> · étape {e.etape}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onAnnuler(e)}
+                    className="ptn-carte-liste border-ai text-ai-text text-caption inline-flex items-center gap-1.5 border px-2 py-1"
+                  >
+                    <Undo size={13} aria-hidden /> Annuler
+                  </button>
+                </div>
+              ))}
+            </div>
+          ),
+        )}
 
         {/* Le texte tel qu'il s'écrit dans le champ, avant même d'y être
             enregistré. C'est ce qui remplace l'écran immobile. */}
         {apercu && (
-          <div className={styles.apercu}>
-            <span className={styles.apercuTete}>
+          <div className="border-ai bg-ai-surface border p-3">
+            <span className="text-caption text-ai-text block">
               Écriture dans <strong>{apercu.champ}</strong>
             </span>
-            <p>{apercu.texte}</p>
+            <p className="text-body text-primary mt-1 whitespace-pre-wrap">{apercu.texte}</p>
           </div>
         )}
       </div>
 
+      {/* ---------- Saisie ---------- */}
       <form
-        className={styles.saisie}
+        className="border-subtle flex items-end gap-2 border-t p-3"
         onSubmit={(e) => {
           e.preventDefault();
           void envoyer(saisie);
@@ -236,8 +253,14 @@ export function AgentPanel({
               void envoyer(saisie);
             }
           }}
+          className="border-subtle bg-field text-body text-primary placeholder:text-placeholder focus-visible:border-ai min-h-[3rem] flex-1 resize-none border px-3 py-2 outline-none"
         />
-        <button type="submit" disabled={!tdrId || occupe || !saisie.trim()} aria-label="Envoyer">
+        <button
+          type="submit"
+          disabled={!tdrId || occupe || !saisie.trim()}
+          aria-label="Envoyer"
+          className="bg-ai text-on-color ptn-carte-liste flex h-10 w-10 shrink-0 items-center justify-center disabled:cursor-not-allowed disabled:opacity-40"
+        >
           <SendAlt size={16} aria-hidden />
         </button>
       </form>
@@ -301,14 +324,5 @@ function appliquer(
   }
 }
 
-/** Rendu de l'état « l'assistant réfléchit », hors du fil. */
-export function MarqueAssistee({ children }: { children: React.ReactNode }) {
-  return (
-    <span className={styles.marque} title="L’assistant a contribué à ce champ">
-      <AiGenerate size={12} aria-hidden />
-      {children}
-    </span>
-  );
-}
 
 export { WarningAltFilled };

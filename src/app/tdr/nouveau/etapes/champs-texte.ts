@@ -62,6 +62,7 @@ export const CHAMPS_TEXTE: Record<string, ChampTexte> = {
 
   expectedResults: {
     cle: "expectedResults",
+    parLigne: true,
     question: "Qu’est-ce qui sera constaté à l’issue ?",
     aide: "Un résultat n’est ni une action ni un livrable. « Le centre traite les incidents 24 h/24 » est un résultat ; « installer les serveurs » n’en est pas un.",
     annonceIa:
@@ -92,6 +93,7 @@ export const CHAMPS_TEXTE: Record<string, ChampTexte> = {
 
   methodology: {
     cle: "methodology",
+    parLigne: true,
     question: "Quelles étapes le prestataire doit-il suivre ?",
     aide: "Chaque ligne nomme une phase et ce qu’elle produit. Restez sur ce que le prestataire fait — pas sur ce que l’administration fera de son côté.",
     annonceIa:
@@ -107,6 +109,7 @@ export const CHAMPS_TEXTE: Record<string, ChampTexte> = {
 
   constraints: {
     cle: "constraints",
+    parLigne: true,
     question: "Qu’est-ce qui borne l’exécution ?",
     aide: "Accès aux sites, disponibilité des données, saisonnalité, interopérabilité, sécurité. Une contrainte qui n’en est pas une affaiblit celles qui en sont.",
     annonceIa:
@@ -122,6 +125,7 @@ export const CHAMPS_TEXTE: Record<string, ChampTexte> = {
 
   expertise: {
     cle: "expertise",
+    parLigne: true,
     question: "Quelle expertise le marché exige-t-il ?",
     aide: "Les profils-clés, avec pour chacun le domaine et l’expérience minimale. Des qualifications vérifiables, jamais des noms.",
     annonceIa:

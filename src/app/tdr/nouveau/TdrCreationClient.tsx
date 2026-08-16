@@ -68,7 +68,8 @@ import {
   REPORTING_RHYTHMS,
   freeRisks,
 } from "./referentiel-ecran";
-import { AgentPanel, type Ecriture } from "./AgentPanel";
+import { AgentPanel } from "./AgentPanel";
+import { AssistantProvider, useAssistant, type Ecriture } from "./assistant-contexte";
 import styles from "./tdr-creation.module.scss";
 
 /**
@@ -284,10 +285,13 @@ function AiAssist({
 }
 
 
-export function TdrCreationClient() {
+function Parcours() {
   const router = useRouter();
   const params = useSearchParams();
   const { user, loading: authLoading, can } = useAuth();
+  // L'ouverture du panneau appartient à l'assistant, plus au parcours : elle
+  // se commande depuis la barre d'outils du champ où l'on écrit.
+  const { ouvert: assistantOuvert } = useAssistant();
 
   const [types, setTypes] = useState<TdrTypeApi[]>([]);
   const [activities, setActivities] = useState<PtbaActivityApi[]>([]);
@@ -311,7 +315,6 @@ export function TdrCreationClient() {
 
   // L'assistant est replié par défaut : il s'ouvre quand on l'appelle, et
   // suit ensuite d'étape en étape.
-  const [agentOuvert, setAgentOuvert] = useState(false);
   const [etatCourant, setEtatCourant] = useState<State | null>(null);
   const [etapeCourante, setEtapeCourante] = useState('');
   /**
@@ -927,12 +930,10 @@ export function TdrCreationClient() {
       }
       cancelHref="/tdr"
       finishLabel="Transmettre à l’UGP"
-      asideOpen={agentOuvert}
+      asideOpen={assistantOuvert}
       aside={
         <AgentPanel
           tdrId={etatCourant?.tdrId ?? null}
-          ouvert={agentOuvert}
-          onToggle={() => setAgentOuvert((v) => !v)}
           etapeCourante={etapeCourante}
           onEcriture={() => {
             const id = etatCourant?.tdrId;
@@ -1810,5 +1811,19 @@ function ReviewStep({
         reconstituer ce qui a été transmis.
       </Note>
     </div>
+  );
+}
+
+/**
+ * Le fournisseur enveloppe le parcours entier.
+ *
+ * Le fil de l'assistant doit survivre au changement d'étape : une
+ * proposition faite au contexte se relit depuis l'écran des livrables.
+ */
+export function TdrCreationClient() {
+  return (
+    <AssistantProvider>
+      <Parcours />
+    </AssistantProvider>
   );
 }
