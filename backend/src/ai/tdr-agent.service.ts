@@ -52,6 +52,7 @@ export class TdrAgentService {
   /** Ce que l'auteur lit pendant que l'outil travaille. */
   private static readonly LIBELLES: Record<string, string> = {
     ecrire_champ: 'Écriture en cours…',
+    lire_dossier: 'Relecture du dossier…',
     lire_activite_ptba: 'Lecture de l’activité du plan…',
     lire_bibliotheque: 'Consultation du référentiel…',
     lister_organisations: 'Recherche au référentiel des organisations…',
@@ -107,6 +108,24 @@ export class TdrAgentService {
               },
             },
             required: ['champ', 'valeur'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'lire_dossier',
+          description:
+            "Relit ce que le dossier contient DÉJÀ : les champs de texte rédigés, avec leur contenu intégral. À appeler avant toute reprise, correction ou amélioration d'un texte existant — sans cela vous écririez par-dessus un texte que vous n'avez pas lu.",
+          parameters: {
+            type: 'object',
+            properties: {
+              champ: {
+                type: 'string',
+                description:
+                  'Un champ précis. Omettre pour obtenir tous les champs rédigés du dossier.',
+              },
+            },
           },
         },
       },
@@ -316,6 +335,8 @@ export class TdrAgentService {
       '',
       "Avant de rédiger sur l'objet du marché, appelez `lire_activite_ptba` : l'activité porte ses propres objectifs, livrables et indicateurs, et le dossier doit s'y accorder.",
       '',
+      "Dès qu'il s'agit de REPRENDRE, corriger ou améliorer un texte, appelez d'abord `lire_dossier` : sans cela vous écririez par-dessus un texte que vous n'avez pas lu. Ne demandez jamais à l'auteur de vous recopier ce que le dossier contient déjà — vous savez le lire.",
+      '',
       "Écrivez un champ à la fois, et dites en une phrase ce que vous venez d'écrire. Ne réécrivez jamais un champ que l'auteur ne vous a pas désigné.",
       '',
       "Si l'auteur conteste un texte, retouchez-le et réécrivez le champ. Ne recommencez pas de zéro sans qu'il le demande.",
@@ -337,6 +358,45 @@ export class TdrAgentService {
     }
 
     switch (appel.function.name) {
+      /**
+       * L'agent savait écrire et ne savait pas lire.
+       *
+       * Prié d'améliorer un texte existant, il répondait qu'aucun outil ne
+       * lui permettait de le relire, et proposait une rédaction neuve à la
+       * place — ce qui, sur un champ déjà travaillé, écrase le travail de
+       * l'auteur au lieu de le reprendre.
+       */
+      case 'lire_dossier': {
+        const demande = typeof args.champ === 'string' ? args.champ.trim() : '';
+        const lisibles = FIELDS.filter((f) => f.kind === 'texte');
+        const vises = demande ? lisibles.filter((f) => f.cle === demande) : lisibles;
+
+        if (vises.length === 0) {
+          return {
+            resultat:
+              `Le champ « ${demande} » n'est pas un champ de texte du dossier. ` +
+              `Champs lisibles : ${lisibles.map((f) => f.cle).join(', ')}.`,
+          };
+        }
+
+        const dossier = tdr as unknown as Record<string, unknown>;
+        const lignes = vises.map((f) => {
+          const v = dossier[f.cle];
+          const texte = typeof v === 'string' ? v.trim() : '';
+          return texte
+            ? `--- ${f.cle} (${texte.length} caractères) ---\n${texte}`
+            : `--- ${f.cle} --- (vide)`;
+        });
+
+        return {
+          resultat: lignes.join('\n\n'),
+          evenement: {
+            type: 'travail',
+            libelle: demande ? `Relecture du champ ${demande}` : 'Relecture du dossier',
+          },
+        };
+      }
+
       case 'lire_activite_ptba': {
         const a = tdr.ptbaActivity;
         if (!a) return { resultat: "Aucune activité PTBA n'est rattachée à ce dossier." };

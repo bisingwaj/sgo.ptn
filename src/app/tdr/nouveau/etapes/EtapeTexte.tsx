@@ -110,9 +110,14 @@ export function EtapeTexte({
       {/* Ce qu'on attend, juste avant d'écrire. C'était en colonne de
           droite, donc lu après coup — ou pas lu du tout. */}
       {champ.reperes && champ.reperes.length > 0 && (
-        <ul className="border-subtle flex flex-wrap gap-x-6 gap-y-1.5 border-l-2 py-1 pl-4">
-          {champ.reperes.map((r) => (
-            <li key={r} className="text-caption text-secondary">
+        // Un filet coloré et des séparateurs : sans eux, ces repères se
+        // lisaient comme du texte d'ambiance qu'on saute.
+        <ul className="border-accent bg-accent-surface flex flex-wrap items-center gap-x-3 gap-y-1.5 border-l-2 px-4 py-2.5">
+          {champ.reperes.map((r, i) => (
+            <li key={r} className="text-caption text-secondary flex items-center gap-3">
+              {i > 0 && (
+                <span aria-hidden className="bg-border-subtle inline-block h-3 w-px" />
+              )}
               {r}
             </li>
           ))}

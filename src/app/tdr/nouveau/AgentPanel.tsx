@@ -104,7 +104,7 @@ export function AgentPanel({
 
   return (
     <aside
-      className="border-subtle bg-background flex h-full w-full flex-col border-l"
+      className="border-subtle bg-background flex h-full max-h-full w-full min-h-0 flex-col border-l"
       aria-label="Assistant du dossier"
     >
       {/* ---------- En-tête ---------- */}
@@ -129,7 +129,12 @@ export function AgentPanel({
       </header>
 
       {/* ---------- Fil ---------- */}
-      <div ref={filRef} className="scroll-region flex flex-1 flex-col gap-5 overflow-y-auto p-4">
+      <div
+        ref={filRef}
+        // `min-h-0` : sans lui, un enfant flex grandit avec son contenu au
+        // lieu de defiler, et pousse la zone de saisie hors du cadre.
+        className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4"
+      >
         {vide && (
           <div className="flex flex-col gap-4 py-6">
             <p className="text-body text-secondary">
@@ -231,38 +236,53 @@ export function AgentPanel({
         )}
       </div>
 
-      {/* ---------- Saisie ---------- */}
+      {/* ---------- Saisie ----------
+          Un seul contenant : le bouton vit DANS le champ. Deux rectangles
+          côte à côte se désolidarisaient dès que le texte grandissait. */}
       <form
-        className="border-subtle flex items-end gap-2 border-t p-3"
+        className="border-subtle p-3"
         onSubmit={(e) => {
           e.preventDefault();
           void envoyer(saisie);
         }}
       >
-        <textarea
-          value={saisie}
-          onChange={(e) => setSaisie(e.target.value)}
-          placeholder={tdrId ? "Que voulez-vous ?" : "Ouvrez d’abord le brouillon."}
-          rows={2}
-          disabled={!tdrId || occupe}
-          onKeyDown={(e) => {
-            // Entrée envoie, Maj+Entrée passe à la ligne : c'est l'usage
-            // dans une zone de conversation.
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void envoyer(saisie);
-            }
-          }}
-          className="border-subtle bg-field text-body text-primary placeholder:text-placeholder focus-visible:border-ai min-h-[3rem] flex-1 resize-none border px-3 py-2 outline-none"
-        />
-        <button
-          type="submit"
-          disabled={!tdrId || occupe || !saisie.trim()}
-          aria-label="Envoyer"
-          className="bg-ai text-on-color ptn-carte-liste flex h-10 w-10 shrink-0 items-center justify-center disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <SendAlt size={16} aria-hidden />
-        </button>
+        <div className="border-strong bg-field focus-within:border-ai flex items-end gap-2 border px-3 py-2">
+          <textarea
+            value={saisie}
+            onChange={(e) => setSaisie(e.target.value)}
+            placeholder={tdrId ? "Que voulez-vous ?" : "Ouvrez d’abord le brouillon."}
+            rows={1}
+            disabled={!tdrId || occupe}
+            onKeyDown={(e) => {
+              // Entrée envoie, Maj+Entrée passe à la ligne : c'est l'usage
+              // dans une zone de conversation.
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void envoyer(saisie);
+              }
+            }}
+            className="ptn-zone-redaction text-body text-primary placeholder:text-placeholder max-h-40 min-h-[1.75rem] flex-1 resize-none border-0 bg-transparent py-1 outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!tdrId || occupe || !saisie.trim()}
+            aria-label="Envoyer"
+            className="bg-ai text-on-color ptn-carte-liste mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center disabled:opacity-30"
+          >
+            {occupe ? (
+              <span className="ptn-points" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+            ) : (
+              <SendAlt size={16} aria-hidden />
+            )}
+          </button>
+        </div>
+        <p className="text-caption text-helper mt-2">
+          L’assistant peut se tromper. Tout ce qu’il écrit reste à relire.
+        </p>
       </form>
     </aside>
   );

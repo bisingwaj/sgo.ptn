@@ -24,7 +24,9 @@
 // Le corps est protege par minmax(0, 1fr) : il se contracte quand le
 // panneau s'ouvre, sans deborder ni passer dessous.
 .workspace[data-aside='replie'] {
-  --ptn-aside: 44px;
+  // Zero, et non 44 px : la poignee flottante permanente a disparu, la
+  // colonne reservee ne laissait plus qu'une bande grise inexpliquee.
+  --ptn-aside: 0px;
 }
 
 .workspace[data-aside='ouvert'] {
@@ -35,7 +37,7 @@
 // formulaire deja etroit.
 @media (max-width: 1312px) {
   .workspace[data-aside='ouvert'] {
-    --ptn-aside: 44px;
+    --ptn-aside: 0px;
   }
 }
 

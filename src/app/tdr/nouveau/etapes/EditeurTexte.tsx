@@ -95,7 +95,7 @@ export function EditeurTexte({
   };
 
   return (
-    <div className="border-subtle bg-background flex w-full flex-col border">
+    <div className="border-subtle bg-background focus-within:border-strong flex w-full flex-col border shadow-sm">
       {/* ---------- Barre d'outils ---------- */}
       <div className="border-subtle bg-layer flex flex-wrap items-center gap-1 border-b px-2 py-1.5">
         {parLigne && (
@@ -107,18 +107,6 @@ export function EditeurTexte({
             className="ptn-carte-liste text-secondary hover:bg-layer-hover hover:text-primary inline-flex h-8 w-8 items-center justify-center"
           >
             <List size={16} aria-hidden />
-          </button>
-        )}
-
-        {onAnnuler && (
-          <button
-            type="button"
-            onClick={onAnnuler}
-            title="Rétablir le texte d’avant la dernière reprise"
-            aria-label="Rétablir le texte précédent"
-            className="ptn-carte-liste text-secondary hover:bg-layer-hover hover:text-primary inline-flex h-8 w-8 items-center justify-center"
-          >
-            <Undo size={16} aria-hidden />
           </button>
         )}
 
@@ -137,7 +125,10 @@ export function EditeurTexte({
             className="bg-ai text-on-color text-caption ptn-carte-liste inline-flex items-center gap-2 px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:opacity-40"
           >
             <AiGenerate size={16} aria-hidden />
-            {enCours ? "Rédaction…" : valeur.trim() ? "Reprendre" : "Générer"}
+            {/* « Reprendre » ne disait pas ce qu'il faisait. Sur un champ
+                déjà écrit, l'assistant améliore ce qui est là ; sur un champ
+                vide, il rédige. Le retour arrière, lui, est au menu. */}
+            {enCours ? "Rédaction…" : valeur.trim() ? "Améliorer" : "Générer"}
           </button>
           <button
             type="button"
@@ -169,11 +160,31 @@ export function EditeurTexte({
                 <span>
                   <span className="text-body text-primary block">Guider l’assistant</span>
                   <span className="text-caption text-helper block">
-                    Dire précisément ce que vous attendez, et voir tout ce qui a été fait sur
-                    ce dossier.
+                    Dire précisément ce que vous attendez, et relire tout ce qui a été fait
+                    sur ce dossier.
                   </span>
                 </span>
               </button>
+
+              {onAnnuler && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="hover:bg-layer border-subtle flex w-full items-start gap-3 border-t px-4 py-3 text-left"
+                  onClick={() => {
+                    setMenu(false);
+                    onAnnuler();
+                  }}
+                >
+                  <Undo size={16} className="text-secondary mt-0.5 shrink-0" aria-hidden />
+                  <span>
+                    <span className="text-body text-primary block">Revenir à mon texte</span>
+                    <span className="text-caption text-helper block">
+                      Rétablit ce qui était écrit avant la dernière génération.
+                    </span>
+                  </span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -182,7 +193,7 @@ export function EditeurTexte({
       {/* ---------- Page ----------
           Marges franches, mesure bornée : on écrit dans une page, pas dans
           un champ de formulaire. */}
-      <div className="px-6 py-6 sm:px-10 sm:py-8">
+      <div className="relative px-6 py-6 sm:px-10 sm:py-8">
         <textarea
           ref={zone}
           value={valeur}
@@ -190,8 +201,30 @@ export function EditeurTexte({
           placeholder={placeholder}
           aria-label={ariaLabel}
           rows={6}
-          className="text-body-lg text-primary placeholder:text-placeholder mx-auto block w-full max-w-[72ch] resize-none border-0 bg-transparent leading-relaxed outline-none"
+          readOnly={enCours}
+          className="ptn-zone-redaction text-body-lg text-primary placeholder:text-placeholder mx-auto block w-full max-w-[72ch] resize-none border-0 bg-transparent leading-relaxed outline-none"
         />
+
+        {/* Pendant la génération, le texte s'estompe et la saisie se ferme.
+            Un bouton grisé ne suffit pas : il fait 120 px dans une page qui
+            en fait 900, et l'auteur continue de taper sur un texte qui va
+            être remplacé. */}
+        {enCours && (
+          <div
+            className="bg-background/75 absolute inset-0 flex items-center justify-center backdrop-blur-[1px]"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="border-ai bg-background text-body text-ai-text ptn-entree-ligne inline-flex items-center gap-3 border px-4 py-3 shadow-sm">
+              <span className="ptn-points" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              L’assistant rédige…
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

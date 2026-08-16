@@ -341,6 +341,43 @@ samp,
       border-color var(--ptn-motion-fast-02) var(--ptn-motion-easing-productive);
   }
 
+  // Trois points d'attente — la convention des interfaces de conversation.
+  // Les durées viennent des jetons, donc l'animation cesse sous
+  // `prefers-reduced-motion` : le message écrit, lui, subsiste.
+  .ptn-points {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+
+    i {
+      width: 5px;
+      height: 5px;
+      background: currentColor;
+      opacity: 0.35;
+      animation: ptn-points 1.05s var(--ptn-motion-easing-productive) infinite;
+    }
+
+    i:nth-child(2) {
+      animation-delay: 0.14s;
+    }
+    i:nth-child(3) {
+      animation-delay: 0.28s;
+    }
+  }
+
+  @keyframes ptn-points {
+    0%,
+    60%,
+    100% {
+      opacity: 0.25;
+      transform: translateY(0);
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+
   // Teinte de composante sur une tuile Carbon sélectionnée.
   //
   // Carbon colore l'état sélectionné en bleu interactif, ce qui écraserait
@@ -359,4 +396,14 @@ samp,
       }
     }
   }
+}
+
+// La surface de rédaction porte son focus sur son cadre, pas sur le texte.
+//
+// Hors couche, comme la règle `:focus-visible` qu'elle neutralise : le CSS
+// sans couche l'emporte sur tout CSS en couche, une utilitaire Tailwind
+// `outline-none` ne suffirait donc pas.
+.ptn-zone-redaction:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
