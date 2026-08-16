@@ -51,9 +51,11 @@ l'esthétique. Beaucoup impriment (dossiers ANO, procès-verbaux) et travaillent
 | **Backend NestJS** (`backend/`) | Écrit par une autre équipe |
 | **Site institutionnel public** | Hors périmètre |
 
-Le backend n'est pas à modifier sans demande explicite. Deux exceptions déjà
-faites, à la demande : le seed de développement et le délai de grâce sur la
-rotation des jetons.
+Le backend n'est pas à modifier sans demande explicite. Trois exceptions déjà
+faites, à la demande : le seed de développement, le délai de grâce sur la
+rotation des jetons, et `GET /tdr/:id/enveloppe` — un écran de budget ne peut
+pas dire ce qu'il reste sur une ligne du plan sans le serveur, la liste des TDR
+étant restreinte à l'organisation de l'appelant.
 
 ---
 
@@ -186,7 +188,7 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
   gardes d'exercice côté serveur, couverture multi-provinces, registre
   Carbon, routes séparées, assistant de saisie pas à pas
 - **TDR** — parcours de rédaction en 18 étapes, une question par écran,
-  assistance IA en flux sur les huit champs de texte. Étapes 15 à 18 encore
+  assistance IA en flux sur les huit champs de texte. Étapes 16 à 18 encore
   dans l'ancien moule
 
 ### Compétences chargées automatiquement

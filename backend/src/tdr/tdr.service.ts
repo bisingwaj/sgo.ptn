@@ -331,6 +331,85 @@ export class TdrService {
    * Exposé à part pour que le parcours affiche les manques au fil de la
    * rédaction, plutôt qu'au moment de cliquer sur « soumettre ».
    */
+  /**
+   * Ce que les AUTRES dossiers prennent déjà sur une ligne du plan.
+   *
+   * Seule autorité sur ce cumul : le contrôle de complétude s'en sert pour
+   * refuser, l'écran de budget pour prévenir. Deux calculs auraient fini par
+   * diverger, et c'est le pire endroit pour cela — un auteur verrait un
+   * disponible que le serveur ne reconnaîtrait pas.
+   *
+   * Les brouillons des autres comptent : une enveloppe se réserve dès qu'un
+   * dossier la vise, sans quoi deux rédacteurs la dépenseraient deux fois.
+   * Les dossiers refusés et archivés la libèrent.
+   */
+  private async engagementAutresDossiers(ptbaActivityId: string, exceptTdrId: string) {
+    const autres = await this.prisma.tdr.aggregate({
+      where: {
+        ptbaActivityId,
+        id: { not: exceptTdrId },
+        status: { notIn: ['ANO_REFUSE', 'ARCHIVE'] },
+      },
+      _sum: { budgetTotalUsd: true },
+      _count: true,
+    });
+    return {
+      engagedUsd: Number(autres._sum.budgetTotalUsd ?? 0),
+      otherCount: autres._count,
+    };
+  }
+
+  /**
+   * Situation de l'enveloppe, telle que l'écran de budget doit la montrer.
+   *
+   * L'enveloppe seule ne dit pas ce qui reste : elle était affichée comme
+   * plafond alors que d'autres dossiers l'entamaient déjà. L'auteur saisissait
+   * un montant qui passait le contrôle local, et se le voyait refuser cinq
+   * étapes plus loin, à la transmission. Le cumul est connu du serveur, et
+   * de lui seul — la liste des TDR est restreinte à l'organisation de
+   * l'appelant, donc le calculer côté navigateur le sous-estimerait.
+   *
+   * Agrégat volontairement : le nombre de dossiers concernés et leur total,
+   * jamais leurs références. Rien de plus que ce que le refus dit déjà.
+   *
+   * `null` si le dossier n'est rattaché à aucune ligne — il n'a alors pas
+   * d'enveloppe, et c'est un blocage traité ailleurs.
+   */
+  async envelopeStatus(id: string) {
+    const tdr = await this.prisma.tdr.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        ptbaActivityId: true,
+        ptbaActivity: {
+          select: { code: true, title: true, envelopeUsd: true, idaUsd: true, afdUsd: true },
+        },
+      },
+    });
+    if (!tdr) throw new NotFoundException('TDR introuvable.');
+    if (!tdr.ptbaActivityId || !tdr.ptbaActivity) return null;
+
+    const { engagedUsd, otherCount } = await this.engagementAutresDossiers(
+      tdr.ptbaActivityId,
+      tdr.id,
+    );
+    const envelopeUsd = Number(tdr.ptbaActivity.envelopeUsd);
+
+    return {
+      activityCode: tdr.ptbaActivity.code,
+      activityTitle: tdr.ptbaActivity.title,
+      envelopeUsd,
+      // Ventilation arrêtée au plan. C'est la référence de la ligne, non une
+      // règle imposée au marché : la source de financement d'un marché
+      // relève de la décision fiduciaire, pas d'une règle de trois.
+      idaUsd: tdr.ptbaActivity.idaUsd === null ? null : Number(tdr.ptbaActivity.idaUsd),
+      afdUsd: tdr.ptbaActivity.afdUsd === null ? null : Number(tdr.ptbaActivity.afdUsd),
+      engagedUsd,
+      otherCount,
+      remainingUsd: envelopeUsd - engagedUsd,
+    };
+  }
+
   async checkCompleteness(id: string): Promise<{ blockers: string[]; warnings: string[] }> {
     const tdr = await this.prisma.tdr.findUnique({
       where: { id },
@@ -375,15 +454,10 @@ export class TdrService {
           `Le budget (${(budget / 1e6).toFixed(2)} M USD) dépasse l’enveloppe de l’activité ${tdr.ptbaActivity.code} (${(envelope / 1e6).toFixed(2)} M USD).`,
         );
       } else {
-        const autres = await this.prisma.tdr.aggregate({
-          where: {
-            ptbaActivityId: tdr.ptbaActivityId,
-            id: { not: tdr.id },
-            status: { notIn: ['ANO_REFUSE', 'ARCHIVE'] },
-          },
-          _sum: { budgetTotalUsd: true },
-        });
-        const dejaEngage = Number(autres._sum.budgetTotalUsd ?? 0);
+        const { engagedUsd: dejaEngage } = await this.engagementAutresDossiers(
+          tdr.ptbaActivityId!,
+          tdr.id,
+        );
         if (dejaEngage + budget > envelope) {
           const reste = envelope - dejaEngage;
           blockers.push(

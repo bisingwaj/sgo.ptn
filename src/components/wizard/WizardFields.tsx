@@ -41,7 +41,15 @@ export function Field({ label, required, helper, error, children }: FieldProps) 
   );
 }
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  /**
+   * React 19 transmet `ref` comme une prop ordinaire aux composants
+   * fonction — plus de `forwardRef`. Déclarée ici parce que
+   * `InputHTMLAttributes` ne la porte pas : sans elle, un champ masqué ne
+   * peut pas replacer le curseur après reformatage.
+   */
+  ref?: React.Ref<HTMLInputElement>;
+}
 
 export function Input(props: InputProps) {
   return <input {...props} className={`${styles.input} ${props.className ?? ""}`} />;

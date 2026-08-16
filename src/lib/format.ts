@@ -77,6 +77,57 @@ export function formatUsdCompactBare(usd: number, locale: Locale = "fr"): string
   }).format(usd);
 }
 
+/**
+ * Montant en USD entiers, au chiffre près et groupé : « 23 009 880 USD ».
+ *
+ * Pour les écrans où l'on SAISIT et où l'on vérifie, quand l'abrégé ne suffit
+ * plus : « 23,0 M » et « 23,9 M » se ressemblent, et une suite de neuf
+ * chiffres non groupés ne se lit pas — distinguer 100000000 de 1000000000
+ * demande de compter, ce que personne ne fait deux fois.
+ *
+ * Aucune décimale : ces montants circulent en dollars entiers, et un « ,00 »
+ * promettrait une précision au centime que la donnée n'a pas.
+ */
+export function formatUsd(usd: number, locale: Locale = "fr"): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    currencyDisplay: "code",
+    maximumFractionDigits: 0,
+  }).format(usd);
+}
+
+/** Idem sans le code devise — champs de saisie, colonnes déjà intitulées. */
+export function formatUsdBare(usd: number, locale: Locale = "fr"): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(usd);
+}
+
+/**
+ * Les chiffres d'une saisie, débarrassés de tout le reste.
+ *
+ * L'auteur colle un montant venu d'un tableur, et il arrive sous toutes les
+ * formes : « 23 009 880 », « 23,009,880 », « 23 009 880,00 USD ».
+ *
+ * Une queue de décimales est retirée AVANT le reste, sinon elle se recolle
+ * aux entiers et « 23 009 880,00 » devient vingt-trois milliards. On ne
+ * retire que un ou deux chiffres en fin de chaîne : au-delà, c'est un groupe
+ * de milliers — « 23,009,880 » à l'anglaise n'a pas de décimales.
+ *
+ * Le code devise part en premier, sans quoi la queue de décimales n'est plus
+ * en fin de chaîne et passe au travers : c'est exactement le cas d'un montant
+ * copié depuis un tableau de cet écran.
+ *
+ * Le résultat n'est jamais arrondi : la donnée est en dollars entiers, une
+ * partie décimale n'y a pas de place.
+ */
+export function digitsOnly(saisie: string): string {
+  return saisie
+    .replace(/[^\d.,]+$/, "")
+    .replace(/[.,]\d{1,2}$/, "")
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "");
+}
+
 /* ------------------------------------------------------------------ */
 /* Dates                                                               */
 /* ------------------------------------------------------------------ */

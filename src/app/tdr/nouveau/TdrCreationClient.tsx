@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Wizard, type WizardStep } from "@/components/wizard/Wizard";
-import { Field, Input, Textarea, Select, Note, CheckRow, Segmented } from "@/components/wizard/WizardFields";
+import { Field, Textarea, Select, Note, CheckRow, Segmented } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import {
   tdrApi,
@@ -34,6 +34,7 @@ import {
   type ProvinceApi,
   type RiskApi,
   type TdrApi,
+  type TdrEnvelopeApi,
   type TdrTypeApi,
 } from "@/lib/api";
 import {
@@ -42,6 +43,7 @@ import {
   WarningAltFilled,
 } from "@carbon/icons-react";
 import { EtapeType } from "./etapes/EtapeType";
+import { EtapeBudget } from "./etapes/EtapeBudget";
 import { EtapeCalendrier } from "./etapes/EtapeCalendrier";
 import { EtapeExpertise } from "./etapes/EtapeExpertise";
 import { EtapeObjectifs } from "./etapes/EtapeObjectifs";
@@ -66,6 +68,7 @@ import {
   PROFIL_KEYS,
   freeRisks,
 } from "./referentiel-ecran";
+import { formatUsd } from "@/lib/format";
 import { AgentPanel } from "./AgentPanel";
 import { AssistantProvider, useAssistant, type Ecriture } from "./assistant-contexte";
 import styles from "./tdr-creation.module.scss";
@@ -201,6 +204,20 @@ function Parcours() {
   // suit ensuite d'étape en étape.
   const [etatCourant, setEtatCourant] = useState<State | null>(null);
   const [etapeCourante, setEtapeCourante] = useState('');
+
+  /**
+   * Situation de l'enveloppe de la ligne du plan.
+   *
+   * Tenue ici plutôt que dans l'étape de budget : le contrôle de passage à
+   * l'étape suivante en a besoin autant que l'écran. Deux lectures — une
+   * pour montrer, une pour refuser — auraient fini par se contredire, et
+   * l'auteur aurait vu un disponible que le bouton ne reconnaissait pas.
+   */
+  const [enveloppe, setEnveloppe] = useState<{
+    tdrId: string;
+    activityId: string;
+    data: TdrEnvelopeApi | null;
+  } | null>(null);
   /**
    * Ce que l'assistant vient d'écrire, poussé dans le formulaire.
    *
@@ -306,6 +323,50 @@ function Parcours() {
     () => types.find((t) => t.code === INITIAL.tdrTypeCode) ?? null,
     [types],
   );
+
+  /**
+   * Lecture de la situation de l'enveloppe.
+   *
+   * Refaite quand le dossier ou la ligne rattachée change — pas au fil de la
+   * frappe : le cumul porte sur les AUTRES dossiers, que la saisie en cours
+   * ne déplace pas.
+   *
+   * La lecture est estampillée du couple qui l'a produite plutôt que doublée
+   * d'un drapeau « en cours ». Rien à remettre à zéro, donc rien à écrire
+   * dans l'effet, et surtout aucune fenêtre où le disponible d'une ligne
+   * s'afficherait sous une autre.
+   */
+  const tdrIdCourant = etatCourant?.tdrId ?? null;
+  const activiteCourante = etatCourant?.ptbaActivityId ?? "";
+
+  useEffect(() => {
+    if (!tdrIdCourant || !activiteCourante) return;
+    let annule = false;
+    const marque = { tdrId: tdrIdCourant, activityId: activiteCourante };
+    tdrApi
+      .envelope(tdrIdCourant)
+      .then((data) => {
+        if (!annule) setEnveloppe({ ...marque, data });
+      })
+      .catch(() => {
+        // L'échec ne bloque pas la saisie : le contrôle final reste tenu par
+        // le serveur à la transmission. L'écran le dit, il ne l'invente pas.
+        if (!annule) setEnveloppe({ ...marque, data: null });
+      });
+    return () => {
+      annule = true;
+    };
+  }, [tdrIdCourant, activiteCourante]);
+
+  const enveloppeAJour =
+    enveloppe && enveloppe.tdrId === tdrIdCourant && enveloppe.activityId === activiteCourante
+      ? enveloppe.data
+      : null;
+  const enveloppeEnCours =
+    Boolean(tdrIdCourant && activiteCourante) &&
+    (!enveloppe ||
+      enveloppe.tdrId !== tdrIdCourant ||
+      enveloppe.activityId !== activiteCourante);
 
   /** Enregistrement au fil de l'eau : chaque étape écrit ce qu'elle porte. */
   const persist = useCallback(async (s: State, patch: Record<string, unknown>) => {
@@ -541,9 +602,16 @@ function Parcours() {
         validate: (s) => {
           const total = Number(s.budgetTotalUsd);
           if (!total || total <= 0) return "Renseignez le budget.";
+          // Le plafond opposable n'est pas l'enveloppe, c'est ce qu'il en
+          // reste : d'autres dossiers l'entament déjà. Refuser sur
+          // l'enveloppe seule laissait passer un montant que la
+          // transmission rejetait cinq étapes plus loin.
+          if (enveloppeAJour && total > enveloppeAJour.remainingUsd) {
+            return `Il ne reste que ${formatUsd(enveloppeAJour.remainingUsd)} sur l’activité ${enveloppeAJour.activityCode} — ce dossier en demande ${formatUsd(total)}.`;
+          }
           const activity = activities.find((a) => a.id === s.ptbaActivityId);
-          if (activity && total > Number(activity.envelopeUsd)) {
-            return `Le budget dépasse l’enveloppe de l’activité ${activity.code} (${(Number(activity.envelopeUsd) / 1e6).toFixed(2)} M USD).`;
+          if (!enveloppeAJour && activity && total > Number(activity.envelopeUsd)) {
+            return `Le budget dépasse l’enveloppe de l’activité ${activity.code} (${formatUsd(Number(activity.envelopeUsd))}).`;
           }
           const parts = Number(s.budgetIdaUsd || 0) + Number(s.budgetAfdUsd || 0) + Number(s.budgetGovUsd || 0);
           if (parts > 0 && Math.abs(parts - total) > 1) {
@@ -559,11 +627,13 @@ function Parcours() {
             budgetGovUsd: s.budgetGovUsd ? Number(s.budgetGovUsd) : null,
           }),
         render: (s, set) => (
-          <BudgetStep
+          <EtapeBudget
             state={s}
             set={set}
             activity={activities.find((a) => a.id === s.ptbaActivityId)}
             type={typeOf(s)}
+            enveloppe={enveloppeAJour}
+            enveloppeEnCours={enveloppeEnCours}
           />
         ),
       },
@@ -704,7 +774,25 @@ function Parcours() {
         ),
       },
     ];
-  }, [types, activities, provinces, library, persist, loadLibrary]);
+    // `enveloppeAJour` doit figurer ici : sans elle, l'étape de budget garde
+    // la situation du premier rendu — c'est-à-dire aucune — et le contrôle de
+    // passage se ferait sur un disponible qui n'arrive jamais.
+    //
+    // `components` et `organisations` y entrent au passage. Ils tenaient par
+    // accident : ils arrivent dans le même `Promise.all` que `types`, dont le
+    // changement recalculait le mémo. Une lecture séparée les aurait figés.
+  }, [
+    types,
+    activities,
+    provinces,
+    components,
+    organisations,
+    library,
+    enveloppeAJour,
+    enveloppeEnCours,
+    persist,
+    loadLibrary,
+  ]);
 
   if (authLoading) return <div className={styles.gate}>Chargement…</div>;
 
@@ -921,83 +1009,6 @@ function FrameworkStep({
           renderTag={(r) => r.level.toLowerCase()}
         />
       )}
-    </div>
-  );
-}
-
-function BudgetStep({
-  state, set, activity, type,
-}: {
-  state: State;
-  set: (s: State) => void;
-  activity?: PtbaActivityApi;
-  type?: TdrTypeApi;
-}) {
-  const [method, setMethod] = useState<{ code: string; review: string } | null>(null);
-  const total = Number(state.budgetTotalUsd);
-
-  // La catégorie vient du référentiel, comme côté serveur. Elle était figée
-  // ici sur SERVICES_CONSULTANTS : un TDR de travaux à 20 M USD annonçait
-  // SFQC quand la transmission figeait AOI, et les types opérationnels — qui
-  // ne relèvent d'aucune méthode — s'en voyaient attribuer une.
-  const category = type?.procurementCategory ?? null;
-
-  useEffect(() => {
-    if (!total || total <= 0 || !category) {
-      setMethod(null);
-      return;
-    }
-    tdrReferentielApi
-      .resolveMethod(category, total)
-      .then((r) => setMethod(r ? { code: r.method.code, review: r.reviewType } : null))
-      .catch(() => setMethod(null));
-  }, [total, category]);
-
-  return (
-    <div className={styles.stack}>
-      {activity && (
-        <Note tone="info" title={`Enveloppe de l’activité ${activity.code}`}>
-          {(Number(activity.envelopeUsd) / 1e6).toFixed(2)} M USD. Le budget du TDR ne peut
-          l’excéder.
-        </Note>
-      )}
-
-      <Field label="Budget total (USD)" required>
-        <Input
-          type="number"
-          min={0}
-          value={state.budgetTotalUsd}
-          onChange={(e) => set({ ...state, budgetTotalUsd: e.target.value })}
-        />
-      </Field>
-
-      {method && (
-        <div className={styles.derived}>
-          Méthode déduite : <strong>{method.code}</strong> · revue{" "}
-          <strong>{method.review === "PRIOR" ? "préalable" : "postérieure"}</strong>
-          <span className={styles.hint}>
-            Indicative. La méthode retenue est arrêtée à la transmission, depuis les seuils
-            alors en vigueur et le montant alors saisi.
-          </span>
-        </div>
-      )}
-
-      <h3 className={styles.sectionTitle}>Ventilation par source</h3>
-      <p className={styles.hint}>
-        Facultative, mais si elle est renseignée le total doit correspondre. IDA et AFD ne se
-        consolident jamais sans distinction.
-      </p>
-      <div className={styles.row3}>
-        <Field label="Part IDA (USD)">
-          <Input type="number" min={0} value={state.budgetIdaUsd} onChange={(e) => set({ ...state, budgetIdaUsd: e.target.value })} />
-        </Field>
-        <Field label="Part AFD (USD)">
-          <Input type="number" min={0} value={state.budgetAfdUsd} onChange={(e) => set({ ...state, budgetAfdUsd: e.target.value })} />
-        </Field>
-        <Field label="Part Gouvernement (USD)">
-          <Input type="number" min={0} value={state.budgetGovUsd} onChange={(e) => set({ ...state, budgetGovUsd: e.target.value })} />
-        </Field>
-      </div>
     </div>
   );
 }

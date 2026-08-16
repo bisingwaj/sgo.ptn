@@ -141,6 +141,20 @@ export class TdrController {
     return this.tdr.checkCompleteness(id);
   }
 
+  @Get(':id/enveloppe')
+  @RequirePermissions('tdr:read')
+  @ApiOperation({
+    summary: 'Situation de l’enveloppe de la ligne du plan',
+    description:
+      'Enveloppe de l’activité PTBA rattachée, ce que les autres dossiers en prennent déjà, ' +
+      'et ce qu’il y reste. Le cumul n’est connu que du serveur : la liste des TDR est ' +
+      'restreinte à l’organisation de l’appelant, un calcul côté navigateur le sous-estimerait. ' +
+      'Agrégat seul — jamais les références des autres dossiers.',
+  })
+  envelope(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tdr.envelopeStatus(id);
+  }
+
   @Post()
   @RequirePermissions('tdr:author')
   @ApiOperation({

@@ -37,11 +37,13 @@ src/app/tdr/nouveau/
     EtapeLivrables.tsx     09
     EtapeCalendrier.tsx    13 — porte aussi le sélecteur de provinces
     EtapeExpertise.tsx     14 — EtapeTexte + les profils-clés en complément
+    EtapeBudget.tsx        15 — situation de l'enveloppe, parts, glossaire
+    ChampMontant.tsx       saisie groupée d'un montant (curseur préservé)
     ListeEntrees.tsx       liste ordonnée + saisie en modale
     LigneSelection.tsx     sélecteur en lignes (radiogroup)
 ```
 
-**Les étapes restantes (15-18) vivent encore dans l'orchestrateur.** Les sortir
+**Les étapes restantes (16-18) vivent encore dans l'orchestrateur.** Les sortir
 au fur et à mesure, dans `etapes/`.
 
 `EtapeTexte` accepte un `complement` — ce qu'une section demande EN PLUS de sa
@@ -67,8 +69,8 @@ accompagnent l'expertise sans qu'un second écran générique soit écrit.
 12 Contraintes
 13 Calendrier & couverture   date, durée, jours-homme, provinces
 14 Expertise                 le 8e champ rédigé + les profils-clés
-15 Budget                    ← encore dans l'orchestrateur
-16 Cadre & risques           ← idem
+15 Budget                    enveloppe, parts, méthode déduite
+16 Cadre & risques           ← encore dans l'orchestrateur
 17 Sauvegardes E&S           ← idem
 18 Revue & transmission      ← idem
 ```
@@ -101,6 +103,26 @@ que l'assistant peut écrire. Un champ absent n'existe pas pour lui.
 
 Le canal **MGP-EAS/HS n'apparaît nulle part** dans le TDR : c'est le seul
 endroit où le corpus interdit formellement l'IA générative.
+
+### Le budget — ce que l'écran doit dire
+
+Le plafond opposable n'est **pas** l'enveloppe de l'activité, c'est ce qu'il en
+reste : les autres dossiers de la même ligne l'entament déjà, brouillons
+compris. `GET /tdr/:id/enveloppe` porte cette situation, et
+`TdrService.engagementAutresDossiers` en est la seule autorité — le contrôle de
+complétude et l'écran s'y branchent tous les deux.
+
+**Ne jamais recalculer ce cumul côté navigateur** : `GET /tdr` est restreint à
+l'organisation de l'appelant, la somme y serait sous-estimée. Un disponible
+trop généreux est pire que pas de disponible du tout.
+
+La ventilation IDA/AFD de la ligne est une **référence, pas une règle**. Aucun
+bouton ne la recopie dans le dossier : la source de financement d'un marché
+relève de la décision fiduciaire, pas d'une règle de trois.
+
+Montants : `formatUsd` (groupé, au dollar près, pour saisir et vérifier) et
+`formatUsdCompact` (« 22 M USD », pour situer). Jamais de décimales — la donnée
+est en dollars entiers, un « ,00 » promettrait une précision qu'elle n'a pas.
 
 ---
 

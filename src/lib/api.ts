@@ -727,6 +727,25 @@ export interface TdrRiskApi {
   level: "FAIBLE" | "MODERE" | "SUBSTANTIEL" | "ELEVE";
 }
 
+/**
+ * Ce que la ligne du plan porte déjà, du point de vue d'un dossier.
+ *
+ * Montants en USD entiers — ce sont des dotations budgétaires, jamais des
+ * écritures au centime. `idaUsd` / `afdUsd` sont la ventilation ARRÊTÉE AU
+ * PLAN pour l'activité : une référence, pas une règle imposée au marché.
+ */
+export interface TdrEnvelopeApi {
+  activityCode: string;
+  activityTitle: string;
+  envelopeUsd: number;
+  idaUsd: number | null;
+  afdUsd: number | null;
+  /** Cumul des autres dossiers visant cette ligne, brouillons compris. */
+  engagedUsd: number;
+  otherCount: number;
+  remainingUsd: number;
+}
+
 export interface TdrApi {
   id: string;
   reference: string;
@@ -799,6 +818,14 @@ export const tdrApi = {
     api.del<{ id: string; reference: string }>(`/tdr/${id}`),
   completeness: (id: string) =>
     api.get<{ blockers: string[]; warnings: string[] }>(`/tdr/${id}/completude`),
+  /**
+   * Situation de l'enveloppe de la ligne du plan.
+   *
+   * `null` quand le dossier n'est rattaché à aucune activité. Le cumul des
+   * autres dossiers n'est pas calculable côté navigateur : la liste des TDR
+   * est restreinte à l'organisation de l'appelant.
+   */
+  envelope: (id: string) => api.get<TdrEnvelopeApi | null>(`/tdr/${id}/enveloppe`),
   createDraft: (payload: { tdrTypeCode: string; title: string; ptbaActivityId?: string }) =>
     api.post<TdrApi>("/tdr", payload),
   update: (id: string, patch: Record<string, unknown>) =>
