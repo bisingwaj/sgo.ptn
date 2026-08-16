@@ -41,8 +41,9 @@ import {
   Locked,
   WarningAltFilled,
 } from "@carbon/icons-react";
-import { MultiDropdownPicker } from "@/components/ui/MultiDropdownPicker";
 import { EtapeType } from "./etapes/EtapeType";
+import { EtapeCalendrier } from "./etapes/EtapeCalendrier";
+import { EtapeExpertise } from "./etapes/EtapeExpertise";
 import { EtapeObjectifs } from "./etapes/EtapeObjectifs";
 import { EtapeLivrables } from "./etapes/EtapeLivrables";
 import { EtapeTexte } from "./etapes/EtapeTexte";
@@ -491,87 +492,49 @@ function Parcours() {
         ),
       })),
 
-      // ===== 05 · Calendrier et expertise =====
+      // ===== 13 · Calendrier et couverture =====
+      //
+      // Deux étapes là où il n'y en avait qu'une. « Calendrier & expertise »
+      // demandait d'un même souffle quand, où et par qui : sept saisies de
+      // trois natures, dont une rédaction longue prise entre deux compteurs.
+      // Rien ne s'y écrivait par assistance, alors que le champ d'expertise
+      // avait sa consigne au serveur depuis le début.
       {
         num: "13",
-        label: "Calendrier & expertise",
-        sub: "Durée, couverture et profils requis",
+        label: "Calendrier & couverture",
+        sub: "Période d’exécution et provinces couvertes",
         commit: (s) =>
           persist(s, {
             startDate: s.startDate || null,
             durationMonths: s.durationMonths ? Number(s.durationMonths) : null,
             effortDays: s.effortDays ? Number(s.effortDays) : null,
             provinceCodes: s.provinceCodes,
-            expertise: s.expertise,
-            keyProfiles: s.keyProfiles,
           }),
-        render: (s, set) => (
-          <div className={styles.stack}>
-            <div className={styles.row2}>
-              <Field label="Date de démarrage souhaitée">
-                <Input type="date" value={s.startDate} onChange={(e) => set({ ...s, startDate: e.target.value })} />
-              </Field>
-              <Field label="Durée (mois)" helper="Borne les échéances des livrables.">
-                <Input type="number" min={1} value={s.durationMonths} onChange={(e) => set({ ...s, durationMonths: e.target.value })} />
-              </Field>
-              <Field
-                label="Volume d’effort (jours-homme)"
-                helper="Unité de facturation d’un marché de prestation. La durée calendaire ne s’y substitue pas : 240 jours-homme peuvent s’étaler sur neuf mois."
-              >
-                <Input type="number" min={1} value={s.effortDays} onChange={(e) => set({ ...s, effortDays: e.target.value })} />
-              </Field>
-            </div>
-            {/* Un marché porte souvent sur plusieurs provinces — un backbone
-                en traverse trois, une formation en dessert dix. Le choix
-                unique obligeait à n'en retenir qu'une, ou à déclarer
-                « national » un marché qui ne l'était pas. */}
-            <CouvertureStep
-              provinces={provinces}
-              retenues={s.provinceCodes}
-              onChange={(codes) => set({ ...s, provinceCodes: codes })}
-            />
-            <Field label="Expertise requise" helper="Qualifications et expérience attendues de l’institution ou de l’équipe.">
-              <Textarea rows={5} value={s.expertise} onChange={(e) => set({ ...s, expertise: e.target.value })} />
-            </Field>
-
-            {/* Trois profils au minimum — règle de conformité, tenue par le
-                contrôle de complétude côté serveur. Les critères de notation
-                des offres portent sur ces profils : sans eux, il n'y a rien
-                à évaluer. */}
-            <div>
-              <h3 className={styles.sectionTitle}>
-                Profils-clés exigés <span className={styles.required}>*</span>
-              </h3>
-              <p className={styles.hint}>
-                Trois au minimum. {s.keyProfiles.length} désigné
-                {s.keyProfiles.length > 1 ? "s" : ""} à ce jour.
-              </p>
-              <div className={styles.checkStack}>
-                {PROFIL_KEYS.map((p) => (
-                  <CheckRow
-                    key={p.id}
-                    checked={s.keyProfiles.includes(p.id)}
-                    onChange={(next) =>
-                      set({
-                        ...s,
-                        keyProfiles: next
-                          ? [...s.keyProfiles, p.id]
-                          : s.keyProfiles.filter((k) => k !== p.id),
-                      })
-                    }
-                    title={p.label}
-                    description={p.description}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        ),
+        render: (s, set) => <EtapeCalendrier state={s} set={set} provinces={provinces} />,
       },
 
-      // ===== 06 · Budget =====
+      // ===== 14 · Expertise =====
+      //
+      // Le huitième champ rédigé du dossier, et le dernier à recevoir son
+      // écran. Les profils-clés l'accompagnent : ils désignent les postes
+      // que la notation des offres évaluera, quand le texte dit ce que
+      // chacun doit démontrer.
       {
         num: "14",
+        label: LIBELLES_ETAPE.expertise.label,
+        sub: LIBELLES_ETAPE.expertise.sub,
+        commit: (s) =>
+          persist(s, {
+            expertise: s.expertise,
+            keyProfiles: s.keyProfiles,
+            aiAssisted: s.aiAssistedFields,
+          }),
+        render: (s, set) => <EtapeExpertise state={s} set={set} />,
+      },
+
+      // ===== 15 · Budget =====
+      {
+        num: "15",
         label: "Budget",
         sub: "Enveloppe et ventilation par source de financement",
         validate: (s) => {
@@ -604,14 +567,14 @@ function Parcours() {
         ),
       },
 
-      // ===== 07 · Cadre et risques =====
+      // ===== 16 · Cadre et risques =====
       //
       // Le parcours MDA d'origine tenait les trois bibliothèques sur une
       // seule étape, répartie en onglets — « Clauses, indicateurs et risques
       // pré-cadrés ». La refonte en avait fait deux étapes ; c'était une
       // marche de plus pour un même geste, répété trois fois.
       {
-        num: "15",
+        num: "16",
         label: "Cadre & risques",
         sub: "Clauses, indicateurs et risques pré-cadrés pour ce type",
         commit: (s) =>
@@ -634,9 +597,9 @@ function Parcours() {
         render: (s, set) => <FrameworkStep state={s} set={set} library={library} />,
       },
 
-      // ===== 09 · Sauvegardes E&S =====
+      // ===== 17 · Sauvegardes E&S =====
       {
-        num: "16",
+        num: "17",
         label: "Sauvegardes E&S",
         sub: "Classification du risque environnemental et social",
         validate: (s) => {
@@ -718,9 +681,9 @@ function Parcours() {
         },
       },
 
-      // ===== 10 · Revue et soumission =====
+      // ===== 18 · Revue et soumission =====
       {
-        num: "17",
+        num: "18",
         label: "Revue & transmission",
         sub: "Contrôle de complétude et engagements",
         validate: (s) => {
@@ -953,76 +916,6 @@ function FrameworkStep({
   );
 }
 
-/**
- * Couverture géographique du marché.
- *
- * Liste déroulante à cases plutôt qu'une grille : vingt-six provinces
- * étalées occupaient tout l'écran d'une étape qui en porte déjà six
- * champs. Le menu se replie, la recherche filtre, et le déclencheur
- * résume ce qui est retenu.
- *
- * Les dix provinces prioritaires du Cadre de Partenariat-Pays remontent en
- * tête et le disent : c'est ce qui oriente le choix.
- *
- * Aucune sélection vaut couverture nationale, et l'aide le dit — c'est un
- * cas fréquent, pas un oubli.
- */
-function CouvertureStep({
-  provinces, retenues, onChange,
-}: {
-  provinces: ProvinceApi[];
-  retenues: string[];
-  onChange: (codes: string[]) => void;
-}) {
-  const options = useMemo(
-    () =>
-      [...provinces]
-        .sort((a, b) => {
-          if (a.isPriorityCpf !== b.isPriorityCpf) return a.isPriorityCpf ? -1 : 1;
-          return a.label.localeCompare(b.label, "fr");
-        })
-        .map((p) => ({
-          value: p.code,
-          label: p.label,
-          sub: p.isPriorityCpf ? "Province prioritaire du Cadre de Partenariat-Pays" : undefined,
-        })),
-    [provinces],
-  );
-
-  const prioritaires = retenues.filter(
-    (c) => provinces.find((p) => p.code === c)?.isPriorityCpf,
-  ).length;
-
-  return (
-    <Field
-      label="Couverture géographique"
-      helper={
-        retenues.length === 0
-          ? "Sans province retenue, le marché est réputé de couverture nationale."
-          : `${retenues.length} province${retenues.length > 1 ? "s" : ""} retenue${retenues.length > 1 ? "s" : ""}` +
-            (prioritaires
-              ? `, dont ${prioritaires} prioritaire${prioritaires > 1 ? "s" : ""} au Cadre de Partenariat-Pays.`
-              : ".")
-      }
-    >
-      <MultiDropdownPicker
-        options={options}
-        values={retenues}
-        onChange={onChange}
-        searchable
-        placeholder="Couverture nationale"
-        ariaLabel="Provinces couvertes par le marché"
-        resume={(choisis) =>
-          choisis.length <= 2
-            ? choisis.map((o) => o.label).join(", ")
-            : `${choisis.length} provinces`
-        }
-      />
-    </Field>
-  );
-}
-
-
 function BudgetStep({
   state, set, activity, type,
 }: {
@@ -1175,7 +1068,7 @@ function Recap({
 
   return (
     <div className={styles.recap}>
-      <RecapBloc titre="Type & rattachement" etape="01">
+      <RecapBloc titre="Type & rattachement" etape="01–03">
         <RecapLigne cle="Type" val={type ? `${type.code} · ${type.name}` : "—"} />
         <RecapLigne cle="Intitulé du marché" val={state.title || "—"} />
         <RecapLigne
@@ -1188,13 +1081,13 @@ function Recap({
         />
       </RecapBloc>
 
-      <RecapBloc titre="Cadrage" etape="02">
+      <RecapBloc titre="Cadrage" etape="04–06">
         <RecapTexte cle="Contexte" val={vide(state.context)} />
         <RecapTexte cle="Justification" val={vide(state.justification)} />
         <RecapTexte cle="Bénéficiaires visés" val={vide(state.beneficiaries)} />
       </RecapBloc>
 
-      <RecapBloc titre="Objectifs & livrables" etape="03">
+      <RecapBloc titre="Objectifs & livrables" etape="07–09">
         <RecapListe
           cle="Objectifs SMART"
           items={state.objectives.filter((o) => o.title.trim()).map(
@@ -1211,13 +1104,13 @@ function Recap({
         />
       </RecapBloc>
 
-      <RecapBloc titre="Méthodologie" etape="04">
+      <RecapBloc titre="Méthodologie" etape="10–12">
         <RecapTexte cle="Approche" val={vide(state.approach)} />
         <RecapTexte cle="Méthodes et outils" val={vide(state.methodology)} />
         <RecapTexte cle="Contraintes" val={vide(state.constraints)} />
       </RecapBloc>
 
-      <RecapBloc titre="Calendrier & expertise" etape="05">
+      <RecapBloc titre="Calendrier & couverture" etape="13">
         <RecapLigne cle="Démarrage souhaité" val={state.startDate || "—"} />
         <RecapLigne
           cle="Durée"
@@ -1228,6 +1121,13 @@ function Recap({
           val={state.effortDays ? `${state.effortDays} jours-homme` : "—"}
         />
         <RecapLigne cle="Couverture" val={couverture || "Nationale"} />
+      </RecapBloc>
+
+      {/* L'expertise rédigée ne figurait nulle part au récapitulatif : le
+          relecteur validait un dossier sans avoir sous les yeux le texte
+          qui fonde les critères de notation des offres. */}
+      <RecapBloc titre="Expertise" etape="14">
+        <RecapTexte cle="Expertise requise" val={vide(state.expertise)} />
         <RecapListe
           cle="Profils-clés"
           items={state.keyProfiles.map(
@@ -1236,20 +1136,20 @@ function Recap({
         />
       </RecapBloc>
 
-      <RecapBloc titre="Budget" etape="06">
+      <RecapBloc titre="Budget" etape="15">
         <RecapLigne cle="Budget total" val={usd(state.budgetTotalUsd)} />
         <RecapLigne cle="Part IDA" val={usd(state.budgetIdaUsd)} />
         <RecapLigne cle="Part AFD" val={usd(state.budgetAfdUsd)} />
         <RecapLigne cle="Part Gouvernement" val={usd(state.budgetGovUsd)} />
       </RecapBloc>
 
-      <RecapBloc titre="Cadre & risques" etape="07">
+      <RecapBloc titre="Cadre & risques" etape="16">
         <RecapListe cle="Clauses retenues" items={state.clauses.map((c) => c.label)} />
         <RecapListe cle="Indicateurs" items={state.indicators.map((i) => i.label)} />
         <RecapListe cle="Risques" items={state.risks.map((r) => r.label)} />
       </RecapBloc>
 
-      <RecapBloc titre="Sauvegardes E&S" etape="08">
+      <RecapBloc titre="Sauvegardes E&S" etape="17">
         <RecapLigne
           cle="Catégorie de risque"
           val={ES_LEVELS.find((l) => l.value === state.esCategory)?.label ?? "—"}

@@ -38,6 +38,7 @@ export function EtapeTexte({
   state,
   set,
   gabarit,
+  complement,
 }: {
   champ: ChampTexte;
   state: State;
@@ -47,6 +48,15 @@ export function EtapeTexte({
    * l'assistance : une substitution de marqueurs, sans modèle.
    */
   gabarit?: string;
+  /**
+   * Ce que la section demande EN PLUS de sa rédaction — l'expertise a des
+   * profils à désigner, qui se cochent et ne se rédigent pas.
+   *
+   * Rendu sous l'éditeur, jamais au-dessus : un bloc interactif placé avant
+   * la surface d'écriture repousse la page blanche hors du premier écran,
+   * et c'est elle qu'on vient chercher.
+   */
+  complement?: ReactNode;
 }) {
   const assistant = useAssistant();
   const [enCours, setEnCours] = useState(false);
@@ -191,6 +201,8 @@ export function EtapeTexte({
           {erreur}
         </p>
       )}
+
+      {complement}
     </div>
   );
 }

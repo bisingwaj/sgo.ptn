@@ -1,6 +1,6 @@
 ---
 name: tdr
-description: Règles du parcours de rédaction d'un TDR (Termes de Référence) — architecture des fichiers, les 17 étapes, l'assistance IA et ses interdits, invariants du dossier, pièges rencontrés. À charger avant toute intervention sur src/app/tdr, backend/src/tdr, backend/src/ai ou backend/src/tdr-document.
+description: Règles du parcours de rédaction d'un TDR (Termes de Référence) — architecture des fichiers, les 18 étapes, l'assistance IA et ses interdits, invariants du dossier, pièges rencontrés. À charger avant toute intervention sur src/app/tdr, backend/src/tdr, backend/src/ai ou backend/src/tdr-document.
 ---
 
 # TDR — le parcours de rédaction
@@ -30,21 +30,27 @@ src/app/tdr/nouveau/
     EtapeType.tsx          01
     EtapeRattachement.tsx  02
     EtapeIdentification.tsx 03
-    EtapeTexte.tsx         04-07, 10-12 — écran générique d'un champ de texte
+    EtapeTexte.tsx         04-07, 10-12, 14 — écran générique d'un champ de texte
     EditeurTexte.tsx       la surface de rédaction (barre d'outils + page)
     champs-texte.ts        les 8 champs : question, aide, repères, consigne IA
     EtapeObjectifs.tsx     08
     EtapeLivrables.tsx     09
+    EtapeCalendrier.tsx    13 — porte aussi le sélecteur de provinces
+    EtapeExpertise.tsx     14 — EtapeTexte + les profils-clés en complément
     ListeEntrees.tsx       liste ordonnée + saisie en modale
     LigneSelection.tsx     sélecteur en lignes (radiogroup)
 ```
 
-**Les étapes restantes (13-17) vivent encore dans l'orchestrateur.** Les sortir
+**Les étapes restantes (15-18) vivent encore dans l'orchestrateur.** Les sortir
 au fur et à mesure, dans `etapes/`.
+
+`EtapeTexte` accepte un `complement` — ce qu'une section demande EN PLUS de sa
+rédaction, rendu SOUS l'éditeur. C'est par là que les profils-clés
+accompagnent l'expertise sans qu'un second écran générique soit écrit.
 
 ---
 
-## 2. Les 17 étapes
+## 2. Les 18 étapes
 
 ```
 01 Type d'activité      commande tout : bibliothèques, PGES, parcours, intitulé
@@ -59,12 +65,18 @@ au fur et à mesure, dans `etapes/`.
 10 Approche
 11 Méthodologie
 12 Contraintes
-13 Calendrier & expertise    ← encore dans l'orchestrateur
-14 Budget                    ← idem
-15 Cadre & risques           ← idem
-16 Sauvegardes E&S           ← idem
-17 Revue & transmission      ← idem
+13 Calendrier & couverture   date, durée, jours-homme, provinces
+14 Expertise                 le 8e champ rédigé + les profils-clés
+15 Budget                    ← encore dans l'orchestrateur
+16 Cadre & risques           ← idem
+17 Sauvegardes E&S           ← idem
+18 Revue & transmission      ← idem
 ```
+
+**13 et 14 étaient une seule étape**, « Calendrier & expertise » : sept saisies
+de trois natures, dont une rédaction longue prise entre deux compteurs. La
+scinder a rendu son écran au huitième champ de texte, qui avait sa consigne au
+serveur depuis le début sans jamais avoir eu d'assistance.
 
 **Le brouillon naît à l'étape 03**, pas avant : sa création exige le type,
 l'activité ET l'intitulé, et l'intitulé se compose de ce qui précède.

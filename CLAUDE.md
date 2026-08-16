@@ -185,8 +185,8 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 - **PTBA** refait de bout en bout : allocation annuelle par composante,
   gardes d'exercice côté serveur, couverture multi-provinces, registre
   Carbon, routes séparées, assistant de saisie pas à pas
-- **TDR** — parcours de rédaction en 17 étapes, une question par écran,
-  assistance IA en flux sur chaque champ de texte. Étapes 13 à 17 encore
+- **TDR** — parcours de rédaction en 18 étapes, une question par écran,
+  assistance IA en flux sur les huit champs de texte. Étapes 15 à 18 encore
   dans l'ancien moule
 
 ### Compétences chargées automatiquement

@@ -621,8 +621,11 @@
 }
 
 .recapEtape {
-  font-size: 11px;
+  // 12 px est le plancher du produit : ces usagers travaillent à 125–150 %
+  // de zoom, et une pastille en 11 px y devient illisible.
+  font-size: 12px;
   color: var(--cds-text-helper, #6f6f6f);
+  white-space: nowrap;
 }
 
 .recapListe {
