@@ -37,15 +37,14 @@ import {
   type TdrTypeApi,
 } from "@/lib/api";
 import {
-  Add,
-  AiGenerate,
   CheckmarkFilled,
   Locked,
-  TrashCan,
   WarningAltFilled,
 } from "@carbon/icons-react";
 import { MultiDropdownPicker } from "@/components/ui/MultiDropdownPicker";
 import { EtapeType } from "./etapes/EtapeType";
+import { EtapeObjectifs } from "./etapes/EtapeObjectifs";
+import { EtapeLivrables } from "./etapes/EtapeLivrables";
 import { EtapeTexte } from "./etapes/EtapeTexte";
 import { CHAMPS_TEXTE, LIBELLES_ETAPE } from "./etapes/champs-texte";
 import { EtapeRattachement } from "./etapes/EtapeRattachement";
@@ -60,12 +59,9 @@ import {
 } from "./etat";
 import {
   CATALOG_IDS,
-  DEADLINE_CONVENTION,
-  DELIVERABLE_FORMATS,
   ES_LEVELS,
   ES_RISK_CATALOG,
   PROFIL_KEYS,
-  REPORTING_RHYTHMS,
   freeRisks,
 } from "./referentiel-ecran";
 import { AgentPanel } from "./AgentPanel";
@@ -169,120 +165,6 @@ function hydrate(
 }
 
 
-/**
- * Assistance rédactionnelle.
- *
- * Trois principes tenus à l'écran :
- *  — la proposition est affichée à part, jamais versée d'office dans le
- *    champ ; c'est l'auteur qui la reprend ;
- *  — le modèle et les éléments du dossier transmis sont nommés, pour que
- *    l'auteur sache sur quoi la proposition repose ;
- *  — l'indisponibilité du service n'entrave rien : le champ reste
- *    saisissable à la main.
- */
-function AiAssist({
-  label,
-  description,
-  onGenerate,
-  renderProposal,
-  onAccept,
-  disabled,
-  disabledReason,
-  // Les libelles par defaut parlent de redaction : c'est le cas des champs
-  // libres. Une liste d'objectifs ne se « redige » pas et ne se « reprend »
-  // pas — elle s'ajoute a l'existante. Un bouton qui decrit mal son effet
-  // est un bouton sur lequel on n'ose pas cliquer.
-  idleLabel = "Proposer une rédaction",
-  againLabel = "Proposer autre chose",
-  busyLabel = "Rédaction en cours…",
-  acceptLabel = "Reprendre dans le formulaire",
-}: {
-  label: string;
-  description: string;
-  onGenerate: () => Promise<{ groundedOn: string[] }>;
-  renderProposal: () => React.ReactNode;
-  onAccept: () => void;
-  disabled?: boolean;
-  disabledReason?: string;
-  idleLabel?: string;
-  againLabel?: string;
-  busyLabel?: string;
-  acceptLabel?: string;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [meta, setMeta] = useState<{ groundedOn: string[] } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const run = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      setMeta(await onGenerate());
-    } catch (e) {
-      setError(
-        e instanceof ApiError && e.status === 503
-          ? "Assistance non configurée sur ce serveur. Le champ reste à remplir à la main."
-          : e instanceof Error
-            ? e.message
-            : "La génération a échoué.",
-      );
-      setMeta(null);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <aside className={styles.assist}>
-      <div className={styles.assistHead}>
-        <AiGenerate size={16} aria-hidden />
-        <strong>{label}</strong>
-      </div>
-      <p className={styles.assistHint}>{description}</p>
-
-      {error && <p className={styles.assistError}>{error}</p>}
-
-      {meta && (
-        <>
-          <div className={styles.assistProposal}>{renderProposal()}</div>
-          {/* Le modèle employé est consigné au journal d'audit, pas
-              affiché : ce qui intéresse le rédacteur, c'est sur quoi la
-              proposition repose et qu'elle reste à relire. */}
-          <p className={styles.assistProvenance}>
-            Établie à partir de : {meta.groundedOn.join(" · ")}. Aucune donnée personnelle n’a été
-            transmise. Texte à relire et à adapter avant transmission.
-          </p>
-        </>
-      )}
-
-      <div className={styles.assistActions}>
-        <button
-          type="button"
-          className={styles.assistBtn}
-          onClick={() => void run()}
-          disabled={busy || disabled}
-          title={disabled ? disabledReason : undefined}
-        >
-          {busy ? busyLabel : meta ? againLabel : idleLabel}
-        </button>
-        {meta && (
-          <button
-            type="button"
-            className={styles.assistBtnGhost}
-            onClick={() => {
-              onAccept();
-              setMeta(null);
-            }}
-          >
-            {acceptLabel}
-          </button>
-        )}
-      </div>
-
-      {disabled && disabledReason && <p className={styles.assistHint}>{disabledReason}</p>}
-    </aside>
-  );
-}
 
 
 function Parcours() {
@@ -561,33 +443,46 @@ function Parcours() {
       ),
 
       // ===== 03 · Objectifs et livrables =====
+      // ===== 08 · Objectifs SMART =====
+      //
+      // Séparés des livrables : un objectif dit une intention, un livrable
+      // dit une pièce à remettre. Les poser ensemble faisait écrire l'un en
+      // pensant à l'autre. Les résultats attendus, eux, avaient déjà leur
+      // écran depuis la refonte du cadrage — ils étaient restés ici en
+      // double, et l'auteur les rencontrait deux fois sans savoir laquelle
+      // des deux comptait.
       {
         num: "08",
-        label: "Objectifs & livrables",
-        sub: "Ce qui est attendu, et comment on le constate",
-        validate: (s) => {
-          if (s.objectives.length === 0) return "Définissez au moins un objectif.";
-          if (s.deliverables.length === 0) return "Définissez au moins un livrable.";
-          return null;
-        },
-        commit: (s) =>
-          persist(s, {
-            objectives: s.objectives,
-            deliverables: s.deliverables,
-            expectedResults: s.expectedResults || null,
-            deliverableFormat: s.deliverableFormat || null,
-            reportingRhythm: s.reportingRhythm || null,
-          }),
-        render: (s, set) => <OutcomesStep state={s} set={set} />,
+        label: "Objectifs SMART",
+        sub: "Ce que le marché doit permettre d’atteindre",
+        validate: (s) => (s.objectives.length === 0 ? "Définissez au moins un objectif." : null),
+        commit: (s) => persist(s, { objectives: s.objectives, aiAssisted: s.aiAssistedFields }),
+        render: (s, set) => <EtapeObjectifs state={s} set={set} />,
       },
 
-      // ===== 09 à 11 · L'exécution attendue =====
+      // ===== 09 · Livrables =====
+      {
+        num: "09",
+        label: "Livrables",
+        sub: "Ce que le prestataire remet, et sous quelle forme",
+        validate: (s) => (s.deliverables.length === 0 ? "Définissez au moins un livrable." : null),
+        commit: (s) =>
+          persist(s, {
+            deliverables: s.deliverables,
+            deliverableFormat: s.deliverableFormat || null,
+            reportingRhythm: s.reportingRhythm || null,
+            aiAssisted: s.aiAssistedFields,
+          }),
+        render: (s, set) => <EtapeLivrables state={s} set={set} />,
+      },
+
+      // ===== 10 à 12 · L'exécution attendue =====
       //
       // Trois questions qui n'en font pas une : par quelle voie, par quelles
       // étapes, sous quelles limites. Empilées, la première se vidait dans
       // la deuxième, et la troisième restait vide.
       ...(["approach", "methodology", "constraints"] as const).map((cle, i) => ({
-        num: `${9 + i}`,
+        num: `${10 + i}`,
         label: LIBELLES_ETAPE[cle].label,
         sub: LIBELLES_ETAPE[cle].sub,
         commit: (s: State) => persist(s, { [cle]: s[cle] || null, aiAssisted: s.aiAssistedFields }),
@@ -598,7 +493,7 @@ function Parcours() {
 
       // ===== 05 · Calendrier et expertise =====
       {
-        num: "12",
+        num: "13",
         label: "Calendrier & expertise",
         sub: "Durée, couverture et profils requis",
         commit: (s) =>
@@ -676,7 +571,7 @@ function Parcours() {
 
       // ===== 06 · Budget =====
       {
-        num: "13",
+        num: "14",
         label: "Budget",
         sub: "Enveloppe et ventilation par source de financement",
         validate: (s) => {
@@ -716,7 +611,7 @@ function Parcours() {
       // pré-cadrés ». La refonte en avait fait deux étapes ; c'était une
       // marche de plus pour un même geste, répété trois fois.
       {
-        num: "14",
+        num: "15",
         label: "Cadre & risques",
         sub: "Clauses, indicateurs et risques pré-cadrés pour ce type",
         commit: (s) =>
@@ -741,7 +636,7 @@ function Parcours() {
 
       // ===== 09 · Sauvegardes E&S =====
       {
-        num: "15",
+        num: "16",
         label: "Sauvegardes E&S",
         sub: "Classification du risque environnemental et social",
         validate: (s) => {
@@ -825,7 +720,7 @@ function Parcours() {
 
       // ===== 10 · Revue et soumission =====
       {
-        num: "16",
+        num: "17",
         label: "Revue & transmission",
         sub: "Contrôle de complétude et engagements",
         validate: (s) => {
@@ -969,249 +864,6 @@ function Parcours() {
 }
 
 // ============================================================
-
-
-
-
-/** Objectifs assortis de leur critère de constatation. */
-function ObjectivesAssist({ state, set }: { state: State; set: (s: State) => void }) {
-  const [proposal, setProposal] = useState<{ title: string; criteria: string }[]>([]);
-
-  return (
-    <AiAssist
-      label="Proposition d’objectifs"
-      description="S’appuie sur le contexte déjà rédigé. Chaque objectif est assorti d’un critère vérifiable ; les valeurs cibles qui dépendent d’une donnée absente du dossier sont laissées entre crochets plutôt qu’inventées."
-      disabled={!state.tdrId || state.context.trim().length < 30}
-      disabledReason={
-        !state.tdrId
-          ? "Disponible une fois le brouillon ouvert."
-          : state.context.trim().length < 30
-            ? "Rédigez d’abord le contexte : les objectifs en découlent."
-            : undefined
-      }
-      onGenerate={async () => {
-        const r = await tdrApi.assistObjectives(state.tdrId!);
-        setProposal(r.proposal);
-        return { groundedOn: r.groundedOn };
-      }}
-      renderProposal={() => (
-        <ul className={styles.assistList}>
-          {proposal.map((o) => (
-            <li key={o.title}>
-              <strong>{o.title}</strong>
-              <span>{o.criteria}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      onAccept={() =>
-        set({ ...state, objectives: [...state.objectives, ...proposal] })
-      }
-      idleLabel="Proposer des objectifs"
-      againLabel="Proposer d’autres objectifs"
-      busyLabel="Analyse du contexte…"
-      acceptLabel={
-        state.objectives.length > 0
-          ? "Ajouter à la liste"
-          : "Reprendre ces objectifs"
-      }
-    />
-  );
-}
-
-/**
- * Les livrables découlent des objectifs, pas du contexte : le bouton reste
- * fermé tant qu'aucun objectif n'est posé. Proposer les pièces à remettre
- * sans savoir ce qu'elles doivent établir reviendrait à inventer le marché.
- */
-function DeliverablesAssist({ state, set }: { state: State; set: (s: State) => void }) {
-  const [proposal, setProposal] = useState<
-    { title: string; format: string; deadline: string }[]
-  >([]);
-
-  const noObjective = state.objectives.filter((o) => o.title.trim()).length === 0;
-
-  return (
-    <AiAssist
-      label="Proposition de livrables"
-      description="Découle des objectifs déjà arrêtés. Les échéances sont des délais relatifs au démarrage du contrat ; tant que la durée du marché n’est pas saisie, elles restent à fixer — une date engage contractuellement."
-      disabled={!state.tdrId || noObjective}
-      disabledReason={
-        !state.tdrId
-          ? "Disponible une fois le brouillon ouvert."
-          : noObjective
-            ? "Posez d’abord un objectif : un livrable est la pièce qui atteste son atteinte."
-            : undefined
-      }
-      onGenerate={async () => {
-        // Les objectifs ne partent en base qu'au changement d'étape. Or les
-        // livrables sont le seul champ assisté qui dépend d'une saisie de la
-        // MÊME étape : sans cet enregistrement préalable, le service lit un
-        // document sans objectif et refuse de proposer quoi que ce soit.
-        // L'enregistrer ici vaut aussi pour les retouches faites à la main
-        // depuis la dernière sauvegarde.
-        await tdrApi.update(state.tdrId!, {
-          objectives: state.objectives
-            .filter((o) => o.title.trim())
-            .map((o) => ({ title: o.title.trim(), criteria: o.criteria.trim() })),
-        });
-        const r = await tdrApi.assistDeliverables(state.tdrId!);
-        setProposal(r.proposal);
-        return { groundedOn: r.groundedOn };
-      }}
-      renderProposal={() => (
-        <ul className={styles.assistList}>
-          {proposal.map((d) => (
-            <li key={d.title}>
-              <strong>{d.title}</strong>
-              <span>
-                {[d.format, d.deadline].filter(Boolean).join(" · ")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      onAccept={() => set({ ...state, deliverables: [...state.deliverables, ...proposal] })}
-      idleLabel="Proposer des livrables"
-      againLabel="Proposer d’autres livrables"
-      busyLabel="Lecture des objectifs…"
-      acceptLabel={
-        state.deliverables.length > 0 ? "Ajouter à la liste" : "Reprendre ces livrables"
-      }
-    />
-  );
-}
-
-function OutcomesStep({ state, set }: { state: State; set: (s: State) => void }) {
-  return (
-    <div className={styles.stack}>
-      <ObjectivesAssist state={state} set={set} />
-      <p className={styles.hint}>
-        Spécifique · Mesurable · Atteignable · Réaliste · Temporel. Chaque objectif s’accompagne
-        d’un critère qui permettra d’en constater l’atteinte.
-      </p>
-      <ListEditor
-        title="Objectifs SMART"
-        prefix="O"
-        items={state.objectives}
-        onAdd={() => set({ ...state, objectives: [...state.objectives, { title: "", criteria: "" }] })}
-        onRemove={(i) => set({ ...state, objectives: state.objectives.filter((_, x) => x !== i) })}
-        render={(o, i) => (
-          <>
-            <Input
-              value={o.title}
-              onChange={(e) => {
-                const next = [...state.objectives];
-                next[i] = { ...o, title: e.target.value };
-                set({ ...state, objectives: next });
-              }}
-              placeholder="Énoncé de l’objectif — verbe d’action à l’infinitif"
-            />
-            <Input
-              value={o.criteria}
-              onChange={(e) => {
-                const next = [...state.objectives];
-                next[i] = { ...o, criteria: e.target.value };
-                set({ ...state, objectives: next });
-              }}
-              placeholder="Critère de succès mesurable — grandeur et horizon"
-            />
-          </>
-        )}
-      />
-
-      {/* Les resultats attendus disent ce qu'on constatera, et quand. Un
-          objectif dit l'intention ; ce n'est pas la meme chose, et le
-          cadre de resultats du projet se nourrit de ceux-ci. Le parcours
-          partenaire les separait ; la fusion avait retenu la version du
-          MDA, qui les confondait. */}
-      <Field
-        label="Résultats attendus"
-        helper="Ce qui sera constaté, avec son horizon — à 6 mois, un an, en fin de mission. Un par ligne. Ces éléments alimentent le cadre de résultats du projet."
-      >
-        <Textarea
-          rows={4}
-          value={state.expectedResults}
-          onChange={(e) => set({ ...state, expectedResults: e.target.value })}
-          placeholder={`R1 · Architecture cible documentée et validée par le COPIL (M+2)
-R2 · Dossier d'appel d'offres publié sans demande de clarification (M+4)
-R3 · 95 % des agents formés certifiés (M+6)`}
-        />
-      </Field>
-
-      <DeliverablesAssist state={state} set={set} />
-      <ListEditor
-        title="Livrables"
-        prefix="L"
-        items={state.deliverables}
-        onAdd={() =>
-          set({ ...state, deliverables: [...state.deliverables, { title: "", format: "", deadline: "" }] })
-        }
-        onRemove={(i) => set({ ...state, deliverables: state.deliverables.filter((_, x) => x !== i) })}
-        render={(d, i) => (
-          <>
-            <Input
-              value={d.title}
-              onChange={(e) => {
-                const next = [...state.deliverables];
-                next[i] = { ...d, title: e.target.value };
-                set({ ...state, deliverables: next });
-              }}
-              placeholder="Livrable"
-            />
-            <Input
-              value={d.format}
-              onChange={(e) => {
-                const next = [...state.deliverables];
-                next[i] = { ...d, format: e.target.value };
-                set({ ...state, deliverables: next });
-              }}
-              placeholder="Format"
-            />
-            <Input
-              value={d.deadline}
-              onChange={(e) => {
-                const next = [...state.deliverables];
-                next[i] = { ...d, deadline: e.target.value };
-                set({ ...state, deliverables: next });
-              }}
-              placeholder={DEADLINE_CONVENTION.placeholder}
-            />
-          </>
-        )}
-      />
-      <p className={styles.hint}>{DEADLINE_CONVENTION.helper}</p>
-
-      {/* Modalités valant pour tout le marché, et non livrable par livrable.
-          Le wizard partenaire les portait ; celui du MDA les avait omises,
-          et la fusion avait retenu la version la plus pauvre. */}
-      <div className={styles.row2}>
-        <Field
-          label="Format de remise"
-          helper="Forme sous laquelle les pièces sont remises et validées."
-        >
-          <Select
-            value={state.deliverableFormat}
-            onChange={(e) => set({ ...state, deliverableFormat: e.target.value })}
-            placeholder="Sélectionner le format"
-            options={DELIVERABLE_FORMATS}
-          />
-        </Field>
-        <Field
-          label="Rythme de reporting"
-          helper="Fréquence des points d’avancement avec l’UGP."
-        >
-          <Select
-            value={state.reportingRhythm}
-            onChange={(e) => set({ ...state, reportingRhythm: e.target.value })}
-            placeholder="Sélectionner le rythme"
-            options={REPORTING_RHYTHMS}
-          />
-        </Field>
-      </div>
-    </div>
-  );
-}
 
 /**
  * Les trois bibliothèques, sur une seule étape.
@@ -1370,54 +1022,6 @@ function CouvertureStep({
   );
 }
 
-function ListEditor<T>({
-  title, items, onAdd, onRemove, render, prefix,
-}: {
-  title: string;
-  items: T[];
-  onAdd: () => void;
-  onRemove: (i: number) => void;
-  render: (item: T, i: number) => React.ReactNode;
-  /**
-   * Lettre de reperage — « O » pour les objectifs, « L » pour les
-   * livrables. Les deux anciens parcours numerotaient ainsi, et le
-   * document produit s'y referait : une clause qui conditionne un
-   * decaissement a un livrable intermediaire suppose qu'on puisse le
-   * designer. La position existait deja en base, rien ne l'affichait.
-   */
-  prefix?: string;
-}) {
-  return (
-    <div>
-      <div className={styles.listHead}>
-        <h3 className={styles.sectionTitle}>{title}</h3>
-        <button type="button" className={styles.btnGhost} onClick={onAdd}>
-          <Add size={14} aria-hidden /> Ajouter
-        </button>
-      </div>
-      {items.length === 0 ? (
-        <p className={styles.hint}>Aucun élément pour l’instant.</p>
-      ) : (
-        <ul className={styles.editorList}>
-          {items.map((item, i) => (
-            <li key={i}>
-              {prefix && (
-                <span className={styles.editorRank} aria-hidden>
-                  {prefix}
-                  {i + 1}
-                </span>
-              )}
-              <div className={styles.editorFields}>{render(item, i)}</div>
-              <button type="button" className={styles.remove} onClick={() => onRemove(i)} aria-label="Retirer">
-                <TrashCan size={14} aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 function BudgetStep({
   state, set, activity, type,

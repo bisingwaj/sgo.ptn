@@ -76,6 +76,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [champCourant, setChampCourant] = useState<string | null>(null);
 
   const consignerEnLigne = useCallback(
+    // `setBulles` vient de `useState` : React garantit son identité d'un
+    // rendu à l'autre. Le déclarer satisfait la règle sans rien changer.
     (demande: string, reponse: string, champ: string) => {
       setBulles((b) => [
         ...b,

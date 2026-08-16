@@ -104,7 +104,7 @@ export function AgentPanel({
         abandonRef.current = null;
       }
     },
-    [tdrId, occupe, bulles, onEcriture],
+    [tdrId, occupe, bulles, onEcriture, setBulles],
   );
 
   // Fermé, il n'occupe rien : plus de poignée flottante en permanence.
