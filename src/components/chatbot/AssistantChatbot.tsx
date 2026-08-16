@@ -1,14 +1,28 @@
 "use client";
 
 /**
- * Assistant procédural — cas d'usage IA #10 du rapport stratégique PTN-RDC.
- * RAG sur MEP/PTBA, accessible depuis toutes les pages partenaire.
+ * L'assistant général, offert sur tous les écrans.
  *
- * Pour la démo : réponses mockées avec sources citées.
- * Production : remplacer `mockAnswer` par un appel à l'API LLM avec RAG.
+ * Il répond depuis le socle de connaissance du projet et depuis le
+ * RÉFÉRENTIEL EN BASE : un seuil, une méthode, une catégorie sont LUS avant
+ * d'être cités. C'est la seule chose qui compte ici, et elle est tenue
+ * côté serveur.
+ *
+ * La version précédente répondait par six textes écrits en dur, choisis par
+ * expression régulière et servis après une attente calculée sur la longueur
+ * de la question. Elle annonçait « AON jusqu'à 5 M USD » là où le
+ * référentiel dit 15 M pour les travaux et 4 M pour les fournitures, un
+ * « délai moyen de 38 jours » qui n'existe nulle part, et plaçait sous
+ * chacun une source de la forme « MEP §4.2 » que le manuel ne porte pas.
+ * Un chiffre inventé se repère ; un chiffre inventé AVEC SA CITATION se
+ * croit. C'était le vrai défaut, et c'est pourquoi les sources affichées
+ * ici sont désormais celles que le serveur a réellement consultées.
+ *
+ * Il ne modifie rien : aucun de ses outils n'écrit. Il est vu par les huit
+ * profils, auditeurs compris.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AiGenerate,
   Close,
@@ -19,217 +33,60 @@ import {
   TaskApproved,
   ChartLineSmooth,
   Earth,
-  Voicemail,
 } from "@carbon/icons-react";
+import { interrogerAssistant, type TourDeParole } from "@/lib/agent-stream";
+import { TexteEnrichi } from "@/components/ui/TexteEnrichi";
 import styles from "./AssistantChatbot.module.scss";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
-  body: React.ReactNode;
+  /** Du TEXTE, et non du JSX : il vient du serveur, au fil de l'eau */
+  body: string;
+  /** Ce que le serveur a réellement consulté pour répondre */
   sources?: string[];
-  pending?: boolean;
+  /** Ce qu'il consulte en ce moment, dit pendant qu'il le fait */
+  consultations?: string[];
+  encours?: boolean;
+  erreur?: boolean;
 }
 
+/**
+ * Les amorces ne portent que des questions auxquelles il peut répondre depuis
+ * le référentiel. Les précédentes appelaient un « délai moyen ANO » que la
+ * plateforme ne publie pas, et nommaient une méthode « SBQC » qui n'existe
+ * pas — proposer une question sans réponse use la confiance dès le premier
+ * clic.
+ */
 const SUGGESTED = [
   {
-    icon: Document,
-    text: "Comment proposer une nouvelle activité au PTBA ?",
-  },
-  {
-    icon: Time,
-    text: "Quel est le délai moyen ANO Banque mondiale ?",
-  },
-  {
     icon: Money,
-    text: "Quels sont les seuils de procédure (AOI, AON, SBQC) ?",
+    text: "Quels seuils s’appliquent à un marché de fournitures ?",
   },
   {
     icon: TaskApproved,
-    text: "Que faire si l'UGP demande une clarification ?",
+    text: "Quelle méthode pour des travaux de 8 millions USD ?",
+  },
+  {
+    icon: Document,
+    text: "Quels types de TDR existent, et lesquels exigent un PGES ?",
+  },
+  {
+    icon: ChartLineSmooth,
+    text: "Quelles sont les composantes du projet et leurs dotations ?",
+  },
+  {
+    icon: Time,
+    text: "Où en sont les dossiers de mon organisation ?",
   },
   {
     icon: Earth,
-    text: "Comment se passe la catégorisation E&S ?",
-  },
-  {
-    icon: Voicemail,
-    text: "Comment déposer une plainte au MGP ?",
+    text: "Comment se passe la catégorisation E&S d’un dossier ?",
   },
 ];
 
-interface MockEntry {
-  match: RegExp;
-  body: React.ReactNode;
-  sources: string[];
-}
-
-const MOCK_ANSWERS: MockEntry[] = [
-  {
-    match: /proposer|nouvelle.*activit|tdr|propos/i,
-    body: (
-      <>
-        <p>
-          Pour proposer une nouvelle activité au PTBA, suivez ce parcours en 3 étapes :
-        </p>
-        <p>
-          <strong>1.</strong> Vérifiez que l&apos;activité figure dans le PTBA en cours
-          (PTBA-2026-Q2). Si non, soumettez une demande d&apos;ajout au RPM UGP avant tout
-          dépôt de TDR.
-        </p>
-        <p>
-          <strong>2.</strong> Utilisez l&apos;<em>Assistant TDR</em> (8 étapes guidées par IA)
-          accessible depuis « Mes propositions → Nouvelle proposition ». Le wizard pré-remplit
-          jusqu&apos;à 64 % des sections à partir de TDR similaires validés ANO.
-        </p>
-        <p>
-          <strong>3.</strong> Soumettez à l&apos;UGP qui arbitre sous 7 jours indicatifs, puis
-          intègre au PPM, puis sollicite l&apos;ANO bailleur (12 j BM / 21 j AFD).
-        </p>
-      </>
-    ),
-    sources: ["MEP §4.2", "PTBA-2026-Q2", "Procurement Reg. fév. 2025"],
-  },
-  {
-    match: /délai|delai|ano\s*moyen|temps/i,
-    body: (
-      <>
-        <p>
-          Le délai moyen TDR → ANO Banque mondiale dans le PTN-RDC est actuellement de{" "}
-          <strong>38 jours</strong> (cible 12 jours fin 2026). Pour les TDR utilisant un{" "}
-          <strong>modèle éprouvé</strong> de la bibliothèque, le délai descend à{" "}
-          <strong>9,4 jours</strong> en moyenne — soit ~75 % de réduction.
-        </p>
-        <p>
-          Sur votre profil ANIE, le délai moyen UGP est de <strong>9 jours</strong>.
-        </p>
-        <p>
-          <strong>Conseil</strong> : 3 facteurs réduisent le délai — utiliser un modèle
-          éprouvé, joindre tous les documents requis dès le 1er dépôt, et désigner les
-          profils-clés conformes au TDR de référence.
-        </p>
-      </>
-    ),
-    sources: ["Cockpit S&E avr. 2026", "Modèles TDR validés"],
-  },
-  {
-    match: /seuil|aoi|aon|sbqc|procédure|procedur/i,
-    body: (
-      <>
-        <p>Les seuils Procurement Regulations Banque mondiale (février 2025) :</p>
-        <p>
-          <strong>Biens / travaux</strong> : AON jusqu&apos;à 5 M USD · AOI au-delà ·{" "}
-          <span className="ptn-mono">ANO préalable obligatoire ≥ 500 k USD</span>.
-        </p>
-        <p>
-          <strong>Services de consultants</strong> : SBQC pour mission complexe · CQS si
-          critères qualité prévalents · CMC pour audit · Sélection de gré à gré (SGG) sous
-          conditions strictes.
-        </p>
-        <p>
-          La <em>vérification de cohérence</em> au sein du wizard TDR contrôle automatiquement
-          ces seuils et bloque la soumission en cas d&apos;incompatibilité.
-        </p>
-      </>
-    ),
-    sources: ["Procurement Reg. fév. 2025", "PPSD PTN-RDC"],
-  },
-  {
-    match: /clarif|question|réponse|repond/i,
-    body: (
-      <>
-        <p>
-          Si l&apos;UGP demande une clarification sur votre proposition, vous avez{" "}
-          <strong>7 jours ouvrables</strong> pour répondre.
-        </p>
-        <p>
-          Accédez à votre proposition (ex. PROP-2026-019), onglet{" "}
-          <strong>Commentaires UGP</strong>. Répondez précisément en citant les sections de
-          votre TDR (numéro + page). Les pièces jointes complémentaires sont les bienvenues.
-        </p>
-        <p>
-          Au-delà de 7 jours sans réponse, votre proposition repasse en statut{" "}
-          <em>Brouillon partenaire</em> et perd sa place dans le pipeline d&apos;arbitrage.
-        </p>
-      </>
-    ),
-    sources: ["MEP §4.5", "Tableau de bord Coord UGP"],
-  },
-  {
-    match: /e&s|e\s*\\&\s*s|environ|sauvegarde|pges|cges/i,
-    body: (
-      <>
-        <p>
-          La catégorisation E&S se fait au moment de la soumission du TDR, en{" "}
-          <strong>auto-évaluation</strong> par le partenaire, puis validation par
-          l&apos;expert E&S UGP.
-        </p>
-        <p>
-          <strong>4 catégories</strong> selon le CGES PTN-RDC :{" "}
-          <strong>Faible</strong> (procédures simplifiées) · <strong>Modéré</strong>{" "}
-          (screening UGP) · <strong>Substantielle</strong> (PEES requis · délai +14 j) ·{" "}
-          <strong>Élevée</strong> (PEES + PMPP + PGMO requis · délai +30 j).
-        </p>
-        <p>
-          La catégorie est rapprochée des risques cochés dans le wizard (déplacement,
-          biodiversité, EAS-HS, etc.). En cas d&apos;écart, l&apos;UGP peut requalifier.
-        </p>
-      </>
-    ),
-    sources: ["CGES PTN-RDC §3", "NES 1-10 Banque mondiale"],
-  },
-  {
-    match: /plainte|mgp|grief/i,
-    body: (
-      <>
-        <p>
-          Le Mécanisme de Gestion des Plaintes (MGP) est accessible depuis{" "}
-          <strong>Espace partenaire → MGP</strong>. Toute plainte est traitée sous{" "}
-          <strong>10 jours ouvrables</strong> (SLA UGP).
-        </p>
-        <p>
-          <strong>Cycle</strong> : réception (24h) · qualification (48h) · instruction (5-7 j)
-          · réponse (J+10) · clôture.
-        </p>
-        <p>
-          <strong>EAS-HS confidentiel</strong> : pour toute violence, harcèlement ou abus
-          sexuel, utilisez impérativement le canal séparé{" "}
-          <span className="ptn-mono">/mgp-eas-hs</span> — anonymat garanti.
-        </p>
-      </>
-    ),
-    sources: ["CGES §6.3", "NES 10 Banque mondiale"],
-  },
-];
-
-const DEFAULT_ANSWER: MockEntry = {
-  match: /.*/,
-  body: (
-    <>
-      <p>
-        Désolé, je ne dispose pas de réponse précise sur ce sujet dans le corpus du PTN-RDC
-        actuellement indexé (MEP, CGES, Procurement Regulations, PTBA).
-      </p>
-      <p>
-        Vous pouvez reformuler votre question ou bien :
-      </p>
-      <p>
-        — contacter directement votre référent UGP via{" "}
-        <strong>Espace partenaire → Messages</strong>
-        <br />
-        — déposer une demande d&apos;information via{" "}
-        <strong>MGP → Nouvelle plainte (catégorie « Information »)</strong>
-      </p>
-    </>
-  ),
-  sources: ["Repli — pas de match RAG"],
-};
-
-function mockAnswer(question: string): { body: React.ReactNode; sources: string[] } {
-  const entry = MOCK_ANSWERS.find((e) => e.match.test(question)) ?? DEFAULT_ANSWER;
-  return { body: entry.body, sources: entry.sources };
-}
-
+// Un compteur, et non un tirage : deux rendus successifs doivent donner les
+// mêmes clés, sinon React remonte la liste entière à chaque fragment reçu.
 let nextId = 0;
 const newId = () => `m-${++nextId}`;
 
@@ -240,6 +97,10 @@ export function AssistantChatbot() {
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abandonRef = useRef<AbortController | null>(null);
+
+  // Fermer le panneau ne doit pas laisser un appel courir dans le vide.
+  useEffect(() => () => abandonRef.current?.abort(), []);
 
   // ESC ferme
   useEffect(() => {
@@ -265,24 +126,63 @@ export function AssistantChatbot() {
     }
   }, [open]);
 
-  const sendQuestion = (q: string) => {
-    const text = q.trim();
-    if (!text || thinking) return;
+  /**
+   * Pose la question et rend la réponse à mesure.
+   *
+   * Aucune attente n'est simulée : celle qu'on voit est celle du modèle, et
+   * les premiers mots arrivent en une seconde là où la réponse entière en
+   * demande cinq à quinze. Les consultations s'affichent pendant qu'elles
+   * ont lieu — c'est ce qui remplace un écran immobile.
+   */
+  const sendQuestion = useCallback(
+    async (q: string) => {
+      const text = q.trim();
+      if (!text || thinking) return;
 
-    const userMsg: Message = { id: newId(), role: "user", body: text };
-    setMessages((m) => [...m, userMsg]);
-    setDraft("");
-    setThinking(true);
+      // L'historique part AVANT que la question n'y entre : le serveur
+      // reçoit le contexte, puis la question, et jamais deux fois la même.
+      const historique: TourDeParole[] = messages
+        .filter((m) => m.body.trim())
+        .map((m) => ({ role: m.role, content: m.body }));
 
-    // Mock latency 700-1200ms (déterministe par taille de question pour éviter random impur)
-    const delay = 700 + Math.min(500, text.length * 8);
-    setTimeout(() => {
-      const { body, sources } = mockAnswer(text);
-      const aiMsg: Message = { id: newId(), role: "assistant", body, sources };
-      setMessages((m) => [...m, aiMsg]);
-      setThinking(false);
-    }, delay);
-  };
+      const idReponse = newId();
+      setMessages((m) => [
+        ...m,
+        { id: newId(), role: "user", body: text },
+        { id: idReponse, role: "assistant", body: "", consultations: [], encours: true },
+      ]);
+      setDraft("");
+      setThinking(true);
+
+      const controleur = new AbortController();
+      abandonRef.current = controleur;
+
+      const majReponse = (f: (m: Message) => Message) =>
+        setMessages((tout) => tout.map((m) => (m.id === idReponse ? f(m) : m)));
+
+      try {
+        for await (const ev of interrogerAssistant(text, historique, controleur.signal)) {
+          if (ev.type === "texte") {
+            majReponse((m) => ({ ...m, body: m.body + ev.delta }));
+          } else if (ev.type === "consultation") {
+            majReponse((m) => ({
+              ...m,
+              consultations: [...(m.consultations ?? []), ev.libelle],
+            }));
+          } else if (ev.type === "sources") {
+            majReponse((m) => ({ ...m, sources: ev.sources }));
+          } else if (ev.type === "erreur") {
+            majReponse((m) => ({ ...m, body: ev.message, erreur: true }));
+          }
+        }
+      } finally {
+        majReponse((m) => ({ ...m, encours: false, consultations: [] }));
+        setThinking(false);
+        abandonRef.current = null;
+      }
+    },
+    [messages, thinking],
+  );
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -321,7 +221,7 @@ export function AssistantChatbot() {
           </div>
           <div className={styles.headerInfo}>
             <h3 className={styles.headerTitle}>Assistant procédural ✦</h3>
-            <div className={styles.headerSub}>RAG · MEP · PTBA · Procurement Reg.</div>
+            <div className={styles.headerSub}>Référentiel du projet · lecture seule</div>
           </div>
           <button
             type="button"
@@ -380,7 +280,34 @@ export function AssistantChatbot() {
                       m.role === "user" ? styles.msgBubbleUser : ""
                     }`}
                   >
-                    {m.body}
+                    {/* Ce qu'il consulte, pendant qu'il le fait. Disparaît
+                        une fois la réponse close : c'est un signe de vie,
+                        pas une trace à conserver. */}
+                    {m.consultations && m.consultations.length > 0 && (
+                      <ul className={styles.msgTravail}>
+                        {m.consultations.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {m.role === "assistant" && !m.erreur ? (
+                      m.body && <TexteEnrichi>{m.body}</TexteEnrichi>
+                    ) : (
+                      <p className={m.erreur ? styles.msgErreur : undefined}>{m.body}</p>
+                    )}
+
+                    {m.encours && !m.body && (
+                      <span className={styles.typing} aria-label="Réponse en cours">
+                        <span className={styles.typingDot} />
+                        <span className={styles.typingDot} />
+                        <span className={styles.typingDot} />
+                      </span>
+                    )}
+
+                    {/* Ce qui a RÉELLEMENT été lu, rapporté par le serveur.
+                        Jamais une référence composée par le modèle : une
+                        citation fabriquée fait croire ce qu'elle accompagne. */}
                     {m.sources && m.sources.length > 0 && (
                       <div className={styles.msgSources}>
                         {m.sources.map((src, i) => (
@@ -393,18 +320,7 @@ export function AssistantChatbot() {
                   </div>
                 </div>
               ))}
-              {thinking && (
-                <div className={styles.msg}>
-                  <div className={`${styles.msgAvatar} ${styles.msgAvatarAi}`}>✦</div>
-                  <div className={styles.msgBubble}>
-                    <span className={styles.typing} aria-label="Réflexion en cours">
-                      <span className={styles.typingDot} />
-                      <span className={styles.typingDot} />
-                      <span className={styles.typingDot} />
-                    </span>
-                  </div>
-                </div>
-              )}
+
             </>
           )}
         </div>

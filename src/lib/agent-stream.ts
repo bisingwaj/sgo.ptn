@@ -190,3 +190,88 @@ export async function* redigerChamp(
     lecteur.releaseLock();
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* L'assistant général, hors parcours                                  */
+
+export type AssistantEvent =
+  | { type: "texte"; delta: string }
+  /** Une consultation en cours, dite pendant qu'elle a lieu */
+  | { type: "consultation"; libelle: string }
+  /** Ce qui a RÉELLEMENT été consulté : le serveur le rapporte, pas le modèle */
+  | { type: "sources"; sources: string[] }
+  | { type: "fin" }
+  | { type: "erreur"; message: string };
+
+/**
+ * Pose une question à l'assistant général.
+ *
+ * Même décodage que `parlerAgent` — même découpe sur la ligne vide, même
+ * tolérance à un évènement coupé par un fragment réseau, même
+ * renouvellement du jeton. Ce qui change est la route et ce qui en revient.
+ */
+export async function* interrogerAssistant(
+  question: string,
+  historique: TourDeParole[],
+  signal?: AbortSignal,
+): AsyncGenerator<AssistantEvent> {
+  const lancer = async () =>
+    fetch(`${API_BASE}/assistant/question`, {
+      method: "POST",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}),
+      },
+      body: JSON.stringify({ question, historique }),
+    });
+
+  let response = await lancer();
+
+  if (response.status === 401) {
+    const renouvele = await api.refresh();
+    if (renouvele) response = await lancer();
+  }
+
+  if (!response.ok || !response.body) {
+    let message =
+      "L’assistant est momentanément indisponible. Réessayez dans un instant.";
+    try {
+      const corps = (await response.json()) as { message?: string };
+      if (corps.message) message = corps.message;
+    } catch {
+      // Réponse sans corps JSON exploitable
+    }
+    yield { type: "erreur", message };
+    return;
+  }
+
+  const lecteur = response.body.getReader();
+  const decodeur = new TextDecoder();
+  let tampon = "";
+
+  try {
+    for (;;) {
+      const { done, value } = await lecteur.read();
+      if (done) break;
+      tampon += decodeur.decode(value, { stream: true });
+
+      let coupure: number;
+      while ((coupure = tampon.indexOf("\n\n")) !== -1) {
+        const bloc = tampon.slice(0, coupure).trim();
+        tampon = tampon.slice(coupure + 2);
+        if (!bloc.startsWith("data:")) continue;
+        try {
+          yield JSON.parse(bloc.slice(5)) as AssistantEvent;
+        } catch {
+          // Un évènement illisible ne doit pas rompre l'échange.
+        }
+      }
+    }
+  } catch (e) {
+    if ((e as Error).name === "AbortError") return;
+    yield { type: "erreur", message: "La liaison avec l’assistant a été rompue." };
+  } finally {
+    lecteur.releaseLock();
+  }
+}

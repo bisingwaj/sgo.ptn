@@ -387,3 +387,39 @@
   text-align: center;
   font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
 }
+
+/* Ce qu'il consulte, pendant qu'il le fait -------------------------------
+   Un signe de vie, pas une trace : la liste disparaît une fois la réponse
+   close. Ce qui reste, ce sont les sources — c'est-à-dire ce qui a servi. */
+
+.msgTravail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin-bottom: var(--ptn-space-02);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--cds-text-helper, #6f6f6f);
+
+    &::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      flex-shrink: 0;
+      background: var(--ptn-status-ai, #8a3ffc);
+    }
+  }
+}
+
+/* Un échec se dit dans la bulle, sans prendre la couleur de l'IA : ce n'est
+   pas une réponse du modèle, c'est la plateforme qui parle. */
+.msgErreur {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--cds-text-error, #da1e28);
+}
