@@ -243,12 +243,40 @@
   border-color: var(--ptn-accent);
 }
 
-.checkInput {
-  margin-top: 4px;
+// La case native, retirée de l'affichage sans quitter le document : elle
+// reste focalisable et annoncée. `display: none` la sortirait de l'ordre de
+// tabulation, et la rangée deviendrait inatteignable au clavier.
+.checkInputCache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkMark {
   flex-shrink: 0;
-  accent-color: var(--ptn-accent);
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--cds-border-strong, #8d8d8d);
+  background: var(--cds-background, #fff);
+  color: var(--ptn-accent);
+}
+
+// Retenu : la coche pleine tient seule. Garder le carré autour ferait deux
+// marques concurrentes pour un seul état.
+.checkMarkOn {
+  border-color: transparent;
+  background: transparent;
+}
+
+// L'anneau de focus suit la case cachée, sinon le clavier n'a plus de repère.
+.checkInputCache:focus-visible + .checkMark {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: 1px;
 }
 
 .checkBody {

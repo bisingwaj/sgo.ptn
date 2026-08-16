@@ -55,6 +55,21 @@
   --ptn-composante-c4: #8a3800; // Orange 70 · Coordination & Gestion
   --ptn-composante-c5: #525252; // Gray 70   · CERC, réserve non dotée
 
+  // ----- Sources de financement -----
+  //
+  // Distinguer d'un coup d'œil les trois guichets d'une ventilation. Même
+  // contrainte que les composantes — ni violet, ni cyan de marque, ni
+  // vert/jaune/rouge — et une de plus : PAS de bleu. `--ptn-accent` change
+  // avec le profil connecté et peut l'être ; un bailleur ne doit pas changer
+  // de couleur selon qui regarde.
+  //
+  // Jetons distincts de ceux des composantes, même quand la valeur coïncide :
+  // une composante et un bailleur ne désignent pas la même chose, et rien ne
+  // doit empêcher l'un d'évoluer sans l'autre.
+  --ptn-bailleur-ida: #005d5d;  // Teal 70
+  --ptn-bailleur-afd: #9f1853;  // Magenta 70
+  --ptn-bailleur-gouv: #8a3800; // Orange 70
+
   // ----- Identité institutionnelle UGPTN -----
   // Relevés sur le logo. Le bleu du réseau cartographique coïncide
   // avec Carbon Cyan 50 — la marque et le design system sont donc
@@ -160,6 +175,11 @@
   --ptn-composante-c3: #ff7eb6; // Magenta 40
   --ptn-composante-c4: #ff832b; // Orange 40
   --ptn-composante-c5: #a8a8a8; // Gray 40
+
+  // Sources de financement — mêmes familles, valeurs claires.
+  --ptn-bailleur-ida: #08bdba;  // Teal 40
+  --ptn-bailleur-afd: #ff7eb6;  // Magenta 40
+  --ptn-bailleur-gouv: #ff832b; // Orange 40
 }
 
 // ----- Profile-specific themes (overrides --ptn-accent*) -----
@@ -227,4 +247,8 @@
   --ptn-composante-c3-surface: color-mix(in srgb, var(--ptn-composante-c3) 14%, var(--cds-background));
   --ptn-composante-c4-surface: color-mix(in srgb, var(--ptn-composante-c4) 14%, var(--cds-background));
   --ptn-composante-c5-surface: color-mix(in srgb, var(--ptn-composante-c5) 14%, var(--cds-background));
+
+  --ptn-bailleur-ida-surface: color-mix(in srgb, var(--ptn-bailleur-ida) 14%, var(--cds-background));
+  --ptn-bailleur-afd-surface: color-mix(in srgb, var(--ptn-bailleur-afd) 14%, var(--cds-background));
+  --ptn-bailleur-gouv-surface: color-mix(in srgb, var(--ptn-bailleur-gouv) 14%, var(--cds-background));
 }

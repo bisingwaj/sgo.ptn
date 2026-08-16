@@ -396,7 +396,24 @@
   gap: 6px;
   padding: 6px 10px;
   background: var(--ptn-status-danger-surface);
-  color: #a2191f;
+  color: var(--ptn-status-danger-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+// Ce qui manque encore, dit AVANT le clic.
+//
+// Un bouton désactivé sans explication est une impasse : on clique, rien ne
+// bouge, et rien ne dit pourquoi. La raison se lit donc à côté, en
+// permanence — ton d'attente et non d'erreur, puisque l'auteur n'a rien
+// fait de mal.
+.blocageChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--ptn-status-warning-surface);
+  color: var(--ptn-status-warning-text);
   font-size: 12px;
   font-weight: 500;
 }

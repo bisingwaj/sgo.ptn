@@ -172,6 +172,18 @@ interface CheckRowProps {
   level?: { label: string; tone: "blue" | "green" | "yellow" | "red" | "gray" };
 }
 
+/**
+ * Marque de sélection, commune à tout le produit.
+ *
+ * Carré tant que rien n'est retenu, coche pleine dès que ça l'est — et le
+ * carré disparaît alors, il ne s'ajoute pas à la coche. C'est la forme
+ * qu'utilisent déjà les sélecteurs en lignes des premières étapes ; deux
+ * grammaires de sélection dans un même parcours obligent à réapprendre à
+ * mi-chemin.
+ *
+ * La case native reste en place, seulement retirée de l'affichage : c'est
+ * elle qui porte l'état pour le clavier et les lecteurs d'écran.
+ */
 export function CheckRow({ checked, onChange, title, description, level }: CheckRowProps) {
   return (
     <label className={`${styles.checkRow} ${checked ? styles.checkRowChecked : ""}`}>
@@ -179,8 +191,14 @@ export function CheckRow({ checked, onChange, title, description, level }: Check
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className={styles.checkInput}
+        className={styles.checkInputCache}
       />
+      <span
+        aria-hidden
+        className={`${styles.checkMark} ${checked ? styles.checkMarkOn : ""}`}
+      >
+        {checked && <CheckmarkFilled size={20} />}
+      </span>
       <div className={styles.checkBody}>
         <div className={styles.checkHead}>
           <span className={styles.checkTitle}>{title}</span>

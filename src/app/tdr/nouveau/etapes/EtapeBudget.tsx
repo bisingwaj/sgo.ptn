@@ -29,7 +29,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { Accordion, AccordionItem } from "@carbon/react";
 import { WarningAltFilled } from "@carbon/icons-react";
 import { Note } from "@/components/wizard/WizardFields";
 import {
@@ -373,10 +372,28 @@ function Ventilation({
   enveloppe: TdrEnvelopeApi | null;
 }) {
   const total = Number(state.budgetTotalUsd || 0);
+  // Une teinte par guichet. Sourdes et distinctes — elles servent à
+  // rapprocher un champ de sa barre, pas à hiérarchiser : aucun bailleur
+  // n'est plus important qu'un autre.
   const parts = [
-    { cle: "budgetIdaUsd" as const, label: "Part IDA (USD)", court: "IDA" },
-    { cle: "budgetAfdUsd" as const, label: "Part AFD (USD)", court: "AFD" },
-    { cle: "budgetGovUsd" as const, label: "Part Gouvernement (USD)", court: "Gouvernement" },
+    {
+      cle: "budgetIdaUsd" as const,
+      label: "Part IDA (USD)",
+      court: "IDA",
+      teinte: "var(--ptn-bailleur-ida)",
+    },
+    {
+      cle: "budgetAfdUsd" as const,
+      label: "Part AFD (USD)",
+      court: "AFD",
+      teinte: "var(--ptn-bailleur-afd)",
+    },
+    {
+      cle: "budgetGovUsd" as const,
+      label: "Part Gouvernement (USD)",
+      court: "Gouvernement",
+      teinte: "var(--ptn-bailleur-gouv)",
+    },
   ];
 
   const ventile = parts.reduce((s, p) => s + Number(state[p.cle] || 0), 0);
@@ -411,27 +428,35 @@ function Ventilation({
 
       <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
         {parts.map((p) => (
-          <ChampMontant
+          // Filet de teinte plutôt que champ coloré : c'est ce qui rattache
+          // la saisie à sa barre plus bas, sans peindre un formulaire.
+          <div
             key={p.cle}
-            label={p.label}
-            valeur={state[p.cle]}
-            onChange={(v) => set({ ...state, [p.cle]: v })}
-            placeholder="0"
-            helper={
-              total > 0 && Number(state[p.cle] || 0) > 0
-                ? `${((Number(state[p.cle]) / total) * 100).toFixed(1).replace(".", ",")} % du budget`
-                : undefined
-            }
-          />
+            className="border-l-2 pl-3"
+            style={{ borderColor: p.teinte }}
+          >
+            <ChampMontant
+              label={p.label}
+              valeur={state[p.cle]}
+              onChange={(v) => set({ ...state, [p.cle]: v })}
+              placeholder="0"
+              helper={
+                total > 0 && Number(state[p.cle] || 0) > 0
+                  ? `${((Number(state[p.cle]) / total) * 100).toFixed(1).replace(".", ",")} % du budget`
+                  : undefined
+              }
+            />
+          </div>
         ))}
       </div>
 
       {saisie && (
         <div className="border-subtle bg-layer flex flex-col gap-2 border p-4">
-          {/* Une barre par source, d'une même teinte : inventer une couleur
-              par bailleur créerait un langage que rien n'établit, et qui
-              disparaîtrait à l'impression en noir et blanc. Ce sont les
-              libellés et les pourcentages qui distinguent. */}
+          {/* Une barre par source, chacune dans la teinte de son champ.
+              Les jetons `--ptn-bailleur-*` sont universels : un guichet ne
+              change pas de couleur selon le profil connecté. Le libellé et
+              le pourcentage restent le contenu — c'est ce qui tient à
+              l'impression en noir et blanc, où la teinte disparaît. */}
           {parts
             .filter((p) => Number(state[p.cle] || 0) > 0)
             .map((p) => {
@@ -439,11 +464,18 @@ function Ventilation({
               const pct = total > 0 ? (v / total) * 100 : 0;
               return (
                 <div key={p.cle} className="flex items-center gap-3">
-                  <span className="text-caption text-secondary w-28 shrink-0">{p.court}</span>
+                  <span className="text-caption text-secondary flex w-28 shrink-0 items-center gap-2">
+                    <span
+                      aria-hidden
+                      className="inline-block h-2.5 w-2.5 shrink-0"
+                      style={{ background: p.teinte }}
+                    />
+                    {p.court}
+                  </span>
                   <span aria-hidden className="bg-layer-accent h-2 flex-1 overflow-hidden">
                     <span
-                      className="bg-strong block h-full"
-                      style={{ width: `${Math.min(100, pct)}%` }}
+                      className="block h-full"
+                      style={{ width: `${Math.min(100, pct)}%`, background: p.teinte }}
                     />
                   </span>
                   <span className="ptn-mono text-caption text-primary w-40 shrink-0 text-right">
@@ -486,43 +518,50 @@ function Ventilation({
 /**
  * Cinq sigles, à portée de main.
  *
- * Replié : qui les connaît n'a pas à les traverser. Sur place plutôt que
- * dans un menu d'aide : on cherche la définition d'IDA au moment où l'on
- * hésite entre deux champs, pas avant d'ouvrir l'écran.
+ * Ouvert, et non replié derrière un panneau à déplier. Un glossaire replié
+ * suppose qu'on sache qu'il est là : celui qui bute sur « IDA » ne cherche
+ * pas un bouton, il cherche une définition. Le déplier coûtait un clic à
+ * qui en avait besoin, et n'économisait rien à qui n'en avait pas — le
+ * bloc se saute d'un regard.
+ *
+ * Détaché du formulaire par un filet et de la marge : ce n'est pas une
+ * question de plus à remplir, et l'écran doit le dire avant qu'on le lise.
  *
  * Les chiffres viennent du MEP du 23 juin 2025 et de l'accord de
  * cofinancement. Ne rien y ajouter qui ne soit attesté.
  */
 function Glossaire() {
   return (
-    <Accordion>
-      <AccordionItem title="Ce que ces termes désignent">
-        <dl className="flex flex-col gap-3">
-          <Terme sigle="IDA">
-            Association internationale de développement, guichet concessionnel du Groupe de
-            la Banque mondiale. Chef de file du cofinancement : 400 M USD, soit 79 % des
-            510 M du projet.
-          </Terme>
-          <Terme sigle="AFD">
-            Agence Française de Développement, cofinancier : 110 M USD (100 M EUR), soit
-            21 %.
-          </Terme>
-          <Terme sigle="Part Gouvernement">
-            Part prise en charge par l’État sur ses ressources propres. Elle ne relève
-            d’aucun des deux guichets du cofinancement.
-          </Terme>
-          <Terme sigle="Enveloppe de l’activité">
-            Le montant inscrit au PTBA pour cette ligne du plan. Il borne l’ensemble des
-            marchés qui s’y rattachent, cumulés — pas chacun pris à part.
-          </Terme>
-          <Terme sigle="Revue préalable · postérieure">
-            Préalable : le bailleur donne son avis de non-objection avant que la passation
-            se poursuive. Postérieure : il contrôle après coup, par échantillon. Le seuil
-            de bascule dépend de la méthode et du montant.
-          </Terme>
-        </dl>
-      </AccordionItem>
-    </Accordion>
+    <section className="border-subtle mt-6 border-t pt-6">
+      <h4 className="text-heading-02 text-primary">Glossaire</h4>
+      <p className="text-caption text-secondary mt-1">
+        MEP du 23 juin 2025 et accord de cofinancement.
+      </p>
+      <dl className="mt-4 flex flex-col gap-4">
+        <Terme sigle="IDA">
+          Association internationale de développement, guichet concessionnel du Groupe de
+          la Banque mondiale. Chef de file du cofinancement : 400 M USD, soit 79 % des
+          510 M du projet.
+        </Terme>
+        <Terme sigle="AFD">
+          Agence Française de Développement, cofinancier : 110 M USD (100 M EUR), soit
+          21 %.
+        </Terme>
+        <Terme sigle="Part Gouvernement">
+          Part prise en charge par l’État sur ses ressources propres. Elle ne relève
+          d’aucun des deux guichets du cofinancement.
+        </Terme>
+        <Terme sigle="Enveloppe de l’activité">
+          Le montant inscrit au PTBA pour cette ligne du plan. Il borne l’ensemble des
+          marchés qui s’y rattachent, cumulés — pas chacun pris à part.
+        </Terme>
+        <Terme sigle="Revue préalable · postérieure">
+          Préalable : le bailleur donne son avis de non-objection avant que la passation
+          se poursuive. Postérieure : il contrôle après coup, par échantillon. Le seuil
+          de bascule dépend de la méthode et du montant.
+        </Terme>
+      </dl>
+    </section>
   );
 }
 

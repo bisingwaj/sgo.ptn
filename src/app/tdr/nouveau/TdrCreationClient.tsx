@@ -729,9 +729,15 @@ function Parcours() {
                 </div>
               </div>
 
+              {/* L'intitulé disait « Autres risques propres à ce dossier »,
+                  sans dire de quels risques. Or le parcours en porte deux
+                  familles : les risques du MARCHÉ, pré-cadrés par type à
+                  l'étape 16, et les risques ENVIRONNEMENTAUX ET SOCIAUX, ici.
+                  Un retard de livraison se déclarait donc à l'étape 17, où il
+                  finissait au chapitre des sauvegardes du document produit. */}
               <Field
-                label="Autres risques propres à ce dossier"
-                helper="Un par ligne. Ce que le catalogue du CGES ne couvre pas."
+                label="Autres risques environnementaux ou sociaux propres à ce dossier"
+                helper="Un par ligne, et seulement ce que le catalogue du CGES ne couvre pas. Les risques d’exécution du marché — délais, dépendances, capacité du titulaire — relèvent de l’étape « Cadre & risques »."
               >
                 <Textarea
                   rows={3}
@@ -757,9 +763,19 @@ function Parcours() {
         num: "18",
         label: "Revue & transmission",
         sub: "Contrôle de complétude et engagements",
-        validate: (s) => {
-          if (!s.consentMep || !s.consentRgpd) return "Confirmez les deux engagements.";
-          if (s.blockers.length > 0) return "Des éléments obligatoires manquent.";
+        // Ce qui manque se voit à l'écran : les manques sont listés au-dessus,
+        // les deux engagements sont juste là. Laisser le bouton actif faisait
+        // découvrir au clic ce qui était déjà affiché — et pour un geste
+        // irréversible, un dossier transmis cessant d'être modifiable, c'est
+        // l'inverse de ce qu'il faut.
+        bloquePar: (s) => {
+          if (s.blockers.length > 0) {
+            return `${s.blockers.length} élément${s.blockers.length > 1 ? "s" : ""} obligatoire${s.blockers.length > 1 ? "s" : ""} manque${s.blockers.length > 1 ? "nt" : ""} — voir ci-dessus.`;
+          }
+          const restants = [!s.consentMep, !s.consentRgpd].filter(Boolean).length;
+          if (restants > 0) {
+            return `Confirmez ${restants === 2 ? "les deux engagements" : "le dernier engagement"} pour transmettre.`;
+          }
           return null;
         },
         render: (s, set) => (
@@ -1043,7 +1059,7 @@ function PickerStep<T extends LibraryEntry>({
                   aria-pressed={on}
                 >
                   <span className={styles.pickerCheck}>
-                    {on && <CheckmarkFilled size={14} aria-hidden />}
+                    {on && <CheckmarkFilled size={20} aria-hidden />}
                   </span>
                   <span className={styles.pickerBody}>
                     <span className={styles.pickerLabel}>

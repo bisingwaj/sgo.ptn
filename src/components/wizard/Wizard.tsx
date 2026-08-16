@@ -11,7 +11,7 @@
  * - Support clavier complet
  */
 
-import { useEffect, useState, useMemo, type ReactNode } from "react";
+import { useEffect, useId, useState, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -42,6 +42,18 @@ export interface WizardStep<T = unknown> {
   commit?: (state: T) => Promise<void>;
   /** Optionnel : afficher cette étape uniquement si la condition est vraie */
   visibleIf?: (state: T) => boolean;
+  /**
+   * Ce qui manque encore pour avancer, dit AVANT le clic.
+   *
+   * À distinguer de `validate`, qui répond après coup : `validate` convient
+   * à ce qui se découvre en essayant — un montant hors enveloppe, un
+   * intitulé trop court. `bloquePar` sert à ce qui se voit à l'écran et que
+   * l'auteur doit poser lui-même : deux engagements à confirmer, par
+   * exemple. Le bouton est alors désactivé ET la raison affichée à côté —
+   * jamais l'un sans l'autre, un bouton mort sans explication étant une
+   * impasse.
+   */
+  bloquePar?: (state: T) => string | null;
 }
 
 export interface WizardProps<T = unknown> {
@@ -116,6 +128,7 @@ export function Wizard<T>({
   const [done, setDone] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const idBlocage = useId();
 
   const steps = useMemo(
     () => rawSteps.filter((s) => !s.visibleIf || s.visibleIf(state)),
@@ -155,6 +168,9 @@ export function Wizard<T>({
   const goNext = async () => {
     const current = steps[stepSafe];
     if (!current) return;
+    // Filet : le bouton est déjà désactivé, mais la touche Entrée et un
+    // appel direct passeraient outre.
+    if (current.bloquePar?.(state)) return;
     const validation = current.validate?.(state) ?? null;
     if (validation) {
       setError(validation);
@@ -210,6 +226,7 @@ export function Wizard<T>({
 
   const isLast = stepSafe === steps.length - 1;
   const currentStep = steps[stepSafe];
+  const blocage = currentStep?.bloquePar?.(state) ?? null;
 
   return (
     <div className={styles.shell}>
@@ -308,6 +325,15 @@ export function Wizard<T>({
               <span>{error}</span>
             </div>
           )}
+          {/* Pas de `role="alert"` : ce n'est pas un évènement, c'est un état
+              permanent de l'étape. Une alerte se ferait annoncer à chaque
+              rendu, y compris pendant la frappe. */}
+          {!error && blocage && (
+            <div id={idBlocage} className={styles.blocageChip}>
+              <WarningAltFilled size={14} aria-hidden />
+              <span>{blocage}</span>
+            </div>
+          )}
           {stepSafe > 0 && (
             <button
               type="button"
@@ -322,7 +348,8 @@ export function Wizard<T>({
             type="button"
             className={styles.btnPrimary}
             onClick={goNext}
-            disabled={submitting}
+            disabled={submitting || Boolean(blocage)}
+            aria-describedby={blocage && !error ? idBlocage : undefined}
           >
             <span>{submitting ? "Soumission…" : isLast ? finishLabel : "Suivant"}</span>
             {!submitting && <ArrowRight size={14} aria-hidden />}
