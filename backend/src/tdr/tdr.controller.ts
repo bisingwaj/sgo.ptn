@@ -191,6 +191,54 @@ export class TdrController {
     return this.assist.proposeField(id, dto.champ, actor, contextOf(req));
   }
 
+  @Post(':id/assistance/champ/flux')
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Proposer la rédaction d’un champ, au fil de l’eau',
+    description:
+      'Même proposition que la route d’un bloc, servie en flux d’évènements. Une rédaction ' +
+      'met dix à vingt secondes : les premiers mots paraissent en une seconde, et l’auteur ' +
+      'juge tôt s’il garde ou relance. Rien n’est enregistré — la proposition n’entre au ' +
+      'dossier que si l’auteur la reprend.',
+  })
+  async assistFieldStream(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssistFieldDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    res.writeHead(HttpStatus.OK, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      // Sans cela, un proxy intermédiaire garde le flux en tampon et le
+      // rend d'un bloc : l'effet recherché disparaît.
+      'X-Accel-Buffering': 'no',
+    });
+
+    const envoyer = (ev: unknown) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
+
+    let ferme = false;
+    req.on('close', () => {
+      ferme = true;
+    });
+
+    try {
+      for await (const ev of this.assist.streamField(id, dto.champ, actor, contextOf(req))) {
+        if (ferme) break;
+        envoyer(ev);
+      }
+    } catch (e) {
+      envoyer({
+        type: 'erreur',
+        message: e instanceof Error ? e.message : 'La proposition n’a pas abouti.',
+      });
+    } finally {
+      if (!ferme) res.end();
+    }
+  }
+
   @Post(':id/assistance/contexte')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions('tdr:author')

@@ -205,23 +205,23 @@ export function EditeurTexte({
           className="ptn-zone-redaction text-body-lg text-primary placeholder:text-placeholder mx-auto block w-full max-w-[72ch] resize-none border-0 bg-transparent leading-relaxed outline-none"
         />
 
-        {/* Pendant la génération, le texte s'estompe et la saisie se ferme.
-            Un bouton grisé ne suffit pas : il fait 120 px dans une page qui
-            en fait 900, et l'auteur continue de taper sur un texte qui va
-            être remplacé. */}
+        {/* Le texte s'écrit sous les yeux : le voile qui le masquait n'a
+            plus lieu d'être. La saisie reste fermée — taper dans un texte en
+            train d'arriver produirait un mélange que personne n'a voulu — et
+            un repère dit que ce n'est pas fini. */}
         {enCours && (
           <div
-            className="bg-background/75 absolute inset-0 flex items-center justify-center backdrop-blur-[1px]"
+            className="pointer-events-none sticky bottom-4 flex justify-center"
             role="status"
             aria-live="polite"
           >
-            <span className="border-ai bg-background text-body text-ai-text ptn-entree-ligne inline-flex items-center gap-3 border px-4 py-3 shadow-sm">
+            <span className="border-ai bg-background text-caption text-ai-text ptn-entree-ligne inline-flex items-center gap-2.5 border px-3 py-2 shadow-sm">
               <span className="ptn-points" aria-hidden>
                 <i />
                 <i />
                 <i />
               </span>
-              L’assistant rédige…
+              L’assistant rédige — laissez-le finir
             </span>
           </div>
         )}

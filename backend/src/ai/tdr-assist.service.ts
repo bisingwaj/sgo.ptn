@@ -569,6 +569,108 @@ Restez sur des qualifications vérifiables. Ne nommez aucune personne, aucun cab
    * oubli : le socle distingue la dictée de la fabrication, et proscrit la
    * seconde. Un budget ne se propose pas.
    */
+  /**
+   * Prépare la demande d'un champ de texte : consigne, ancrage, régime.
+   *
+   * Isolé parce que deux chemins l'empruntent — la réponse d'un bloc et le
+   * flux. Deux copies auraient divergé à la première correction de consigne,
+   * et le texte produit aurait dépendu du chemin emprunté.
+   */
+  private async prepareField(tdrId: string, champ: string) {
+    const spec = FIELDS.find((f) => f.cle === champ);
+    if (!spec) throw new BadRequestException(`Champ inconnu du dossier : ${champ}.`);
+
+    if (spec.kind === 'liste_objectifs' || spec.kind === 'liste_livrables') {
+      throw new BadRequestException(
+        `Le champ ${champ} est une liste : il a sa propre route d’assistance.`,
+      );
+    }
+    if (spec.kind !== 'texte') {
+      throw new BadRequestException(
+        `Le champ ${champ} porte une valeur chiffrée ou une date. Ces valeurs ne se génèrent ` +
+          `pas : l’assistant les transcrit lorsqu’on les lui dicte, il ne les propose jamais.`,
+      );
+    }
+
+    const consigne = TdrAssistService.CONSIGNES[champ];
+    if (!consigne) {
+      throw new BadRequestException(`Aucune consigne de rédaction n’est définie pour ${champ}.`);
+    }
+
+    const tdr = await this.loadContext(tdrId);
+    const { text, grounded } = TdrAssistService.describe(tdr);
+    const live = await this.liveGrounding(tdr);
+
+    const existant = (tdr as unknown as Record<string, unknown>)[champ];
+    const dejaEcrit = typeof existant === 'string' && existant.trim().length > 0;
+
+    const user = `${dejaEcrit ? 'Reprenez' : 'Rédigez'} la section « ${spec.description.split(' :')[0]} » de ce TDR.
+
+${text}${live}
+
+${consigne}
+
+${
+  dejaEcrit
+    ? `TEXTE EXISTANT, à reprendre dans sa forme sans y introduire aucun fait nouveau :\n${String(existant).trim()}`
+    : ''
+}
+
+Répondez par le texte seul, sans titre ni commentaire.`;
+
+    return {
+      system: TdrAssistService.system(tdr.tdrType.requiresPges),
+      user,
+      grounded,
+      mode: (dejaEcrit ? 'reprise' : 'redaction') as 'reprise' | 'redaction',
+    };
+  }
+
+  /**
+   * Même proposition, au fil de l'eau.
+   *
+   * Le texte arrive par fragments plutôt qu'en bloc. Ce n'est pas un effet :
+   * une rédaction met dix à vingt secondes, et l'auteur regardait jusqu'ici
+   * un écran immobile pendant tout ce temps. Les premiers mots paraissent
+   * maintenant en une seconde, et il peut juger tôt s'il garde ou relance.
+   */
+  async *streamField(
+    tdrId: string,
+    champ: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ): AsyncGenerator<
+    | { type: 'ancrage'; groundedOn: string[]; mode: 'reprise' | 'redaction' }
+    | { type: 'texte'; delta: string }
+    | { type: 'fin' }
+    | { type: 'erreur'; message: string }
+  > {
+    const prep = await this.prepareField(tdrId, champ);
+    yield { type: 'ancrage', groundedOn: prep.grounded, mode: prep.mode };
+
+    let modele = 'inconnu';
+    try {
+      for await (const ev of this.ai.stream({
+        messages: [
+          { role: 'system', content: prep.system },
+          { role: 'user', content: prep.user },
+        ],
+        maxTokens: 900,
+      })) {
+        if (ev.type === 'texte') yield { type: 'texte', delta: ev.delta };
+      }
+    } catch (e) {
+      yield {
+        type: 'erreur',
+        message: e instanceof Error ? e.message : 'La proposition n’a pas abouti.',
+      };
+      return;
+    }
+
+    await this.record(tdrId, `champ:${champ}`, modele, actor, ctx);
+    yield { type: 'fin' };
+  }
+
   async proposeField(
     tdrId: string,
     champ: string,

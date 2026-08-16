@@ -104,3 +104,87 @@ export async function* parlerAgent(
     lecteur.releaseLock();
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Rédaction d'un champ, au fil de l'eau                               */
+/* ------------------------------------------------------------------ */
+
+export type AssistEvent =
+  | { type: "ancrage"; groundedOn: string[]; mode: "reprise" | "redaction" }
+  | { type: "texte"; delta: string }
+  | { type: "fin" }
+  | { type: "erreur"; message: string };
+
+/**
+ * Même proposition que `tdrApi.assistField`, servie par fragments.
+ *
+ * Ce n'est pas un effet : une rédaction met dix à vingt secondes, et
+ * l'auteur regardait un écran immobile pendant tout ce temps. Les premiers
+ * mots paraissent en une seconde, et il juge tôt s'il garde ou relance.
+ *
+ * Le décodage SSE est celui de `parlerAgent` — même découpe sur la ligne
+ * vide, même tolérance à un évènement coupé par un fragment réseau.
+ */
+export async function* redigerChamp(
+  tdrId: string,
+  champ: string,
+  signal?: AbortSignal,
+): AsyncGenerator<AssistEvent> {
+  const lancer = async () =>
+    fetch(`${API_BASE}/tdr/${tdrId}/assistance/champ/flux`, {
+      method: "POST",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}),
+      },
+      body: JSON.stringify({ champ }),
+    });
+
+  let response = await lancer();
+  if (response.status === 401) {
+    const renouvele = await api.refresh();
+    if (renouvele) response = await lancer();
+  }
+
+  if (!response.ok || !response.body) {
+    let message =
+      response.status === 503
+        ? "L’assistance n’est pas configurée sur ce serveur. Le champ reste à remplir à la main."
+        : `L’assistant a répondu ${response.status}.`;
+    try {
+      const corps = (await response.json()) as { message?: string };
+      if (corps.message) message = corps.message;
+    } catch {
+      // Réponse sans corps JSON exploitable
+    }
+    yield { type: "erreur", message };
+    return;
+  }
+
+  const lecteur = response.body.getReader();
+  const decodeur = new TextDecoder();
+  let tampon = "";
+
+  try {
+    for (;;) {
+      const { done, value } = await lecteur.read();
+      if (done) break;
+      tampon += decodeur.decode(value, { stream: true });
+
+      let coupure: number;
+      while ((coupure = tampon.indexOf("\n\n")) !== -1) {
+        const bloc = tampon.slice(0, coupure).trim();
+        tampon = tampon.slice(coupure + 2);
+        if (!bloc.startsWith("data:")) continue;
+        try {
+          yield JSON.parse(bloc.slice(5).trim()) as AssistEvent;
+        } catch {
+          // Fragment illisible : on poursuit plutôt que d'interrompre.
+        }
+      }
+    }
+  } finally {
+    lecteur.releaseLock();
+  }
+}

@@ -16,7 +16,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { WarningAltFilled } from "@carbon/icons-react";
-import { tdrApi, ApiError } from "@/lib/api";
+import { redigerChamp } from "@/lib/agent-stream";
 import type { State } from "../etat";
 import { useAssistant } from "../assistant-contexte";
 import { EditeurTexte } from "./EditeurTexte";
@@ -73,31 +73,49 @@ export function EtapeTexte({
    * efface un paragraphe qu'on a mis vingt minutes à écrire.
    */
   const generer = async () => {
-    if (!state.tdrId) return;
+    if (!state.tdrId || enCours) return;
     setEnCours(true);
     setErreur(null);
+    setAvant(valeur);
+
+    // Le texte s'écrit dans le champ à mesure qu'il arrive. Il n'est pas
+    // révélé après coup : chaque fragment vient du serveur, et l'auteur voit
+    // réellement où en est la rédaction.
+    let accumule = "";
+    let echec: string | null = null;
+
     try {
-      const r = await tdrApi.assistField(state.tdrId, champ.cle);
-      setAvant(valeur);
-      ecrire(r.proposal, true);
-      // Consigné au fil, panneau ouvert ou non : c'est ce qui fait de
-      // l'assistant une mémoire du dossier et non deux outils séparés.
-      assistant.consignerEnLigne(
-        valeur.trim() ? `Reprendre « ${champ.question} »` : `Rédiger « ${champ.question} »`,
-        r.proposal,
-        champ.cle,
-      );
+      for await (const ev of redigerChamp(state.tdrId, champ.cle)) {
+        if (ev.type === "texte") {
+          accumule += ev.delta;
+          ecrire(accumule, true);
+        } else if (ev.type === "erreur") {
+          echec = ev.message;
+          break;
+        }
+      }
     } catch (e) {
-      setErreur(
-        e instanceof ApiError && e.status === 503
-          ? "L’assistance n’est pas configurée sur ce serveur. Le champ reste à remplir à la main."
-          : e instanceof Error
-            ? e.message
-            : "La proposition n’a pas abouti.",
-      );
+      echec = e instanceof Error ? e.message : "La proposition n’a pas abouti.";
     } finally {
       setEnCours(false);
     }
+
+    if (echec) {
+      // Le champ retrouve son état d'avant : une rédaction interrompue ne
+      // doit pas laisser un demi-paragraphe à la place du texte de l'auteur.
+      ecrire(valeur, false);
+      setAvant(null);
+      setErreur(echec);
+      return;
+    }
+
+    // Consigné au fil, panneau ouvert ou non : c'est ce qui fait de
+    // l'assistant une mémoire du dossier et non deux outils séparés.
+    assistant.consignerEnLigne(
+      valeur.trim() ? `Améliorer « ${champ.question} »` : `Rédiger « ${champ.question} »`,
+      accumule,
+      champ.cle,
+    );
   };
 
   return (

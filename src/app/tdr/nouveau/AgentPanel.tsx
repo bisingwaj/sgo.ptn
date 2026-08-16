@@ -48,6 +48,7 @@ export function AgentPanel({
   const [apercu, setApercu] = useState<{ champ: string; texte: string } | null>(null);
 
   const filRef = useRef<HTMLDivElement>(null);
+  const saisieRef = useRef<HTMLTextAreaElement>(null);
   const abandonRef = useRef<AbortController | null>(null);
 
   // Le fil suit la génération : un texte qui s'écrit hors de vue ne sert
@@ -57,6 +58,16 @@ export function AgentPanel({
   }, [bulles, apercu]);
 
   useEffect(() => () => abandonRef.current?.abort(), []);
+
+  // La saisie grandit avec son contenu jusqu'à un plafond, comme dans une
+  // interface de conversation. Une seule ligne avec ascenseur dès le
+  // deuxième mot ne laissait pas relire ce qu'on venait d'écrire.
+  useEffect(() => {
+    const el = saisieRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 192)}px`;
+  }, [saisie]);
 
   const envoyer = useCallback(
     async (instruction: string) => {
@@ -248,6 +259,7 @@ export function AgentPanel({
       >
         <div className="border-strong bg-field focus-within:border-ai flex items-end gap-2 border px-3 py-2">
           <textarea
+            ref={saisieRef}
             value={saisie}
             onChange={(e) => setSaisie(e.target.value)}
             placeholder={tdrId ? "Que voulez-vous ?" : "Ouvrez d’abord le brouillon."}
@@ -261,7 +273,7 @@ export function AgentPanel({
                 void envoyer(saisie);
               }
             }}
-            className="ptn-zone-redaction text-body text-primary placeholder:text-placeholder max-h-40 min-h-[1.75rem] flex-1 resize-none border-0 bg-transparent py-1 outline-none"
+            className="ptn-zone-redaction text-body text-primary placeholder:text-placeholder max-h-48 flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1 outline-none"
           />
           <button
             type="submit"
