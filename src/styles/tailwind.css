@@ -81,6 +81,7 @@
   /* IA — marqueur violet Carbon. Tout ce qui est généré ou suggéré
    * par un modèle porte cette couleur, et rien d'autre ne la porte. */
   --color-ai: var(--ptn-status-ai);
+  --color-ai-hover: var(--ptn-status-ai-hover);
   --color-ai-surface: var(--ptn-status-ai-surface);
   --color-ai-text: var(--ptn-status-ai-text);
 

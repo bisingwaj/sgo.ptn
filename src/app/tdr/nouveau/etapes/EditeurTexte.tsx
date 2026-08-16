@@ -122,7 +122,7 @@ export function EditeurTexte({
             onClick={onGenerer}
             disabled={enCours || desactive}
             title={desactive ? desactiveRaison : "Rédiger à partir du dossier"}
-            className="bg-ai text-on-color text-caption ptn-carte-liste inline-flex items-center gap-2 px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            className="bg-ai hover:bg-ai-hover text-on-color text-caption ptn-carte-liste inline-flex items-center gap-2 px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:hover:bg-ai disabled:opacity-40"
           >
             <AiGenerate size={16} aria-hidden />
             {/* « Reprendre » ne disait pas ce qu'il faisait. Sur un champ
@@ -137,7 +137,7 @@ export function EditeurTexte({
             aria-haspopup="menu"
             aria-expanded={menu}
             aria-label="Autres options d’assistance"
-            className="bg-ai text-on-color ptn-carte-liste border-l-on-color/25 inline-flex items-center border-l px-1.5 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+            className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste border-l-on-color/25 inline-flex items-center border-l px-1.5 py-1.5 disabled:cursor-not-allowed disabled:hover:bg-ai disabled:opacity-40"
           >
             <ChevronDown size={16} aria-hidden />
           </button>

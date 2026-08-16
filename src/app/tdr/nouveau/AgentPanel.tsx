@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parlerAgent, type AgentEvent, type TourDeParole } from "@/lib/agent-stream";
 import { AiGenerate, Close, SendAlt, Undo, WarningAltFilled } from "@carbon/icons-react";
+import { IconButton } from "@carbon/react";
 import { useAssistant, type Bulle, type Ecriture } from "./assistant-contexte";
 
 /** Une écriture faite par l'assistant, et de quoi la défaire. */
@@ -275,11 +276,20 @@ export function AgentPanel({
             }}
             className="ptn-zone-redaction text-body text-primary placeholder:text-placeholder max-h-48 flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1 outline-none"
           />
-          <button
+          {/* Infobulle alignée au-dessus : le bouton est au bas de l'écran,
+              une bulle posée dessous serait hors du cadre. Elle porte le
+              raccourci, qui ne se devine pas. */}
+          <IconButton
             type="submit"
+            align="top-right"
+            size="md"
+            label={
+              occupe
+                ? "L’assistant répond…"
+                : "Envoyer — Entrée pour envoyer, Maj+Entrée pour aller à la ligne"
+            }
             disabled={!tdrId || occupe || !saisie.trim()}
-            aria-label="Envoyer"
-            className="bg-ai text-on-color ptn-carte-liste mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center disabled:opacity-30"
+            className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center disabled:hover:bg-ai disabled:opacity-30"
           >
             {occupe ? (
               <span className="ptn-points" aria-hidden>
@@ -290,7 +300,7 @@ export function AgentPanel({
             ) : (
               <SendAlt size={16} aria-hidden />
             )}
-          </button>
+          </IconButton>
         </div>
         <p className="text-caption text-helper mt-2">
           L’assistant peut se tromper. Tout ce qu’il écrit reste à relire.

@@ -32,6 +32,8 @@
   --ptn-status-info-surface: #edf5ff;
   --ptn-status-info-text: #0043ce;
   --ptn-status-ai: #8a3ffc;
+  // Purple 70 — le survol descend d'un cran, comme l'accent le fait déjà.
+  --ptn-status-ai-hover: #6929c4;
   --ptn-status-ai-surface: #f6f2ff;
   --ptn-status-ai-text: #6929c4;
 
@@ -141,6 +143,8 @@
   --ptn-status-danger-surface: rgba(218, 30, 40, 0.16);
   --ptn-status-info-surface: rgba(15, 98, 254, 0.16);
   --ptn-status-ai-surface: rgba(138, 63, 252, 0.16);
+  // En thème sombre, le survol s'éclaircit au lieu de s'assombrir.
+  --ptn-status-ai-hover: #a56eff;
 
   // Texte status — versions claires pour contraste sur surface sombre
   --ptn-status-success-text: #6fdc8c;
