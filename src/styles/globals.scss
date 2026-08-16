@@ -279,6 +279,31 @@ samp,
     break-inside: avoid;
   }
 
+  // Une pièce qui se pagine, et non une carte d'écran.
+  //
+  // La règle ci-dessus est faite pour des cartes, qui tiennent sur une page.
+  // Le document de TDR en fait sept : lui interdire la coupure le pousse
+  // entier au feuillet suivant, puis le laisse déborder hors des marges.
+  // On la lève donc, et on tient la mise en page par ce qui la tient
+  // vraiment — un titre reste avec son texte, aucune ligne ne reste seule.
+  [data-document],
+  [data-document] section {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  [data-document] h2 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  [data-document] p,
+  [data-document] li,
+  [data-document] dd {
+    orphans: 3;
+    widows: 3;
+  }
+
   // Filigrane / en-tête PDF
   @page {
     margin: 18mm 15mm 22mm 15mm;

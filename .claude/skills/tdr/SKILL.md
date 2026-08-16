@@ -164,6 +164,28 @@ le document produit la rend.
 
 ## 5. Ce que le document rend
 
+`GET /tdr/:id/document/apercu` rend le PLAN ; `GET /tdr/:id/document` rend le
+fichier (PDF par défaut, `?format=docx`). Trois rendus, un seul plan — le PDF,
+le DOCX et l'écran `/tdr/[id]/document` doivent dire la même chose. Ne jamais
+recomposer côté navigateur : deux versions d'une pièce contractuelle
+circuleraient en se contredisant.
+
+Le plan est un DOCUMENT COMPOSÉ, non une charge utile d'API : il porte sa date
+en toutes lettres, ses titres en français, son statut et ses champs assistés en
+clair. La règle « l'API transporte des données » vaut pour les ressources, pas
+pour la pièce elle-même.
+
+Un fichier se récupère en `fetch` puis par URL d'objet (`enregistrerFichier`,
+`src/lib/telechargement.ts`) : un `<a href>` nu ne porte pas d'en-tête
+`Authorization`, et le document est derrière une permission.
+
+L'impression passe par `/tdr/[id]/document`, jamais par la fiche : la fiche est
+un écran de travail, le document est la pièce. `[data-document]` lève la règle
+« ne pas couper une section » de `globals.scss`, faite pour des cartes — sans
+quoi un document de sept feuillets refuse de se paginer.
+
+
+
 `backend/src/tdr-document/document-plan.ts` connaît quatre genres de bloc :
 `paragraphe`, `liste`, `definitions`, `absent`. **Aucun balisage** — ni gras,
 ni italique, ni titre.

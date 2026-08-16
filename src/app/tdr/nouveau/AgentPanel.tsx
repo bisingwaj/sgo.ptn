@@ -417,7 +417,7 @@ function useVignette(piece: PieceJointeApi & { fichier?: File }, tdrId: string |
 
     let vivante = true;
     let creee: string | null = null;
-    apercuDePiece(tdrApi.pieceUrl(tdrId, piece.id))
+    apercuDePiece(tdrId, piece.id)
       .then((u) => {
         creee = u;
         // Sans cette garde, une adresse créée après le démontage fuit : cela

@@ -377,6 +377,16 @@
   }
 }
 
+// Les deux suites d'un dépôt, côte à côte. En colonne sous 480 px : deux
+// boutons serrés sur une ligne étroite se touchent, et on clique l'autre.
+.successActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ptn-space-03);
+  margin-top: var(--ptn-space-03);
+}
+
 .success {
   svg {
     color: var(--ptn-status-success);
@@ -709,7 +719,10 @@
 }
 
 .documentRef {
-  font-size: 11px;
+  /* 12 px, plancher du dépôt : ces usagers travaillent à 125-150 % de zoom.
+     La référence se distingue par sa couleur et sa graisse, pas par sa
+     petitesse. */
+  font-size: 12px;
   color: var(--cds-text-helper, #6f6f6f);
   letter-spacing: 0.02em;
 }
@@ -744,14 +757,6 @@
   opacity: 0.55;
 }
 
-.successActions {
-  display: flex;
-  align-items: center;
-  gap: var(--ptn-space-05);
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
 /* Le texte du document, déplié -------------------------------------------
    L'auteur signe deux attestations sur cette pièce : elle doit être lisible
    ici, et pas seulement téléchargeable. La colonne est resserrée à la
@@ -778,15 +783,17 @@
   color: var(--cds-text-secondary, #525252);
   padding: 3px 0;
 
+  /* Le numéro et la mention « non renseignée » restent au plancher de 12 px :
+     ils se détachent par la couleur d'aide, non par une taille moindre. */
   span:first-child {
     color: var(--cds-text-helper, #6f6f6f);
-    font-size: 11px;
+    font-size: 12px;
     min-width: 22px;
   }
 
   em {
     font-style: normal;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--cds-text-helper, #6f6f6f);
     margin-left: auto;
   }

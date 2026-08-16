@@ -200,6 +200,46 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T;
 }
 
+/**
+ * Requête dont la réponse est un FICHIER, non du JSON.
+ *
+ * Doublon assumé de `request` sur le rafraîchissement du jeton : un lien
+ * `<a href>` ne peut pas porter d'en-tête `Authorization`, et les documents
+ * contractuels sont derrière une permission. Il faut donc les chercher en
+ * `fetch`, puis fabriquer une URL d'objet — c'est le seul chemin qui
+ * conserve l'habilitation.
+ *
+ * Le corps n'étant lisible qu'une fois, il n'est pas mutualisé avec
+ * `request` : celui-ci lirait du JSON là où il y a un PDF.
+ */
+async function requestBlob(path: string, skipRefresh = false): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: "GET",
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    });
+  } catch {
+    throw new ApiError(
+      `Service injoignable à l'adresse ${API_BASE}. Vérifiez que l'API est démarrée.`,
+      0,
+    );
+  }
+
+  if (response.status === 401 && !skipRefresh) {
+    const hadSession = accessToken !== null;
+    if (await tryRefresh()) return requestBlob(path, true);
+    if (hadSession) {
+      setAccessToken(null);
+      setRefreshToken(null);
+      sessionExpiredHandler?.();
+    }
+  }
+
+  if (!response.ok) throw await parseError(response);
+  return response.blob();
+}
+
 async function tryRefresh(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
@@ -231,42 +271,20 @@ async function tryRefresh(): Promise<boolean> {
  * une balise `<img>` ne peuvent le porter, et la route répondrait 401. Tout
  * fichier du dossier passe donc par ici.
  */
-async function recupererBlob(url: string): Promise<Blob> {
-  const reponse = await fetch(url, {
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-  });
-  if (!reponse.ok) throw await parseError(reponse);
-  return reponse.blob();
-}
-
 /**
  * L'adresse locale d'une pièce, pour l'afficher.
  *
- * Distincte de `telechargerFichier` à dessein : celui-ci force
- * l'enregistrement sur disque et révoque au bout de dix secondes — une
- * vignette bâtie dessus deviendrait blanche. Ici l'adresse est rendue à
- * l'appelant, à qui il revient de la révoquer au démontage.
- */
-export async function apercuDePiece(url: string): Promise<string> {
-  return URL.createObjectURL(await recupererBlob(url));
-}
-
-/**
- * Télécharge un fichier protégé et le remet au navigateur.
+ * Distincte de l'enregistrement sur disque à dessein : celui-ci révoque
+ * l'URL sitôt le téléchargement engagé, et une vignette bâtie dessus
+ * deviendrait blanche. Ici l'adresse est rendue à l'appelant, à qui il
+ * revient de la révoquer au démontage.
  *
- * On récupère le fichier avec le jeton, puis on déclenche l'enregistrement
- * depuis un objet local.
+ * Passe par `requestBlob`, comme le document : une pièce est derrière la
+ * même permission, et une vignette ne doit pas être le seul appel du
+ * dossier à ignorer la rotation du jeton.
  */
-export async function telechargerFichier(url: string, nom: string): Promise<void> {
-  const blob = await recupererBlob(url);
-  const lien = document.createElement("a");
-  lien.href = URL.createObjectURL(blob);
-  lien.download = nom;
-  document.body.appendChild(lien);
-  lien.click();
-  lien.remove();
-  // Sans cela, le blob reste en mémoire pour la durée de la page.
-  setTimeout(() => URL.revokeObjectURL(lien.href), 10_000);
+export async function apercuDePiece(tdrId: string, pieceId: string): Promise<string> {
+  return URL.createObjectURL(await requestBlob(`/tdr/${tdrId}/pieces/${pieceId}`));
 }
 
 export const api = {
@@ -844,6 +862,45 @@ export interface TdrEnvelopeApi {
   remainingUsd: number;
 }
 
+/**
+ * Le document, tel que le serveur le compose — avant d'en fabriquer un
+ * fichier.
+ *
+ * Un seul plan pour trois rendus : le PDF, le DOCX, et la page qui
+ * s'affiche et s'imprime. Les trois doivent dire la même chose, faute de
+ * quoi deux versions d'une pièce contractuelle circuleraient en se
+ * contredisant. Aucun modèle n'intervient dans sa composition.
+ *
+ * `absent` n'est pas une section vide : c'est le vide DIT. Un relecteur
+ * doit voir ce qui manque, pas une section muette.
+ */
+export type BlocDocumentApi =
+  | { genre: "paragraphe"; texte: string }
+  | { genre: "liste"; entrees: string[] }
+  | { genre: "definitions"; lignes: Array<{ cle: string; valeur: string }> }
+  | { genre: "absent"; mention: string };
+
+export interface SectionDocumentApi {
+  numero: string;
+  titre: string;
+  blocs: BlocDocumentApi[];
+}
+
+export interface PlanDocumentApi {
+  reference: string;
+  titre: string;
+  typeCode: string;
+  typeNom: string;
+  organisation: string;
+  statut: string;
+  /** Date de composition, déjà en toutes lettres : c'est le serveur qui date. */
+  dateComposition: string;
+  entete: Array<{ cle: string; valeur: string }>;
+  sections: SectionDocumentApi[];
+  /** Champs auxquels l'assistant a contribué — déclarés en tête du document. */
+  champsAssistes: string[];
+}
+
 export interface TdrApi {
   id: string;
   reference: string;
@@ -919,28 +976,6 @@ export interface PieceJointeApi {
   lisibleParAssistant: boolean;
 }
 
-/** Plan du document final, tel qu'il sera imprimé. */
-export interface PlanDocumentApi {
-  reference: string;
-  titre: string;
-  typeCode: string;
-  typeNom: string;
-  organisation: string;
-  dateComposition: string;
-  entete: Array<{ cle: string; valeur: string }>;
-  sections: Array<{
-    numero: string;
-    titre: string;
-    blocs: Array<
-      | { genre: "paragraphe"; texte: string }
-      | { genre: "liste"; entrees: string[] }
-      | { genre: "definitions"; lignes: Array<{ cle: string; valeur: string }> }
-      | { genre: "absent"; mention: string }
-    >;
-  }>;
-  champsAssistes: string[];
-}
-
 export const tdrApi = {
   list: (statut?: string) =>
     api.get<TdrListItem[]>(`/tdr${statut ? `?statut=${statut}` : ""}`),
@@ -976,16 +1011,17 @@ export const tdrApi = {
   },
   retirerPiece: (id: string, pieceId: string) =>
     api.del<{ id: string }>(`/tdr/${id}/pieces/${pieceId}`),
-  pieceUrl: (id: string, pieceId: string) => `${API_BASE}/tdr/${id}/pieces/${pieceId}`,
-  /** Le plan du document, pour relire avant de fabriquer le fichier */
-  documentPlan: (id: string) => api.get<PlanDocumentApi>(`/tdr/${id}/document/apercu`),
+
+  /** Le contenu du document, pour l'afficher et l'imprimer sans produire de fichier. */
+  planDocument: (id: string) => api.get<PlanDocumentApi>(`/tdr/${id}/document/apercu`),
+
   /**
-   * Adresse du fichier. Le jeton d'accès vit en mémoire et ne peut pas
-   * voyager dans une balise de téléchargement : on récupère donc le
-   * document par `fetch`, puis on le remet au navigateur.
+   * Le document composé. Chaque appel est journalisé côté serveur : une
+   * pièce contractuelle doit pouvoir être rattachée à qui l'a produite.
    */
-  documentUrl: (id: string, format: "pdf" | "docx") =>
-    `${API_BASE}/tdr/${id}/document${format === "docx" ? "?format=docx" : ""}`,
+  fichierDocument: (id: string, format: "pdf" | "docx" = "pdf") =>
+    requestBlob(`/tdr/${id}/document${format === "docx" ? "?format=docx" : ""}`),
+
   createDraft: (payload: { tdrTypeCode: string; title: string; ptbaActivityId?: string }) =>
     api.post<TdrApi>("/tdr", payload),
   update: (id: string, patch: Record<string, unknown>) =>

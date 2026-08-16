@@ -207,7 +207,9 @@ charger avant d'intervenir sur ces domaines.
 - **Écrans hérités.** Sur 69 routes, 72 modules SCSS subsistent — la plupart
   des écrans gardent leurs données d'exemple, sans état de chargement ni
   d'erreur.
-- **Impression.** Une seule feuille `@media print`, alors que ces usagers
+- **Impression.** Le TDR s'imprime et se télécharge depuis
+  `/tdr/[id]/document`. Les autres écrans n'ont que la feuille `@media print`
+  générique, sans bouton ni mise en page propre — alors que ces usagers
   impriment.
 - **Glossaire des sigles.** Annoncé dans le menu d'aide, pas encore écrit.
 

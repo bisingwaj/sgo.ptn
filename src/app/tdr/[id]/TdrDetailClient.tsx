@@ -13,14 +13,14 @@
  * ici, où elle finirait par diverger.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shell } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
 import { tdrApi, ApiError, type TdrApi, type TdrStatusApi } from "@/lib/api";
-import { Edit, TrashCan, WarningAltFilled } from "@carbon/icons-react";
+import { Document, Edit, TrashCan, WarningAltFilled } from "@carbon/icons-react";
 import styles from "@/styles/ugp-shared.module.scss";
 import vue from "./detail.module.scss";
 
@@ -47,18 +47,27 @@ export function TdrDetailClient({ id }: { id: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const charger = useCallback(async () => {
-    try {
-      setTdr(await tdrApi.get(id));
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Dossier introuvable.");
-    }
-  }, [id]);
-
+  // L'état s'écrit dans les rappels de la promesse, jamais dans le corps de
+  // l'effet — appeler une fonction qui écrit revient au même pour la règle,
+  // et provoque les rendus en cascade qu'elle vise. Le drapeau d'annulation
+  // évite en outre d'afficher un dossier dont on a quitté l'écran.
   useEffect(() => {
     if (authLoading) return;
-    void charger();
-  }, [authLoading, charger]);
+    let annule = false;
+    tdrApi
+      .get(id)
+      .then((t) => {
+        if (!annule) setTdr(t);
+      })
+      .catch((e: unknown) => {
+        if (!annule) {
+          setError(e instanceof ApiError ? e.message : "Dossier introuvable.");
+        }
+      });
+    return () => {
+      annule = true;
+    };
+  }, [authLoading, id]);
 
   const supprimer = async () => {
     setDeleting(true);
@@ -132,24 +141,34 @@ export function TdrDetailClient({ id }: { id: string }) {
           </>
         }
         actions={
-          reprenable && estAuteur ? (
-            <>
-              <Link href={`/tdr/nouveau?id=${tdr.id}`} className="demoBtnPrimary">
-                <Edit size={14} aria-hidden />
-                <span>Reprendre la rédaction</span>
-              </Link>
-              {tdr.status === "BROUILLON" && (
-                <button
-                  type="button"
-                  className="demoBtnSecondary"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <TrashCan size={14} aria-hidden />
-                  <span>Supprimer</span>
-                </button>
-              )}
-            </>
-          ) : undefined
+          <>
+            {/* Le document existait sans qu'aucun écran n'y mène : on le
+                déclenchait depuis Swagger. Offert à tout statut, brouillon
+                compris — relire son dossier tel qu'il partira est
+                précisément ce qu'on veut faire avant de le transmettre. */}
+            <Link href={`/tdr/${tdr.id}/document`} className="demoBtnSecondary">
+              <Document size={14} aria-hidden />
+              <span>Voir le document</span>
+            </Link>
+            {reprenable && estAuteur && (
+              <>
+                <Link href={`/tdr/nouveau?id=${tdr.id}`} className="demoBtnPrimary">
+                  <Edit size={14} aria-hidden />
+                  <span>Reprendre la rédaction</span>
+                </Link>
+                {tdr.status === "BROUILLON" && (
+                  <button
+                    type="button"
+                    className="demoBtnSecondary"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <TrashCan size={14} aria-hidden />
+                    <span>Supprimer</span>
+                  </button>
+                )}
+              </>
+            )}
+          </>
         }
       />
 

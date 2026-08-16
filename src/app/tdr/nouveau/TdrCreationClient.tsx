@@ -28,7 +28,6 @@ import {
   type ClauseApi,
   type IndicatorApi,
   type LibraryEntry,
-  telechargerFichier,
   type PlanDocumentApi,
   type PtbaActivityApi,
   type ComponentApi,
@@ -39,6 +38,7 @@ import {
   type TdrEnvelopeApi,
   type TdrTypeApi,
 } from "@/lib/api";
+import { enregistrerFichier } from "@/lib/telechargement";
 import {
   CheckmarkFilled,
   // « Document » est aussi un type global du navigateur : sans alias, il
@@ -872,7 +872,18 @@ function Parcours() {
           La méthode et le type de revue ont été figés depuis les seuils en vigueur aujourd’hui. Un
           instantané du document a été conservé.
         </p>
-        <Link href="/dashboard" className={styles.gateLink}>Retour au tableau de bord</Link>
+        {/* Les deux suites d'un dépôt, et rien d'autre : relire ce qu'on
+            vient de transmettre, ou revenir au registre pour la suite.
+            Le tableau de bord n'est ni l'un ni l'autre — on y arrivait sans
+            son dossier, et sans savoir où le retrouver. */}
+        <div className={styles.successActions}>
+          <Link href={`/tdr/${submitted.id}`} className="demoBtnPrimary">
+            Voir le dossier {submitted.reference}
+          </Link>
+          <Link href="/tdr" className="demoBtnSecondary">
+            Retour au registre des TDR
+          </Link>
+        </div>
       </div>
     );
   }
@@ -1297,7 +1308,7 @@ function DocumentFinal({ tdrId }: { tdrId: string | null }) {
   useEffect(() => {
     if (!tdrId) return;
     tdrApi
-      .documentPlan(tdrId)
+      .planDocument(tdrId)
       .then(setPlan)
       .catch((e) => setErreur(e instanceof Error ? e.message : "Aperçu indisponible."));
   }, [tdrId]);
@@ -1307,7 +1318,7 @@ function DocumentFinal({ tdrId }: { tdrId: string | null }) {
     setOccupe(format);
     setErreur(null);
     try {
-      await telechargerFichier(tdrApi.documentUrl(tdrId, format), `${plan.reference}.${format}`);
+      enregistrerFichier(await tdrApi.fichierDocument(tdrId, format), `${plan.reference}.${format}`);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Téléchargement impossible.");
     } finally {

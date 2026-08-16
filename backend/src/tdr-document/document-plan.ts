@@ -45,6 +45,60 @@ export interface PlanDocument {
 /** Ce qu'on écrit quand un champ est vide : dire le vide, non le masquer. */
 const VIDE = 'Non renseigné.';
 
+/**
+ * Nom lisible des champs assistés, pour la mention de rédaction assistée.
+ *
+ * Le document annonçait « Rédaction assistée sur : context, justification,
+ * beneficiaries, expectedResults… » — les clés du modèle, telles quelles,
+ * dans une pièce qui part chez un bailleur. La mention existe pour être
+ * comprise ; elle disait le contraire de ce qu'elle vaut.
+ *
+ * Les libellés reprennent les titres de section du document, quand il y en
+ * a un : le lecteur doit pouvoir aller voir la section nommée.
+ */
+const NOM_CHAMP: Record<string, string> = {
+  context: 'Contexte',
+  justification: 'Justification',
+  beneficiaries: 'Bénéficiaires visés',
+  expectedResults: 'Résultats attendus',
+  objectives: 'Objectifs',
+  deliverables: 'Livrables attendus',
+  approach: 'Approche',
+  methodology: 'Méthodologie',
+  constraints: 'Contraintes',
+  expertise: 'Expertise requise',
+};
+
+/**
+ * Une clé inconnue est rendue telle quelle plutôt qu'écartée : un champ
+ * ajouté au registre sans l'être ici doit se voir, non disparaître de la
+ * déclaration. Taire une contribution serait une omission.
+ */
+export function nommerChampsAssistes(cles: string[]): string[] {
+  return cles.map((c) => NOM_CHAMP[c] ?? c);
+}
+
+/**
+ * Statut, en clair.
+ *
+ * Le plan porte déjà `dateComposition` en toutes lettres et ses titres de
+ * section en français : ce n'est pas une charge utile d'API, c'est un
+ * document composé. Un code d'énumération n'y a pas plus sa place qu'une
+ * date ISO — la règle « l'API transporte des données » vaut pour les
+ * ressources, pas pour la pièce elle-même.
+ */
+const NOM_STATUT: Record<string, string> = {
+  BROUILLON: 'Brouillon',
+  SOUMIS_UGP: 'Transmis à l’UGP',
+  REVUE_UGP: 'En revue UGP',
+  RETOURNE: 'Retourné pour reprise',
+  VALIDE_UGP: 'Validé par l’UGP',
+  ANO_EN_COURS: 'ANO en cours',
+  ANO_OBTENU: 'ANO obtenu',
+  ANO_REFUSE: 'ANO refusé',
+  ARCHIVE: 'Archivé',
+};
+
 const MOIS = [
   'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
@@ -295,7 +349,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
     typeCode: tdr.tdrTypeCode,
     typeNom: tdr.tdrType.name,
     organisation: tdr.organisation.fullName,
-    statut: tdr.status,
+    statut: NOM_STATUT[tdr.status] ?? tdr.status,
     dateComposition: dateEnToutesLettres(new Date()),
     entete: [
       { cle: 'Référence', valeur: tdr.reference },
@@ -319,7 +373,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
       },
     ],
     sections,
-    champsAssistes: tdr.aiAssistedFields,
+    champsAssistes: nommerChampsAssistes(tdr.aiAssistedFields),
   };
 }
 
