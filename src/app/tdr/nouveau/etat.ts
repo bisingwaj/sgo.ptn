@@ -92,6 +92,24 @@ export const INITIAL: State = {
 };
 
 /**
+ * Date du jour, au format attendu par un `input[type=date]`.
+ *
+ * Composée depuis les champs LOCAUX, jamais par `toISOString()` : celui-ci
+ * bascule en UTC, et à Kinshasa (UTC+1) un 2 mars à 00 h 30 y redevient un
+ * 1er mars. L'écart ne se voit qu'une heure par jour, ce qui est la pire
+ * façon de le découvrir.
+ *
+ * Appelée au montage du parcours, pas au chargement du module : une session
+ * laissée ouverte la nuit proposerait sinon la veille.
+ */
+export function aujourdhui(): string {
+  const d = new Date();
+  const mois = String(d.getMonth() + 1).padStart(2, "0");
+  const jour = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mois}-${jour}`;
+}
+
+/**
  * Composition de l'intitulé depuis la convention du type et le libellé de
  * l'activité. Hissée hors des composants : les deux premières étapes en ont
  * besoin — changer de type à l'étape 01 doit recomposer un intitulé déjà

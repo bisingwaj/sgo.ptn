@@ -52,6 +52,7 @@ import { EtapeRattachement } from "./etapes/EtapeRattachement";
 import { EtapeIdentification } from "./etapes/EtapeIdentification";
 import {
   INITIAL,
+  aujourdhui,
   fillTemplate,
   isClause,
   isIndicator,
@@ -784,6 +785,14 @@ function Parcours() {
           // habilitation en designe une — RC1, RC2, RC3. Les autres profils
           // n'en portent pas, et voient alors tout le plan.
           componentFilter: user.componentCode ?? "",
+          // Ancre du calendrier. Un sélecteur de date vide oblige à ouvrir
+          // l'almanach pour la seule chose qu'on sait déjà : où l'on est.
+          //
+          // Nouveau dossier seulement. À la reprise d'un brouillon, un champ
+          // resté vide l'est resté délibérément — le remplir à l'ouverture
+          // inscrirait la date de la reprise dans un dossier que personne
+          // n'a daté, et le prochain enregistrement la figerait.
+          startDate: aujourdhui(),
         }
       }
       cancelHref="/tdr"
@@ -1065,6 +1074,15 @@ function Recap({
     .join(', ');
   const usd = (v: string) => (v ? `${(Number(v) / 1e6).toFixed(2)} M USD` : "—");
   const vide = (v: string) => (v.trim() ? v : null);
+  // Le récapitulatif se relit, et souvent s'imprime : une date y est rendue
+  // en toutes lettres, pas dans la forme de transport du champ.
+  const dateFr = (iso: string) => {
+    if (!iso) return "—";
+    const d = new Date(`${iso}T00:00:00`);
+    return Number.isNaN(d.getTime())
+      ? iso
+      : d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  };
 
   return (
     <div className={styles.recap}>
@@ -1111,7 +1129,7 @@ function Recap({
       </RecapBloc>
 
       <RecapBloc titre="Calendrier & couverture" etape="13">
-        <RecapLigne cle="Démarrage souhaité" val={state.startDate || "—"} />
+        <RecapLigne cle="Démarrage souhaité" val={dateFr(state.startDate)} />
         <RecapLigne
           cle="Durée"
           val={state.durationMonths ? `${state.durationMonths} mois` : "—"}
