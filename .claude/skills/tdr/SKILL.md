@@ -1,0 +1,196 @@
+---
+name: tdr
+description: Règles du parcours de rédaction d'un TDR (Termes de Référence) — architecture des fichiers, les 17 étapes, l'assistance IA et ses interdits, invariants du dossier, pièges rencontrés. À charger avant toute intervention sur src/app/tdr, backend/src/tdr, backend/src/ai ou backend/src/tdr-document.
+---
+
+# TDR — le parcours de rédaction
+
+Un TDR est une **pièce contractuelle**. Il part chez un bailleur, il fonde un
+marché, et il faut pouvoir établir des années plus tard qui a écrit quoi — y
+compris ce qu'une machine y a écrit. Tout ce qui suit en découle.
+
+Le rattachement à une ligne du PTBA est obligatoire : voir la compétence
+`ptba`, qui porte le verrou budgétaire en amont.
+
+---
+
+## 1. Architecture des fichiers
+
+`TdrCreationClient.tsx` faisait 2 389 lignes. Le découpage est en cours, écran
+par écran — méthode strangler du dépôt.
+
+```
+src/app/tdr/nouveau/
+  TdrCreationClient.tsx    orchestrateur : chargements, steps[], persist
+  etat.ts                  State, INITIAL, composition d'intitulé, gardes de type
+  referentiel-ecran.ts     constantes de présentation (pas de source en base)
+  assistant-contexte.tsx   le fil de l'assistant — mémoire partagée
+  AgentPanel.tsx           le fil, en panneau. Une VUE, pas la mémoire
+  etapes/
+    EtapeType.tsx          01
+    EtapeRattachement.tsx  02
+    EtapeIdentification.tsx 03
+    EtapeTexte.tsx         04-07, 10-12 — écran générique d'un champ de texte
+    EditeurTexte.tsx       la surface de rédaction (barre d'outils + page)
+    champs-texte.ts        les 8 champs : question, aide, repères, consigne IA
+    EtapeObjectifs.tsx     08
+    EtapeLivrables.tsx     09
+    ListeEntrees.tsx       liste ordonnée + saisie en modale
+    LigneSelection.tsx     sélecteur en lignes (radiogroup)
+```
+
+**Les étapes restantes (13-17) vivent encore dans l'orchestrateur.** Les sortir
+au fur et à mesure, dans `etapes/`.
+
+---
+
+## 2. Les 17 étapes
+
+```
+01 Type d'activité      commande tout : bibliothèques, PGES, parcours, intitulé
+02 Rattachement         la ligne du PTBA — la composante s'en DÉDUIT
+03 Identification       intitulé + maîtrise d'ouvrage — LE BROUILLON NAÎT ICI
+04 Contexte
+05 Justification
+06 Bénéficiaires
+07 Résultats attendus
+08 Objectifs SMART
+09 Livrables
+10 Approche
+11 Méthodologie
+12 Contraintes
+13 Calendrier & expertise    ← encore dans l'orchestrateur
+14 Budget                    ← idem
+15 Cadre & risques           ← idem
+16 Sauvegardes E&S           ← idem
+17 Revue & transmission      ← idem
+```
+
+**Le brouillon naît à l'étape 03**, pas avant : sa création exige le type,
+l'activité ET l'intitulé, et l'intitulé se compose de ce qui précède.
+
+**Le `num` d'une étape est son identifiant.** Le `Wizard` repère les étapes
+franchies par lui, pas par leur position — deux étapes portant le même `num`
+cassent la progression. Après toute insertion, renuméroter ce qui suit.
+
+---
+
+## 3. Ce qui est fermé, et pourquoi
+
+Le registre `backend/src/ai/field-registry.ts` est la **seule autorité** sur ce
+que l'assistant peut écrire. Un champ absent n'existe pas pour lui.
+
+| Fermé | Raison |
+|---|---|
+| Type de TDR, activité de rattachement | Ils ne décrivent pas le dossier, ils le **constituent**. `updateDraft` n'accepte pas `tdrTypeCode` |
+| Les deux attestations | Actes personnels, horodatés par le serveur — antidater serait possible sinon |
+| Catégorie E&S | Se constate par screening, ne se rédige pas |
+| **Montants et dates** | « mets le budget à 3 M » est une dictée, « propose un budget » est une fabrication. Le socle proscrit la seconde |
+
+Le canal **MGP-EAS/HS n'apparaît nulle part** dans le TDR : c'est le seul
+endroit où le corpus interdit formellement l'IA générative.
+
+---
+
+## 4. L'assistance — un seul module, deux surfaces
+
+Il y a eu deux assistants concurrents, chacun avec son état, aucun ne voyant
+l'autre, tous deux capables de viser le même champ. **Ne pas y revenir.**
+
+- `assistant-contexte.tsx` porte le fil. C'est la mémoire.
+- `AgentPanel` n'en est qu'une vue. On peut le fermer sans rien perdre.
+- Une génération lancée depuis un champ **s'inscrit au fil** via
+  `consignerEnLigne`, panneau ouvert ou non. C'est ce qui en fait un journal.
+
+**Chemins serveur — un seul endroit fabrique le texte :**
+
+```
+prepareField()   consigne + ancrage + régime rédaction/reprise
+   ├── proposeField()  → POST /assistance/champ          (un bloc)
+   └── streamField()   → POST /assistance/champ/flux     (SSE)
+```
+
+Ne jamais dupliquer la construction du prompt : le texte d'un champ ne doit
+pas dépendre de la porte par laquelle on le demande. Les huit champs de texte
+ont leur consigne dans `CONSIGNES` ; un champ sans consigne est refusé.
+
+**Le flux est réel, pas un effet.** Le texte s'écrit dans le champ à mesure
+qu'il arrive. Ne jamais recevoir un texte complet pour le révéler lentement :
+cela ajoute de l'attente à de l'attente.
+
+**L'agent sait lire.** `lire_dossier` existe et la consigne lui impose de
+l'appeler avant toute reprise. Sans lui, prié d'améliorer un texte, il
+demandait à l'auteur de le lui recopier.
+
+**Toute contribution laisse une marque.** `aiAssistedFields`, en union, jamais
+en retrait — l'auteur peut réécrire par-dessus, la contribution a eu lieu, et
+le document produit la rend.
+
+---
+
+## 5. Ce que le document rend
+
+`backend/src/tdr-document/document-plan.ts` connaît quatre genres de bloc :
+`paragraphe`, `liste`, `definitions`, `absent`. **Aucun balisage** — ni gras,
+ni italique, ni titre.
+
+Conséquence tenue : la barre d'outils de l'éditeur ne porte **aucun bouton de
+mise en forme**. Des boutons B / I seraient des boutons sans effet.
+
+Quatre champs s'écrivent une entrée par ligne et sortent en `liste` :
+`expectedResults`, `methodology`, `constraints`, `expertise`. Les marqueurs de
+tête sont retirés à la composition — le document porte sa propre puce.
+`approach` reste de la prose : elle expose une voie, elle ne s'énumère pas.
+
+---
+
+## 6. Règles d'écran
+
+- **Une colonne.** L'écran en a compté quatre ; l'œil ne savait plus où se
+  poser. Le panneau de l'assistant est la seule seconde colonne, repliée par
+  défaut, et sa gouttière vaut **0 px** quand elle l'est.
+- **Une question, pas un libellé.** « Contexte » n'apprend rien à qui hésite.
+- **Les repères disent surtout ce qu'il ne faut PAS mettre là.** C'est ce qui
+  empêche les sections de se recopier — défaut le plus fréquent.
+- **Une liste se lit, elle ne se remplit pas.** Une ligne par entrée, saisie en
+  modale. La modale refuse un énoncé vide : une entrée existe ou n'existe pas.
+  Sinon on ouvre trois entrées vides et le compteur les compte.
+- **Sélecteurs en lignes, pas en tuiles.** Onze tuiles obligent à défiler pour
+  comparer, ce qui est l'inverse d'un choix éclairé. `LigneSelection` porte la
+  sémantique `radiogroup` que des boutons côte à côte n'ont pas.
+- **Pendant une génération lancée d'un champ**, la saisie se ferme et un repère
+  discret le dit. Le fil, lui, ne bloque rien — on peut poser une question sans
+  cesser d'écrire.
+
+---
+
+## 7. Pièges rencontrés — chacun a coûté du temps
+
+| Piège | Ce qui se passe |
+|---|---|
+| **Découper par appariement d'accolades** | S'arrête sur la déstructuration des paramètres, pas sur le corps. A cassé le fichier trois fois. **Repérer les bornes par lecture, supprimer par plages de lignes** |
+| **`git checkout --` pour annuler une erreur** | Efface aussi tout le travail non commité du même fichier. Commiter avant d'expérimenter |
+| **`nest build` pendant que `start:dev` tourne** | Les deux se disputent `dist/`, le serveur meurt sur un module introuvable. Utiliser `npx tsc --noEmit` pour vérifier sans toucher à `dist/` |
+| **Règle CSS hors couche** | `:focus-visible` de `globals.scss` bat toute utilitaire Tailwind. Neutraliser par une règle de même nature |
+| **Enfant flex sans `min-h-0`** | Grandit avec son contenu au lieu de défiler, et pousse ses voisins hors du cadre |
+| **Carbon `min-block-size`** | L'emporte sur `h-8` : un carré s'étire en rectangle. Neutraliser explicitement |
+
+---
+
+## 8. Vérifier
+
+```bash
+npx tsc --noEmit                    # front
+npx eslint src/app/tdr/nouveau      # ligne de base : 5 problèmes, tous hérités
+npm run build
+
+cd backend
+npx tsc --noEmit -p tsconfig.json   # sans toucher à dist/
+npm run start:dev                   # --watch, sinon le serveur sert du périmé
+```
+
+**Le code nouvellement écrit passe sans erreur.** Comparer au besoin avec
+`git stash` pour distinguer l'hérité de ce qu'on vient d'introduire.
+
+Une route froide met 30 à 60 s en `dev` : la chauffer avant tout test
+navigateur, sinon les échecs sont des faux positifs.

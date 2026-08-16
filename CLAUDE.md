@@ -169,7 +169,7 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 
 ---
 
-## 7. État au 14 août 2026
+## 7. État au 16 août 2026
 
 ### Acquis
 
@@ -182,6 +182,19 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 - Coque : bandeau thémable, menus réels, navigation repliable, panneau
   contextuel en tiroir
 - Actifs de marque détourés (`npm run logo`)
+- **PTBA** refait de bout en bout : allocation annuelle par composante,
+  gardes d'exercice côté serveur, couverture multi-provinces, registre
+  Carbon, routes séparées, assistant de saisie pas à pas
+- **TDR** — parcours de rédaction en 17 étapes, une question par écran,
+  assistance IA en flux sur chaque champ de texte. Étapes 13 à 17 encore
+  dans l'ancien moule
+
+### Compétences chargées automatiquement
+
+Deux modules portent leurs propres règles, dans `.claude/skills/` :
+`ptba` (plafonds, cycle de l'exercice, invariants) et `tdr` (architecture du
+parcours, assistance IA et ses interdits, pièges de refactorisation). Les
+charger avant d'intervenir sur ces domaines.
 
 ### Non fait
 
@@ -202,7 +215,14 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
   transite toujours sur le réseau ; le frontend ne fait que le masquer. Un 401
   uniforme est nécessaire.
 - `TdrCreationClient.tsx` : 1 erreur de lint (`setState` dans un effet, rendus
-  en cascade) et 3 avertissements, dans du code amont.
+  en cascade) et 4 avertissements, dans du code amont. C'est la ligne de base
+  du fichier — y comparer toute intervention.
+- **Le rôle Postgres `ptn` a reçu `CREATEDB`** : `prisma migrate dev` fonctionne
+  désormais. En production, `migrate deploy` n'a pas besoin de ce droit.
+- **Deux couches d'API coexistent** côté frontend : `src/lib/api/client.ts`
+  (Zod, TanStack, port 3001 par défaut) et `src/lib/api.ts` (appels directs,
+  port 3333). Les domaines PTBA et TDR passent par la seconde. Dette
+  identifiée ; la refermer est un chantier à part.
 
 ---
 
