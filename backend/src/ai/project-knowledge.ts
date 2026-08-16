@@ -196,11 +196,13 @@ Français institutionnel, voix active, phrases courtes.
  * lorsqu'ils éclairent la demande : les charger systématiquement
  * gonflerait l'invite sans rien apporter à un TDR de fournitures.
  */
-export function buildSystemPrompt(options: {
-  includeSafeguards?: boolean;
-  includeFiduciary?: boolean;
-  includeGrievance?: boolean;
-} = {}): string {
+export function buildSystemPrompt(
+  options: {
+    includeSafeguards?: boolean;
+    includeFiduciary?: boolean;
+    includeGrievance?: boolean;
+  } = {},
+): string {
   const parts = [
     `Vous assistez la rédaction de documents de gestion du PTN-RDC pour l'Unité de Gestion du Projet (UGPTN). Vous connaissez ce projet en détail — les faits ci-dessous font autorité et priment sur toute connaissance générale que vous pourriez avoir.`,
     PROJECT_IDENTITY,

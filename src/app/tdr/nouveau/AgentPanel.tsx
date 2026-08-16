@@ -13,9 +13,19 @@
  * cela, l'auteur regardait un écran immobile pendant vingt secondes.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parlerAgent, type AgentEvent, type TourDeParole } from "@/lib/agent-stream";
-import { AiGenerate, Close, SendAlt, Undo, WarningAltFilled } from "@carbon/icons-react";
+import { TexteEnrichi } from "@/components/ui/TexteEnrichi";
+import { apercuDePiece, tdrApi, type PieceJointeApi } from "@/lib/api";
+import {
+  AiGenerate,
+  Close,
+  Document,
+  DocumentPdf,
+  SendAlt,
+  Undo,
+  WarningAltFilled,
+} from "@carbon/icons-react";
 import { IconButton } from "@carbon/react";
 import { useAssistant, type Bulle, type Ecriture } from "./assistant-contexte";
 
@@ -205,9 +215,11 @@ export function AgentPanel({
                 </ul>
               )}
 
-              {b.texte && (
-                <p className="text-body text-primary whitespace-pre-wrap">{b.texte}</p>
-              )}
+              {/* Le balisage du modèle est RENDU, non montré : un récapitulatif
+                  se parcourt mieux avec des puces et des intitulés en gras.
+                  Ne vaut que pour la conversation — une valeur de champ n'en
+                  porte aucun, le document n'en rendant pas. */}
+              {b.texte && <TexteEnrichi>{b.texte}</TexteEnrichi>}
 
               {b.encours && !b.texte && b.actes.length === 0 && (
                 <span className="text-caption text-helper" aria-label="L’assistant travaille">
@@ -258,7 +270,15 @@ export function AgentPanel({
           void envoyer(saisie);
         }}
       >
-        <div className="border-strong bg-field focus-within:border-ai flex items-end gap-2 border px-3 py-2">
+        <div className="border-strong bg-field focus-within:border-ai flex flex-col gap-2 border px-3 py-2">
+          {/* Les pièces AU-DESSUS de la saisie, dans le même cadre : elles
+              accompagnent la conversation entière, pas le message qu'on est
+              en train d'écrire. Une vignette plutôt qu'un nom de fichier —
+              on reconnaît un document d'un coup d'œil, jamais à son
+              extension. */}
+          <PiecesJointes tdrId={tdrId} />
+
+          <div className="flex items-end gap-2">
           <textarea
             ref={saisieRef}
             value={saisie}
@@ -301,12 +321,214 @@ export function AgentPanel({
               <SendAlt size={16} aria-hidden />
             )}
           </IconButton>
+          </div>
         </div>
         <p className="text-caption text-helper mt-2">
           L’assistant peut se tromper. Tout ce qu’il écrit reste à relire.
         </p>
       </form>
     </aside>
+  );
+}
+
+// ====================================================================
+// Les pièces apportées au dossier
+// ====================================================================
+
+const estImage = (mime: string) => mime.startsWith("image/");
+
+/**
+ * L'adresse locale d'une pièce image.
+ *
+ * Trois faits interdisent une balise `<img src>` pointée sur la route : le
+ * jeton d'accès vit en mémoire, le serveur ne lit que l'en-tête Bearer, et
+ * la route est fermée par défaut. Il faut donc récupérer les octets, puis en
+ * faire une adresse locale.
+ *
+ * Le cas courant est gratuit : d'une pièce que l'auteur vient de verser on
+ * tient déjà le fichier, et l'affichage ne coûte aucun aller-retour. Le
+ * réseau ne sert qu'aux pièces d'une session antérieure.
+ */
+function useVignette(piece: PieceJointeApi & { fichier?: File }, tdrId: string | null) {
+  const [distante, setDistante] = useState<string | null>(null);
+
+  const locale = useMemo(
+    () => (piece.fichier && estImage(piece.mimeType) ? URL.createObjectURL(piece.fichier) : null),
+    [piece.fichier, piece.mimeType],
+  );
+
+  useEffect(
+    () => () => {
+      if (locale) URL.revokeObjectURL(locale);
+    },
+    [locale],
+  );
+
+  useEffect(() => {
+    if (locale || !estImage(piece.mimeType) || !tdrId) return;
+
+    let vivante = true;
+    let creee: string | null = null;
+    apercuDePiece(tdrApi.pieceUrl(tdrId, piece.id))
+      .then((u) => {
+        creee = u;
+        // Sans cette garde, une adresse créée après le démontage fuit : cela
+        // ne se voit pas, mais se mesure sur un onglet resté ouvert.
+        if (vivante) setDistante(u);
+        else URL.revokeObjectURL(u);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      vivante = false;
+      if (creee) URL.revokeObjectURL(creee);
+    };
+  }, [piece.id, piece.mimeType, tdrId, locale]);
+
+  return locale ?? distante;
+}
+
+/** Une pièce, reconnaissable : sa vignette si c'en est une, son genre sinon. */
+function Piece({
+  piece,
+  tdrId,
+  onRetirer,
+}: {
+  piece: PieceJointeApi & { fichier?: File };
+  tdrId: string | null;
+  onRetirer: (id: string) => void;
+}) {
+  const vignette = useVignette(piece, tdrId);
+
+  return (
+    <span
+      className="border-subtle bg-layer ptn-carte-liste flex items-center gap-2 border py-1 pr-1 pl-1.5"
+      title={
+        piece.lisibleParAssistant
+          ? piece.filename
+          : `${piece.filename} — conservée au dossier, non soumise à l’assistant`
+      }
+    >
+      {vignette ? (
+        /* eslint-disable-next-line @next/next/no-img-element -- source blob: locale, next/image n'y apporterait rien */
+        <img src={vignette} alt="" className="h-6 w-6 shrink-0 object-cover" />
+      ) : (
+        <span className="bg-field text-helper flex h-6 w-6 shrink-0 items-center justify-center">
+          {piece.mimeType === "application/pdf" ? (
+            <DocumentPdf size={14} aria-hidden />
+          ) : (
+            <Document size={14} aria-hidden />
+          )}
+        </span>
+      )}
+      <span className="text-caption text-secondary max-w-32 truncate">{piece.filename}</span>
+      {/* Une pièce que l'assistant ne lit pas doit le dire : sinon l'auteur
+          croit qu'il en tient compte. */}
+      {!piece.lisibleParAssistant && (
+        <span className="text-caption text-helper border-subtle border px-1">archive</span>
+      )}
+      <button
+        type="button"
+        onClick={() => onRetirer(piece.id)}
+        aria-label={`Retirer ${piece.filename}`}
+        className="text-helper hover:text-danger-text flex h-5 w-5 shrink-0 items-center justify-center"
+      >
+        <Close size={12} aria-hidden />
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Les pièces du dossier, dans le composeur.
+ *
+ * Un rédacteur part rarement d'une page blanche : il a le TDR de l'an
+ * dernier, le modèle du bailleur. Ces pièces valent comme MODÈLE DE FORME —
+ * structure, ton, niveau de détail — et jamais comme source de fait : leurs
+ * montants et leurs dates se rapportent à une autre opération, et les
+ * recopier décrirait un marché qui n'existe pas.
+ *
+ * Elles vivent dans le composeur et non dans une bulle : elles accompagnent
+ * la conversation entière, et les rendre dans un message laisserait croire
+ * qu'elles ne valent que pour lui.
+ */
+function PiecesJointes({ tdrId }: { tdrId: string | null }) {
+  const [pieces, setPieces] = useState<Array<PieceJointeApi & { fichier?: File }>>([]);
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const champRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!tdrId) return;
+    tdrApi
+      .pieces(tdrId)
+      .then(setPieces)
+      .catch(() => undefined);
+  }, [tdrId]);
+
+  const verser = async (fichiers: FileList | null) => {
+    if (!tdrId || !fichiers?.length) return;
+    setOccupe(true);
+    setErreur(null);
+    try {
+      for (const fichier of Array.from(fichiers)) {
+        const piece = await tdrApi.verserPiece(tdrId, fichier);
+        // Le fichier est gardé : la vignette se dessine alors sans
+        // aller-retour. Et le serveur rend la pièce déjà présente quand
+        // l'empreinte est la même — on évite de l'afficher deux fois.
+        setPieces((p) => (p.some((x) => x.id === piece.id) ? p : [...p, { ...piece, fichier }]));
+      }
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Pièce refusée.");
+    } finally {
+      setOccupe(false);
+      if (champRef.current) champRef.current.value = "";
+    }
+  };
+
+  const retirer = async (pieceId: string) => {
+    if (!tdrId) return;
+    try {
+      await tdrApi.retirerPiece(tdrId, pieceId);
+      setPieces((p) => p.filter((x) => x.id !== pieceId));
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Retrait impossible.");
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={champRef}
+        type="file"
+        multiple
+        hidden
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.txt"
+        onChange={(e) => void verser(e.target.files)}
+      />
+
+      {(pieces.length > 0 || erreur) && (
+        <div className="flex flex-col gap-1.5">
+          {pieces.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {pieces.map((p) => (
+                <Piece key={p.id} piece={p} tdrId={tdrId} onRetirer={(id) => void retirer(id)} />
+              ))}
+            </div>
+          )}
+          {erreur && <p className="text-caption text-danger-text">{erreur}</p>}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => champRef.current?.click()}
+        disabled={!tdrId || occupe}
+        className="text-caption text-link disabled:text-disabled self-start hover:underline disabled:cursor-not-allowed disabled:no-underline"
+      >
+        {occupe ? "Lecture…" : "+ Joindre une pièce"}
+      </button>
+    </>
   );
 }
 
@@ -323,11 +545,12 @@ function appliquer(
       break;
 
     case "apercu":
-      setApercu((v) =>
-        v && v.champ === ev.champ
-          ? { champ: ev.champ, texte: v.texte + ev.delta }
-          : { champ: ev.champ, texte: ev.delta },
-      );
+      // Remplacement et non accumulation : le serveur envoie le texte entier,
+      // déjà débarrassé de son balisage, pour que cet aperçu montre
+      // exactement ce qui sera enregistré. Un nettoyage raccourcit le texte
+      // quand une paire se referme — un fragment à ajouter serait devenu
+      // négatif et aurait laissé des astérisques orphelines.
+      setApercu({ champ: ev.champ, texte: ev.texte });
       break;
 
     case "ecriture": {

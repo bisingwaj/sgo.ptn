@@ -17,7 +17,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api";
 export type AgentEvent =
   | { type: "texte"; delta: string }
   | { type: "travail"; libelle: string }
-  | { type: "apercu"; champ: string; delta: string }
+  /** Le texte ENTIER en cours d'écriture, déjà nettoyé — non un fragment */
+  | { type: "apercu"; champ: string; texte: string }
   | { type: "ecriture"; champ: string; etape: string; valeur: unknown; avant: unknown }
   | { type: "refus"; champ: string; motif: string }
   | { type: "fin"; tours: number }
@@ -112,7 +113,8 @@ export async function* parlerAgent(
 export type AssistEvent =
   | { type: "ancrage"; groundedOn: string[]; mode: "reprise" | "redaction" }
   | { type: "texte"; delta: string }
-  | { type: "fin" }
+  /** `texte` porte la valeur définitive, débarrassée de tout balisage */
+  | { type: "fin"; texte: string }
   | { type: "erreur"; message: string };
 
 /**

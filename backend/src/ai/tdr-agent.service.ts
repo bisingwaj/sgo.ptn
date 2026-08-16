@@ -1,9 +1,23 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { AiService, type ChatMessage, type ToolCall, type ToolSpec } from './ai.service';
+import {
+  AiService,
+  type ChatMessage,
+  type MorceauMessage,
+  type ToolCall,
+  type ToolSpec,
+} from './ai.service';
+import { TdrAttachmentService } from '../tdr-attachment/tdr-attachment.service';
 import { buildSystemPrompt } from './project-knowledge';
-import { FIELDS, champ, enumerationChamps, normaliseListe, refus } from './field-registry';
+import {
+  FIELDS,
+  champ,
+  enumerationChamps,
+  normaliseListe,
+  sansBalisage,
+  refus,
+} from './field-registry';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
@@ -11,9 +25,15 @@ import type { RequestContext } from '../auth/auth.service';
 export type AgentEvent =
   | { type: 'texte'; delta: string }
   | { type: 'travail'; libelle: string }
-  /** Le texte en train d'etre ecrit dans un champ, au fil de l'eau */
-  | { type: 'apercu'; champ: string; delta: string }
-  | { type: 'ecriture'; champ: string; etape: string; valeur: unknown; avant: unknown }
+  /** Le texte ENTIER en cours d'écriture, déjà nettoyé — non un fragment */
+  | { type: 'apercu'; champ: string; texte: string }
+  | {
+      type: 'ecriture';
+      champ: string;
+      etape: string;
+      valeur: unknown;
+      avant: unknown;
+    }
   | { type: 'refus'; champ: string; motif: string }
   | { type: 'fin'; tours: number }
   | { type: 'erreur'; message: string };
@@ -94,11 +114,18 @@ export class TdrAgentService {
                       type: 'object',
                       properties: {
                         title: { type: 'string' },
-                        criteria: { type: 'string', description: 'objectives seulement' },
-                        format: { type: 'string', description: 'deliverables seulement' },
+                        criteria: {
+                          type: 'string',
+                          description: 'objectives seulement',
+                        },
+                        format: {
+                          type: 'string',
+                          description: 'deliverables seulement',
+                        },
                         deadline: {
                           type: 'string',
-                          description: 'deliverables seulement — J+15, S+4, M+6',
+                          description:
+                            'deliverables seulement — J+15, S+4, M+6',
                         },
                       },
                       required: ['title'],
@@ -149,7 +176,8 @@ export class TdrAgentService {
             properties: {
               filtre: {
                 type: 'string',
-                description: 'Fragment de nom ou de sigle, pour restreindre la liste.',
+                description:
+                  'Fragment de nom ou de sigle, pour restreindre la liste.',
               },
             },
           },
@@ -164,7 +192,10 @@ export class TdrAgentService {
           parameters: {
             type: 'object',
             properties: {
-              genre: { type: 'string', enum: ['clauses', 'indicateurs', 'risques'] },
+              genre: {
+                type: 'string',
+                enum: ['clauses', 'indicateurs', 'risques'],
+              },
             },
             required: ['genre'],
           },
@@ -192,7 +223,9 @@ export class TdrAgentService {
     // Une liste s'ouvre par un crochet, hors de toute chaîne : le décodage
     // ci-dessous ne vaut que pour du texte. On rend alors ce qui est déjà
     // arrivé, brut, plutôt que rien.
-    const apresDeuxPoints = args.slice(args.indexOf(':', debut) + 1).trimStart();
+    const apresDeuxPoints = args
+      .slice(args.indexOf(':', debut) + 1)
+      .trimStart();
     if (apresDeuxPoints.startsWith('[')) {
       return apresDeuxPoints
         .replace(/[[\]{}"]/g, '')
@@ -273,13 +306,19 @@ export class TdrAgentService {
    * épargne un aller-retour par question, et surtout garantit qu'il travaille
    * sur l'état réel de la base plutôt que sur un souvenir de conversation.
    */
-  private static etatDuDossier(tdr: Awaited<ReturnType<TdrAgentService['charger']>>): string {
+  private static etatDuDossier(
+    tdr: Awaited<ReturnType<TdrAgentService['charger']>>,
+  ): string {
     const lignes: string[] = [];
     const dit = (cle: string, v: unknown) =>
-      lignes.push(`${cle} : ${v === null || v === undefined || v === '' ? '(vide)' : String(v)}`);
+      lignes.push(
+        `${cle} : ${v === null || v === undefined || v === '' ? '(vide)' : String(v)}`,
+      );
 
     lignes.push('ÉTAT ACTUEL DU DOSSIER');
-    lignes.push(`Référence : ${tdr.reference} · type ${tdr.tdrTypeCode} — ${tdr.tdrType.name}`);
+    lignes.push(
+      `Référence : ${tdr.reference} · type ${tdr.tdrTypeCode} — ${tdr.tdrType.name}`,
+    );
     dit('Intitulé du marché', tdr.title);
 
     if (tdr.ptbaActivity) {
@@ -328,7 +367,7 @@ export class TdrAgentService {
 
   private static instructions(): string {
     return [
-      "VOTRE RÔLE DANS CETTE CONVERSATION",
+      'VOTRE RÔLE DANS CETTE CONVERSATION',
       "Vous assistez la rédaction d'un dossier de termes de référence. L'auteur vous parle ; vous exécutez ce qu'il demande.",
       '',
       "Pour modifier le dossier, appelez l'outil `ecrire_champ`. Un texte que vous vous contentez d'afficher dans la conversation n'entre PAS dans le document : l'auteur le verrait sans qu'il soit enregistré.",
@@ -352,7 +391,10 @@ export class TdrAgentService {
   ): Promise<{ resultat: string; evenement?: AgentEvent }> {
     let args: Record<string, unknown>;
     try {
-      args = JSON.parse(appel.function.arguments || '{}') as Record<string, unknown>;
+      args = JSON.parse(appel.function.arguments || '{}') as Record<
+        string,
+        unknown
+      >;
     } catch {
       return { resultat: 'Arguments illisibles. Reformulez votre appel.' };
     }
@@ -369,7 +411,9 @@ export class TdrAgentService {
       case 'lire_dossier': {
         const demande = typeof args.champ === 'string' ? args.champ.trim() : '';
         const lisibles = FIELDS.filter((f) => f.kind === 'texte');
-        const vises = demande ? lisibles.filter((f) => f.cle === demande) : lisibles;
+        const vises = demande
+          ? lisibles.filter((f) => f.cle === demande)
+          : lisibles;
 
         if (vises.length === 0) {
           return {
@@ -392,40 +436,81 @@ export class TdrAgentService {
           resultat: lignes.join('\n\n'),
           evenement: {
             type: 'travail',
-            libelle: demande ? `Relecture du champ ${demande}` : 'Relecture du dossier',
+            libelle: demande
+              ? `Relecture du champ ${demande}`
+              : 'Relecture du dossier',
           },
         };
       }
 
       case 'lire_activite_ptba': {
         const a = tdr.ptbaActivity;
-        if (!a) return { resultat: "Aucune activité PTBA n'est rattachée à ce dossier." };
+        if (!a)
+          return {
+            resultat: "Aucune activité PTBA n'est rattachée à ce dossier.",
+          };
         const bloc = (titre: string, lignes: string[]) =>
           `${titre} : ${lignes.length ? lignes.join(' | ') : 'aucun'}`;
         return {
           resultat: [
             `Activité ${a.code} — « ${a.title} », composante ${a.componentCode}.`,
-            bloc('Objectifs', a.objectives.map((o) => o.title + (o.criteria ? ` (${o.criteria})` : ''))),
-            bloc('Livrables attendus', a.deliverables.map((d) => d.title + (d.deadline ? ` [${d.deadline}]` : ''))),
-            bloc('Indicateurs', a.indicators.map((i) => i.label + (i.target ? ` — cible ${i.target}` : ''))),
-            bloc('Risques', a.risks.map((r) => r.label + (r.mitigation ? ` — ${r.mitigation}` : ''))),
-            bloc('Normes', a.clauses.map((c) => c.label)),
+            bloc(
+              'Objectifs',
+              a.objectives.map(
+                (o) => o.title + (o.criteria ? ` (${o.criteria})` : ''),
+              ),
+            ),
+            bloc(
+              'Livrables attendus',
+              a.deliverables.map(
+                (d) => d.title + (d.deadline ? ` [${d.deadline}]` : ''),
+              ),
+            ),
+            bloc(
+              'Indicateurs',
+              a.indicators.map(
+                (i) => i.label + (i.target ? ` — cible ${i.target}` : ''),
+              ),
+            ),
+            bloc(
+              'Risques',
+              a.risks.map(
+                (r) => r.label + (r.mitigation ? ` — ${r.mitigation}` : ''),
+              ),
+            ),
+            bloc(
+              'Normes',
+              a.clauses.map((c) => c.label),
+            ),
           ].join('\n'),
-          evenement: { type: 'travail', libelle: `Lecture de l’activité ${a.code}` },
+          evenement: {
+            type: 'travail',
+            libelle: `Lecture de l’activité ${a.code}`,
+          },
         };
       }
 
       case 'lister_organisations': {
-        const filtre = typeof args.filtre === 'string' ? args.filtre.trim() : '';
+        const filtre =
+          typeof args.filtre === 'string' ? args.filtre.trim() : '';
         const orgs = await this.prisma.organisation.findMany({
           where: {
             isActive: true,
             ...(filtre
               ? {
                   OR: [
-                    { code: { contains: filtre, mode: 'insensitive' as const } },
-                    { name: { contains: filtre, mode: 'insensitive' as const } },
-                    { fullName: { contains: filtre, mode: 'insensitive' as const } },
+                    {
+                      code: { contains: filtre, mode: 'insensitive' as const },
+                    },
+                    {
+                      name: { contains: filtre, mode: 'insensitive' as const },
+                    },
+                    {
+                      fullName: {
+                        contains: filtre,
+                        mode: 'insensitive' as const,
+                      },
+                    },
                   ],
                 }
               : {}),
@@ -438,7 +523,10 @@ export class TdrAgentService {
           resultat: orgs.length
             ? orgs.map((o) => `${o.code} — ${o.fullName}`).join('\n')
             : "Aucune organisation ne correspond. N'en inventez pas : dites-le à l'auteur.",
-          evenement: { type: 'travail', libelle: 'Recherche au référentiel des organisations…' },
+          evenement: {
+            type: 'travail',
+            libelle: 'Recherche au référentiel des organisations…',
+          },
         };
       }
 
@@ -452,8 +540,16 @@ export class TdrAgentService {
               : genre === 'risques'
                 ? this.prisma.riskTemplate
                 : null;
-        if (!table) return { resultat: 'Genre inconnu. Attendu : clauses, indicateurs ou risques.' };
-        const entrees = await (table as { findMany: (a: unknown) => Promise<Array<{ label: string }>> }).findMany({
+        if (!table)
+          return {
+            resultat:
+              'Genre inconnu. Attendu : clauses, indicateurs ou risques.',
+          };
+        const entrees = await (
+          table as {
+            findMany: (a: unknown) => Promise<Array<{ label: string }>>;
+          }
+        ).findMany({
           where: { tdrTypeCode: tdr.tdrTypeCode, status: 'PUBLIE' },
           select: { label: true },
           orderBy: { label: 'asc' },
@@ -472,7 +568,11 @@ export class TdrAgentService {
         if (!spec) {
           return {
             resultat: `Le champ « ${cle} » ne vous est pas ouvert. Dites-le à l'auteur.`,
-            evenement: { type: 'refus', champ: cle, motif: 'Champ fermé à l’assistant.' },
+            evenement: {
+              type: 'refus',
+              champ: cle,
+              motif: 'Champ fermé à l’assistant.',
+            },
           };
         }
 
@@ -481,7 +581,10 @@ export class TdrAgentService {
           this.logger.warn(
             `Écriture refusée sur ${cle} — ${motif} — reçu : ${JSON.stringify(args.valeur).slice(0, 300)}`,
           );
-          return { resultat: `Écriture refusée : ${motif}`, evenement: { type: 'refus', champ: cle, motif } };
+          return {
+            resultat: `Écriture refusée : ${motif}`,
+            evenement: { type: 'refus', champ: cle, motif },
+          };
         }
 
         const avant = (tdr as unknown as Record<string, unknown>)[cle];
@@ -515,19 +618,40 @@ export class TdrAgentService {
   }
 
   /** Écrit la valeur et marque le champ comme ayant reçu une contribution. */
-  private async ecrire(tdrId: string, cle: string, kind: string, valeur: unknown): Promise<void> {
+  private async ecrire(
+    tdrId: string,
+    cle: string,
+    kind: string,
+    valeur: unknown,
+  ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       if (kind === 'texte') {
-        await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: valeur as string } });
+        // Le modèle répond en balisage léger : utile dans la conversation, où
+        // le panneau le rend, inadmissible dans un champ. Le document ne
+        // connaît aucun balisage — « **Contexte** » y sortirait avec ses
+        // astérisques sur une pièce signée.
+        await tx.tdr.update({
+          where: { id: tdrId },
+          data: { [cle]: sansBalisage(String(valeur)) },
+        });
       } else if (kind === 'montant') {
         // Prisma attend un Decimal : une chaîne « 3 000 000 » ou « 3,000,000 »
         // se ramène au nombre, l'auteur dictant rarement en notation machine.
-        const n = typeof valeur === 'number' ? valeur : Number(String(valeur).replace(/[\s,]/g, ''));
+        const n =
+          typeof valeur === 'number'
+            ? valeur
+            : Number(String(valeur).replace(/[\s,]/g, ''));
         await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: n } });
       } else if (kind === 'entier') {
-        await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: Number(valeur) } });
+        await tx.tdr.update({
+          where: { id: tdrId },
+          data: { [cle]: Number(valeur) },
+        });
       } else if (kind === 'date') {
-        await tx.tdr.update({ where: { id: tdrId }, data: { [cle]: new Date(String(valeur)) } });
+        await tx.tdr.update({
+          where: { id: tdrId },
+          data: { [cle]: new Date(String(valeur)) },
+        });
       } else if (kind === 'organisation') {
         // L'agent donne un CODE ; la clé étrangère attend un identifiant. La
         // résolution se fait ici, et une organisation inconnue est refusée
@@ -546,13 +670,18 @@ export class TdrAgentService {
           data: { beneficiaryOrganisationId: org.id },
         });
       } else if (kind === 'liste_objectifs') {
-        const rows = normaliseListe(champ(cle)!, valeur as unknown[]);
+        const rows = normaliseListe(champ(cle)!, valeur);
         await tx.tdrObjective.deleteMany({ where: { tdrId } });
         await tx.tdrObjective.createMany({
-          data: rows.map((r, i) => ({ tdrId, title: r.title, criteria: r.criteria ?? '', position: i })),
+          data: rows.map((r, i) => ({
+            tdrId,
+            title: r.title,
+            criteria: r.criteria ?? '',
+            position: i,
+          })),
         });
       } else {
-        const rows = normaliseListe(champ(cle)!, valeur as unknown[]);
+        const rows = normaliseListe(champ(cle)!, valeur);
         await tx.tdrDeliverable.deleteMany({ where: { tdrId } });
         await tx.tdrDeliverable.createMany({
           data: rows.map((r, i) => ({
@@ -581,6 +710,79 @@ export class TdrAgentService {
     });
   }
 
+  private async messagePieces(tdrId: string): Promise<ChatMessage | null> {
+    const pieces = await this.prisma.tdrAttachment.findMany({
+      where: { tdrId },
+      select: {
+        id: true,
+        filename: true,
+        mimeType: true,
+        content: true,
+        sizeBytes: true,
+      },
+      orderBy: { uploadedAt: 'asc' },
+    });
+    if (pieces.length === 0) return null;
+
+    const lisibles = pieces.filter((p) =>
+      TdrAttachmentService.estLisible(p.mimeType),
+    );
+    const morceaux: MorceauMessage[] = [
+      {
+        type: 'text',
+        text: [
+          `L'auteur a joint ${pieces.length} pièce${pieces.length > 1 ? 's' : ''} au dossier` +
+            (lisibles.length < pieces.length
+              ? ` ; ${lisibles.length} vous ${lisibles.length > 1 ? 'sont soumises' : 'est soumise'} ci-dessous, les autres sont conservées à l'archive sans vous être transmises.`
+              : ', reproduites ci-dessous.'),
+          '',
+          'CE QUE VOUS POUVEZ EN TIRER : la structure, le ton, le niveau de détail, la',
+          "manière de formuler un critère ou un livrable. C'est un modèle de forme.",
+          '',
+          'CE QUE VOUS N’EN TIREZ PAS : aucun fait. Les montants, les dates, les durées,',
+          'les institutions et les provinces qui y figurent appartiennent à une AUTRE',
+          "opération. Les recopier dans ce dossier décrirait un marché qui n'existe pas.",
+          "Ces valeurs-là viennent de l'auteur ou du PTBA, jamais d'une pièce jointe. Si",
+          "l'auteur vous demande un montant qui n'est nulle part ailleurs, dites-lui où",
+          'vous l’avez lu et laissez-le confirmer.',
+        ].join(String.fromCharCode(10)),
+      },
+    ];
+
+    for (const piece of lisibles) {
+      const base64 = Buffer.from(piece.content).toString('base64');
+      morceaux.push({ type: 'text', text: `— Pièce : ${piece.filename}` });
+      morceaux.push(
+        piece.mimeType === 'application/pdf'
+          ? {
+              type: 'file',
+              file: {
+                filename: piece.filename,
+                file_data: `data:application/pdf;base64,${base64}`,
+              },
+            }
+          : {
+              type: 'image_url',
+              image_url: { url: `data:${piece.mimeType};base64,${base64}` },
+            },
+      );
+    }
+
+    // La marque de cache va sur un bloc de TEXTE ajouté après les pièces, et
+    // non sur la dernière pièce elle-même : mesuré, le fournisseur laisse
+    // tomber la marque portée par un bloc `file` ou `image_url`, et ne
+    // l'honore que sur du texte. Marque sur la pièce, 1 561 jetons mis en
+    // cache ; marque sur ce bloc-ci, 11 939 — le socle ET les pièces. Une
+    // marque couvre tout ce qui la précède, ce petit bloc suffit donc.
+    morceaux.push({
+      type: 'text',
+      text: 'Fin des pièces jointes.',
+      cache_control: { type: 'ephemeral' },
+    });
+
+    return { role: 'user', content: morceaux };
+  }
+
   /**
    * Un échange. Rend les évènements au fil de l'eau : le premier fragment de
    * texte arrive en moins d'une seconde, là où la réponse entière demande
@@ -595,6 +797,8 @@ export class TdrAgentService {
   ): AsyncGenerator<AgentEvent> {
     const tdr = await this.charger(tdrId);
 
+    const pieces = await this.messagePieces(tdrId);
+
     const messages: ChatMessage[] = [
       {
         role: 'system',
@@ -606,9 +810,14 @@ export class TdrAgentService {
           TdrAgentService.etatDuDossier(tdr),
         ].join('\n'),
       },
+      // Les pièces avant l'historique : le préfixe socle + pièces ne bouge
+      // pas d'un tour à l'autre, ce qui le rend cachable.
+      ...(pieces ? [pieces] : []),
       // L'historique est borné : au-delà, le dossier lui-même dit l'état, et
       // rappeler vingt tours coûte plus qu'il ne sert.
-      ...historique.slice(-8).map((t) => ({ role: t.role, content: t.content }) as ChatMessage),
+      ...historique
+        .slice(-8)
+        .map((t) => ({ role: t.role, content: t.content })),
       { role: 'user', content: instruction },
     ];
 
@@ -618,7 +827,10 @@ export class TdrAgentService {
       tours += 1;
 
       let texte = '';
-      const appels = new Map<number, { id: string; nom: string; args: string; annonce: boolean; vu: number }>();
+      const appels = new Map<
+        number,
+        { id: string; nom: string; args: string; annonce: boolean; vu: number }
+      >();
       let motifArret: string | undefined;
 
       try {
@@ -634,7 +846,13 @@ export class TdrAgentService {
           } else if (ev.type === 'outil') {
             // Le fournisseur envoie le nom d'abord, puis les arguments par
             // morceaux : il faut réassembler avant de pouvoir lire.
-            const courant = appels.get(ev.index) ?? { id: '', nom: '', args: '', annonce: false, vu: 0 };
+            const courant = appels.get(ev.index) ?? {
+              id: '',
+              nom: '',
+              args: '',
+              annonce: false,
+              vu: 0,
+            };
             const suivant = {
               id: ev.id ?? courant.id,
               nom: ev.nom ?? courant.nom,
@@ -647,16 +865,29 @@ export class TdrAgentService {
             // de vie, et il arrive en une seconde au lieu de vingt.
             if (!suivant.annonce && suivant.nom) {
               suivant.annonce = true;
-              yield { type: 'travail', libelle: TdrAgentService.LIBELLES[suivant.nom] ?? suivant.nom };
+              yield {
+                type: 'travail',
+                libelle: TdrAgentService.LIBELLES[suivant.nom] ?? suivant.nom,
+              };
             }
 
             // Puis le texte lui-même, à mesure qu'il s'écrit.
             if (suivant.nom === 'ecrire_champ') {
               const partiel = TdrAgentService.valeurPartielle(suivant.args);
-              if (partiel !== null && partiel.length > suivant.vu) {
-                const cible = /"champ"\s*:\s*"([a-zA-Z]+)"/.exec(suivant.args)?.[1] ?? '';
-                yield { type: 'apercu', champ: cible, delta: partiel.slice(suivant.vu) };
-                suivant.vu = partiel.length;
+              if (partiel !== null) {
+                // Le texte ENTIER, nettoyé, et non un fragment à ajouter.
+                // L'aperçu doit montrer EXACTEMENT ce qui sera enregistré,
+                // faute de quoi il ment à l'instant où l'auteur regarde. Et
+                // le nettoyage RACCOURCIT le texte quand une paire se
+                // referme : un fragment deviendrait négatif et laisserait
+                // des astérisques orphelines à l'écran.
+                const propre = sansBalisage(partiel);
+                if (propre.length !== suivant.vu) {
+                  const cible =
+                    /"champ"\s*:\s*"([a-zA-Z]+)"/.exec(suivant.args)?.[1] ?? '';
+                  yield { type: 'apercu', champ: cible, texte: propre };
+                  suivant.vu = propre.length;
+                }
               }
             }
 
@@ -667,13 +898,19 @@ export class TdrAgentService {
         }
       } catch (e) {
         this.logger.error('Échange interrompu', e as Error);
-        yield { type: 'erreur', message: e instanceof Error ? e.message : 'Échange interrompu.' };
+        yield {
+          type: 'erreur',
+          message: e instanceof Error ? e.message : 'Échange interrompu.',
+        };
         return;
       }
 
       if (appels.size === 0) {
         if (motifArret === 'length') {
-          yield { type: 'erreur', message: 'La réponse a été coupée. Reformulez plus court.' };
+          yield {
+            type: 'erreur',
+            message: 'La réponse a été coupée. Reformulez plus court.',
+          };
         }
         yield { type: 'fin', tours };
         return;
@@ -687,15 +924,32 @@ export class TdrAgentService {
           function: { name: a.nom, arguments: a.args },
         }));
 
-      messages.push({ role: 'assistant', content: texte || null, tool_calls: toolCalls });
+      messages.push({
+        role: 'assistant',
+        content: texte || null,
+        tool_calls: toolCalls,
+      });
 
       for (const appel of toolCalls) {
-        const { resultat, evenement } = await this.executer(tdrId, appel, tdr, actor, ctx);
+        const { resultat, evenement } = await this.executer(
+          tdrId,
+          appel,
+          tdr,
+          actor,
+          ctx,
+        );
         if (evenement) yield evenement;
-        messages.push({ role: 'tool', tool_call_id: appel.id, content: resultat });
+        messages.push({
+          role: 'tool',
+          tool_call_id: appel.id,
+          content: resultat,
+        });
       }
     }
 
-    yield { type: 'erreur', message: 'Trop d’étapes enchaînées. Reformulez votre demande.' };
+    yield {
+      type: 'erreur',
+      message: 'Trop d’étapes enchaînées. Reformulez votre demande.',
+    };
   }
 }

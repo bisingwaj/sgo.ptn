@@ -12,6 +12,7 @@ import { TdrReferentielModule } from './tdr-referentiel/tdr-referentiel.module';
 import { PtbaModule } from './ptba/ptba.module';
 import { TdrModule } from './tdr/tdr.module';
 import { TdrDocumentModule } from './tdr-document/tdr-document.module';
+import { TdrAttachmentModule } from './tdr-attachment/tdr-attachment.module';
 import { AiModule } from './ai/ai.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -28,6 +29,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
     PtbaModule,
     TdrModule,
     TdrDocumentModule,
+    TdrAttachmentModule,
     AiModule,
   ],
   controllers: [AppController],

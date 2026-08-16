@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AiService, type GenerationResult } from './ai.service';
 import { buildSystemPrompt } from './project-knowledge';
-import { FIELDS } from './field-registry';
+import { FIELDS, sansBalisage } from './field-registry';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
@@ -40,17 +40,28 @@ export interface Proposal<T> {
  * une activité de plateforme se met à décrire la plateforme.
  */
 const TYPE_NATURE: Record<string, string> = {
-  'TDR-TX': "des travaux à réaliser : ouvrages, aménagements, normes techniques et modalités de réception",
-  'TDR-FN': "l'acquisition de biens et d'équipements : spécifications techniques, normes, garantie et service après-vente",
-  'TDR-CS': "une mission de conseil confiée à une firme : expertise attendue, méthodologie, profils-clés et livrables d'étude",
-  'TDR-SN': "une prestation de services non-consultants : niveaux de service attendus, indicateurs de qualité et modalités de facturation",
-  'TDR-AT': "l'organisation d'un atelier ou d'un séminaire : objectifs de la rencontre, public visé, programme, logistique",
-  'TDR-FO': "un cycle de formation : curriculum, public cible, modalités pédagogiques, évaluation des acquis",
-  'TDR-MI': "le déplacement d'une délégation à un événement international ou en voyage d'études : ce que la délégation va observer, auprès de qui, et ce qu'elle en rapportera. Ce n'est PAS la réalisation du projet auquel la mission se rattache",
-  'TDR-ET': "une étude, un diagnostic ou une évaluation : question posée, méthodologie, échantillonnage, livrable analytique",
-  'TDR-CO': "une action de communication ou de sensibilisation : messages, publics, canaux, plan média",
-  'TDR-SB': "une subvention basée sur la performance à un sous-projet : jalons, critères de décaissement, vérification",
-  'TDR-AU': "une mission d'audit ou de contrôle : périmètre, référentiel, échantillonnage, forme du rapport",
+  'TDR-TX':
+    'des travaux à réaliser : ouvrages, aménagements, normes techniques et modalités de réception',
+  'TDR-FN':
+    "l'acquisition de biens et d'équipements : spécifications techniques, normes, garantie et service après-vente",
+  'TDR-CS':
+    "une mission de conseil confiée à une firme : expertise attendue, méthodologie, profils-clés et livrables d'étude",
+  'TDR-SN':
+    'une prestation de services non-consultants : niveaux de service attendus, indicateurs de qualité et modalités de facturation',
+  'TDR-AT':
+    "l'organisation d'un atelier ou d'un séminaire : objectifs de la rencontre, public visé, programme, logistique",
+  'TDR-FO':
+    'un cycle de formation : curriculum, public cible, modalités pédagogiques, évaluation des acquis',
+  'TDR-MI':
+    "le déplacement d'une délégation à un événement international ou en voyage d'études : ce que la délégation va observer, auprès de qui, et ce qu'elle en rapportera. Ce n'est PAS la réalisation du projet auquel la mission se rattache",
+  'TDR-ET':
+    'une étude, un diagnostic ou une évaluation : question posée, méthodologie, échantillonnage, livrable analytique',
+  'TDR-CO':
+    'une action de communication ou de sensibilisation : messages, publics, canaux, plan média',
+  'TDR-SB':
+    'une subvention basée sur la performance à un sous-projet : jalons, critères de décaissement, vérification',
+  'TDR-AU':
+    "une mission d'audit ou de contrôle : périmètre, référentiel, échantillonnage, forme du rapport",
 };
 
 @Injectable()
@@ -91,7 +102,9 @@ export class TdrAssistService {
   ): T[] {
     let rows: Array<Record<string, unknown>>;
     try {
-      const json = JSON.parse(TdrAssistService.extractJson(result.text)) as Record<string, unknown>;
+      const json = JSON.parse(
+        TdrAssistService.extractJson(result.text),
+      ) as Record<string, unknown>;
       rows = (json[key] as Array<Record<string, unknown>>) ?? [];
       if (!Array.isArray(rows)) throw new Error('forme inattendue');
     } catch {
@@ -110,7 +123,9 @@ export class TdrAssistService {
 
     const parsed = rows.map(map).filter((r): r is T => r !== null);
     if (parsed.length === 0) {
-      throw new BadRequestException(`Le modèle n’a proposé aucun élément exploitable pour les ${noun}.`);
+      throw new BadRequestException(
+        `Le modèle n’a proposé aucun élément exploitable pour les ${noun}.`,
+      );
     }
     return parsed;
   }
@@ -139,7 +154,10 @@ export class TdrAssistService {
       include: {
         tdrType: { include: { defaultMethod: true } },
         ptbaActivity: {
-          include: { component: true, provinces: { include: { province: true } } },
+          include: {
+            component: true,
+            provinces: { include: { province: true } },
+          },
         },
         organisation: { select: { name: true, fullName: true, type: true } },
         beneficiaryOrganisation: { select: { name: true, fullName: true } },
@@ -157,7 +175,9 @@ export class TdrAssistService {
   }
 
   /** Décrit le dossier au modèle, sans rien inventer de ce qui manque. */
-  private static describe(tdr: Awaited<ReturnType<TdrAssistService['loadContext']>>): {
+  private static describe(
+    tdr: Awaited<ReturnType<TdrAssistService['loadContext']>>,
+  ): {
     text: string;
     grounded: string[];
   } {
@@ -169,7 +189,9 @@ export class TdrAssistService {
       `OBJET DU PRÉSENT TDR — c'est de cela, et de cela seulement, que votre texte doit traiter.`,
     );
     lines.push(`Intitulé : ${tdr.title}`);
-    lines.push(`Type : ${tdr.tdrType.name} (${tdr.tdrType.code}), famille « ${tdr.tdrType.familyLabel} »`);
+    lines.push(
+      `Type : ${tdr.tdrType.name} (${tdr.tdrType.code}), famille « ${tdr.tdrType.familyLabel} »`,
+    );
     if (nature) {
       lines.push(`Un TDR de ce type porte sur ${nature}.`);
     }
@@ -398,7 +420,12 @@ Répondez par le texte seul, sans titre ni commentaire.`,
     });
 
     await this.record(tdrId, `justification:${mode}`, result.model, actor, ctx);
-    return { proposal: result.text, model: result.model, groundedOn: grounded, mode };
+    return {
+      proposal: result.text,
+      model: result.model,
+      groundedOn: grounded,
+      mode,
+    };
   }
 
   /**
@@ -462,7 +489,9 @@ Répondez par un objet JSON de la forme :
     tdrId: string,
     actor: AuthenticatedUser,
     ctx: RequestContext,
-  ): Promise<Proposal<Array<{ title: string; format: string; deadline: string }>>> {
+  ): Promise<
+    Proposal<Array<{ title: string; format: string; deadline: string }>>
+  > {
     const tdr = await this.loadContext(tdrId);
 
     if (tdr.objectives.length === 0) {
@@ -479,7 +508,8 @@ Répondez par un objet JSON de la forme :
       '',
       'Objectifs déjà arrêtés, que les livrables doivent servir :',
       ...tdr.objectives.map(
-        (o, i) => `${i + 1}. ${o.title}${o.criteria ? ` — constaté par : ${o.criteria}` : ''}`,
+        (o, i) =>
+          `${i + 1}. ${o.title}${o.criteria ? ` — constaté par : ${o.criteria}` : ''}`,
       ),
     ].join('\n');
     grounded.push('objectifs du dossier');
@@ -516,7 +546,9 @@ Répondez par un objet JSON de la forme :
         // Dernier filet : la durée n'est pas connue, donc aucune échéance
         // ne peut l'être. Le modèle a beau être instruit, c'est ici que la
         // règle est tenue.
-        deadline: tdr.durationMonths ? String(row.deadline ?? '').trim() : '[à fixer]',
+        deadline: tdr.durationMonths
+          ? String(row.deadline ?? '').trim()
+          : '[à fixer]',
       };
     });
 
@@ -588,9 +620,26 @@ Restez sur des qualifications vérifiables. Ne nommez aucune personne, aucun cab
    * flux. Deux copies auraient divergé à la première correction de consigne,
    * et le texte produit aurait dépendu du chemin emprunté.
    */
-  private async prepareField(tdrId: string, champ: string) {
+  /**
+   * Le type de retour est déclaré, et il le faut.
+   *
+   * Sans lui, le littéral « reprise » | « redaction » s'élargit au type des
+   * chaînes dans l'objet rendu, et les signatures qui l'attendent ne sont
+   * plus satisfaites. Une assertion sur place réglait le symptôme, mais
+   * `eslint --fix` la retirait à chaque passage en la croyant superflue.
+   */
+  private async prepareField(
+    tdrId: string,
+    champ: string,
+  ): Promise<{
+    system: string;
+    user: string;
+    grounded: string[];
+    mode: 'reprise' | 'redaction';
+  }> {
     const spec = FIELDS.find((f) => f.cle === champ);
-    if (!spec) throw new BadRequestException(`Champ inconnu du dossier : ${champ}.`);
+    if (!spec)
+      throw new BadRequestException(`Champ inconnu du dossier : ${champ}.`);
 
     if (spec.kind === 'liste_objectifs' || spec.kind === 'liste_livrables') {
       throw new BadRequestException(
@@ -606,7 +655,9 @@ Restez sur des qualifications vérifiables. Ne nommez aucune personne, aucun cab
 
     const consigne = TdrAssistService.CONSIGNES[champ];
     if (!consigne) {
-      throw new BadRequestException(`Aucune consigne de rédaction n’est définie pour ${champ}.`);
+      throw new BadRequestException(
+        `Aucune consigne de rédaction n’est définie pour ${champ}.`,
+      );
     }
 
     const tdr = await this.loadContext(tdrId);
@@ -614,7 +665,8 @@ Restez sur des qualifications vérifiables. Ne nommez aucune personne, aucun cab
     const live = await this.liveGrounding(tdr);
 
     const existant = (tdr as unknown as Record<string, unknown>)[champ];
-    const dejaEcrit = typeof existant === 'string' && existant.trim().length > 0;
+    const dejaEcrit =
+      typeof existant === 'string' && existant.trim().length > 0;
 
     // Le contexte précède toutes les autres sections dans le document : le
     // donner évite qu'elles le redisent, ce qui est le défaut le plus
@@ -636,13 +688,13 @@ ${
     : ''
 }
 
-Répondez par le texte seul, sans titre ni commentaire.`;
+Répondez par le texte seul, sans titre ni commentaire, et SANS AUCUN BALISAGE : ni astérisques de gras, ni soulignés d'italique, ni dièses de titre. Le document final ne rend aucune mise en forme — « **Contexte** » y sortirait avec ses astérisques sur une pièce signée. Pour énumérer, un tiret en début de ligne suffit.`;
 
     return {
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
       user,
       grounded,
-      mode: (dejaEcrit ? 'reprise' : 'redaction') as 'reprise' | 'redaction',
+      mode: dejaEcrit ? 'reprise' : 'redaction',
     };
   }
 
@@ -662,13 +714,15 @@ Répondez par le texte seul, sans titre ni commentaire.`;
   ): AsyncGenerator<
     | { type: 'ancrage'; groundedOn: string[]; mode: 'reprise' | 'redaction' }
     | { type: 'texte'; delta: string }
-    | { type: 'fin' }
+    /** `texte` porte la valeur définitive, débarrassée de tout balisage */
+    | { type: 'fin'; texte: string }
     | { type: 'erreur'; message: string }
   > {
     const prep = await this.prepareField(tdrId, champ);
     yield { type: 'ancrage', groundedOn: prep.grounded, mode: prep.mode };
 
-    let modele = 'inconnu';
+    const modele = 'inconnu';
+    let accumule = '';
     try {
       for await (const ev of this.ai.stream({
         messages: [
@@ -677,18 +731,26 @@ Répondez par le texte seul, sans titre ni commentaire.`;
         ],
         maxTokens: 900,
       })) {
-        if (ev.type === 'texte') yield { type: 'texte', delta: ev.delta };
+        if (ev.type === 'texte') {
+          accumule += ev.delta;
+          yield { type: 'texte', delta: ev.delta };
+        }
       }
     } catch (e) {
       yield {
         type: 'erreur',
-        message: e instanceof Error ? e.message : 'La proposition n’a pas abouti.',
+        message:
+          e instanceof Error ? e.message : 'La proposition n’a pas abouti.',
       };
       return;
     }
 
     await this.record(tdrId, `champ:${champ}`, modele, actor, ctx);
-    yield { type: 'fin' };
+    // Le texte définitif accompagne la fin. Les fragments ont défilé tels
+    // qu'ils arrivaient — c'est ce qui donne à voir la rédaction en cours et
+    // il ne faut pas y toucher — mais ce qui RESTE dans le champ doit être
+    // net : un nettoyage ne peut se faire qu'une fois la paire refermée.
+    yield { type: 'fin', texte: sansBalisage(accumule) };
   }
 
   async proposeField(
@@ -709,7 +771,10 @@ Répondez par le texte seul, sans titre ni commentaire.`;
 
     await this.record(tdrId, `champ:${champ}`, result.model, actor, ctx);
     return {
-      proposal: result.text.trim(),
+      // Contrôle, et non confiance : la consigne ci-dessus proscrit le
+      // balisage, mais une consigne se contourne. Seules les PAIRES sont
+      // ôtées — un « (*) voir annexe » légitime survit.
+      proposal: sansBalisage(result.text.trim()),
       model: result.model,
       groundedOn: prep.grounded,
       mode: prep.mode,

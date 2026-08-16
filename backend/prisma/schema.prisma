@@ -1105,6 +1105,7 @@ model Tdr {
   indicators   TdrIndicator[]
   risks        TdrRisk[]
   versions     TdrVersion[]
+  attachments  TdrAttachment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1202,6 +1203,38 @@ model TdrRisk {
 /// Instantané immuable pris à chaque soumission. C'est lui qui permet de
 /// reconstituer le document exactement tel qu'il a été transmis, des
 /// années après — exigence d'auditabilité.
+/// Une pièce apportée par le rédacteur : TDR antérieur, modèle du bailleur,
+/// note de cadrage.
+///
+/// Elle sert de modèle de forme — structure, ton, niveau de détail — et
+/// jamais de source de fait. Un montant, une date ou une institution lus dans
+/// une pièce jointe ne valent pas pour le dossier en cours : ils se rapportent
+/// à une autre opération, et les recopier fabriquerait un TDR qui décrit un
+/// marché qui n'existe pas.
+///
+/// Le contenu est stocké dans la base plutôt que sur un disque : la pièce fait
+/// partie du dossier, et un dossier doit se reconstituer entier depuis une
+/// sauvegarde. Un chemin de fichier survivrait mal à une restauration. Le
+/// volume reste maîtrisé par le plafond appliqué à la réception.
+model TdrAttachment {
+  id     String @id @default(uuid()) @db.Uuid
+  tdrId  String @db.Uuid
+  tdr    Tdr    @relation(fields: [tdrId], references: [id], onDelete: Cascade)
+
+  filename  String
+  mimeType  String
+  sizeBytes Int
+  /// Empreinte du contenu : dit si deux versements portent la même pièce.
+  sha256    String
+  content   Bytes
+
+  uploadedById String?  @db.Uuid
+  uploadedAt   DateTime @default(now())
+
+  @@index([tdrId])
+  @@map("tdr_attachments")
+}
+
 model TdrVersion {
   id            String   @id @default(uuid()) @db.Uuid
   tdrId         String   @db.Uuid

@@ -83,7 +83,7 @@ export const FIELDS: FieldSpec[] = [
     etape: 'Cadrage',
     max: 30000,
     description:
-      "Justification : pourquoi ce marché maintenant, et ce que son report coûterait. Un à deux paragraphes.",
+      'Justification : pourquoi ce marché maintenant, et ce que son report coûterait. Un à deux paragraphes.',
   },
   {
     cle: 'beneficiaries',
@@ -99,7 +99,7 @@ export const FIELDS: FieldSpec[] = [
     etape: 'Objectifs & livrables',
     max: 24000,
     description:
-      "Résultats attendus : ce qui sera constaté, avec son horizon. Un par ligne.",
+      'Résultats attendus : ce qui sera constaté, avec son horizon. Un par ligne.',
   },
   {
     cle: 'objectives',
@@ -113,28 +113,30 @@ export const FIELDS: FieldSpec[] = [
     kind: 'liste_livrables',
     etape: 'Objectifs & livrables',
     description:
-      "Livrables. Chacun porte un intitulé, un format court, et une échéance en délai relatif au démarrage (J+15, S+4, M+6) — jamais de date ferme.",
+      'Livrables. Chacun porte un intitulé, un format court, et une échéance en délai relatif au démarrage (J+15, S+4, M+6) — jamais de date ferme.',
   },
   {
     cle: 'approach',
     kind: 'texte',
     etape: 'Méthodologie',
     max: 30000,
-    description: "Approche générale : la démarche retenue, son phasage.",
+    description: 'Approche générale : la démarche retenue, son phasage.',
   },
   {
     cle: 'methodology',
     kind: 'texte',
     etape: 'Méthodologie',
     max: 30000,
-    description: "Méthodes et outils : standards, référentiels, instruments mobilisés.",
+    description:
+      'Méthodes et outils : standards, référentiels, instruments mobilisés.',
   },
   {
     cle: 'constraints',
     kind: 'texte',
     etape: 'Méthodologie',
     max: 24000,
-    description: "Contraintes : dépendances, ressources critiques, fenêtres de décision.",
+    description:
+      'Contraintes : dépendances, ressources critiques, fenêtres de décision.',
   },
   {
     cle: 'expertise',
@@ -150,19 +152,21 @@ export const FIELDS: FieldSpec[] = [
     cle: 'startDate',
     kind: 'date',
     etape: 'Calendrier & expertise',
-    description: "Démarrage souhaité, au format AAAA-MM-JJ.",
+    description: 'Démarrage souhaité, au format AAAA-MM-JJ.',
   },
   {
     cle: 'durationMonths',
     kind: 'entier',
     etape: 'Calendrier & expertise',
-    description: "Durée du marché en mois. Elle borne les échéances des livrables.",
+    description:
+      'Durée du marché en mois. Elle borne les échéances des livrables.',
   },
   {
     cle: 'effortDays',
     kind: 'entier',
     etape: 'Calendrier & expertise',
-    description: "Volume d'effort en jours-homme, unité de facturation d'un marché de prestation.",
+    description:
+      "Volume d'effort en jours-homme, unité de facturation d'un marché de prestation.",
   },
 
   // --- Montants ---
@@ -193,7 +197,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'budgetGovUsd',
     kind: 'montant',
     etape: 'Budget',
-    description: "Part financée par le Gouvernement, en USD.",
+    description: 'Part financée par le Gouvernement, en USD.',
   },
 
   // --- Institution ---
@@ -214,7 +218,9 @@ export function champ(cle: string): FieldSpec | undefined {
 
 /** L'énumération des champs, telle qu'elle est transmise au modèle. */
 export function enumerationChamps(): string {
-  return FIELDS.map((f) => `— ${f.cle} (étape ${f.etape}) : ${f.description}`).join('\n');
+  return FIELDS.map(
+    (f) => `— ${f.cle} (étape ${f.etape}) : ${f.description}`,
+  ).join('\n');
 }
 
 /**
@@ -247,18 +253,24 @@ export function versTableau(valeur: unknown): unknown[] | null {
  */
 export function refus(spec: FieldSpec, valeur: unknown): string | null {
   if (spec.kind === 'montant') {
-    const n = typeof valeur === 'number' ? valeur : Number(String(valeur).replace(/[\s,]/g, ''));
-    if (!Number.isFinite(n)) return `${spec.cle} attend un montant en USD, en chiffres.`;
+    const n =
+      typeof valeur === 'number'
+        ? valeur
+        : Number(String(valeur).replace(/[\s,]/g, ''));
+    if (!Number.isFinite(n))
+      return `${spec.cle} attend un montant en USD, en chiffres.`;
     if (n < 0) return `${spec.cle} ne peut pas être négatif.`;
     // Un projet de 510 M USD n'a pas de marché à dix milliards : au-delà,
     // c'est une virgule mal placée, non une intention.
-    if (n > 1e10) return `${spec.cle} : ${n} USD est hors de proportion. Vérifiez l'unité.`;
+    if (n > 1e10)
+      return `${spec.cle} : ${n} USD est hors de proportion. Vérifiez l'unité.`;
     return null;
   }
 
   if (spec.kind === 'entier') {
     const n = typeof valeur === 'number' ? valeur : Number(valeur);
-    if (!Number.isInteger(n) || n <= 0) return `${spec.cle} attend un nombre entier positif.`;
+    if (!Number.isInteger(n) || n <= 0)
+      return `${spec.cle} attend un nombre entier positif.`;
     if (n > 3650) return `${spec.cle} : ${n} est hors de proportion.`;
     return null;
   }
@@ -267,7 +279,8 @@ export function refus(spec: FieldSpec, valeur: unknown): string | null {
     if (typeof valeur !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)) {
       return `${spec.cle} attend une date au format AAAA-MM-JJ.`;
     }
-    if (Number.isNaN(Date.parse(valeur))) return `${spec.cle} : cette date n'existe pas.`;
+    if (Number.isNaN(Date.parse(valeur)))
+      return `${spec.cle} : cette date n'existe pas.`;
     return null;
   }
 
@@ -326,12 +339,127 @@ export function normaliseListe(
   spec: FieldSpec,
   valeur: unknown,
 ): Array<Record<string, string>> {
-  const texte = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const texte = (v: unknown) =>
+    typeof v === 'string' ? sansBalisage(v.trim()) : '';
   return (versTableau(valeur) ?? []).map((ligne): Record<string, string> => {
     const o = ligne as Record<string, unknown>;
     if (spec.kind === 'liste_objectifs') {
       return { title: texte(o.title), criteria: texte(o.criteria) };
     }
-    return { title: texte(o.title), format: texte(o.format), deadline: texte(o.deadline) };
+    return {
+      title: texte(o.title),
+      format: texte(o.format),
+      deadline: texte(o.deadline),
+    };
   });
+}
+
+/**
+ * Ôte le balisage léger d'une valeur destinée au dossier.
+ *
+ * Le modèle répond en Markdown : c'est utile dans la conversation, où le
+ * panneau le rend. Ce n'est pas admissible dans un CHAMP. La valeur d'un
+ * champ part telle quelle dans un PDF et un DOCX contractuels, composés par
+ * pdfkit et docx, qui écrivent le texte sans l'interpréter : un contexte
+ * rédigé « **Contexte** » sortirait avec ses astérisques sur une pièce
+ * signée. La règle du dépôt le dit autrement : l'API transporte des
+ * DONNÉES, l'interface en fait la PRÉSENTATION.
+ *
+ * On ôte SEULEMENT des paires reconnues, jamais un caractère isolé. Un
+ * astérisque de renvoi — « (*) voir annexe » — ou une multiplication —
+ * « 2 * 3 lots » — sont des textes administratifs parfaitement légitimes
+ * qu'un nettoyage aveugle abîmerait. Les mêmes règles de flanc que le rendu
+ * du panneau s'appliquent : une ouverture suit une espace et précède un
+ * caractère plein ; une fermeture suit un caractère plein et précède une
+ * espace ou une ponctuation.
+ *
+ * Ce nettoyage double la consigne donnée au modèle, il ne la remplace pas.
+ * Une consigne se contourne, un contrôle non.
+ */
+export function sansBalisage(texte: string): string {
+  // Pas de sortie hâtive sur l'absence de marqueur : le nettoyage des débuts
+  // de ligne, plus bas, s'applique aussi à un texte qui n'en porte aucun.
+  // La première version sortait ici et laissait passer « ## Contexte ».
+
+  const ouvre = (s: string, i: number, n: number) => {
+    const avant = i === 0 ? ' ' : s[i - 1];
+    const apres = s[i + n];
+    return /\s/.test(avant) && apres !== undefined && !/\s/.test(apres);
+  };
+  const ferme = (s: string, i: number, n: number) => {
+    const avant = s[i - 1];
+    const apres = s[i + n];
+    return (
+      avant !== undefined &&
+      !/\s/.test(avant) &&
+      (apres === undefined || /[\s.,;:!?)\]»…]/.test(apres))
+    );
+  };
+
+  // Le gras d'abord : « ** » serait sinon lu comme deux italiques.
+  const signes = ['**', '__', '*', '_', '`'];
+
+  let reste = texte;
+  let sortie = '';
+
+  // Le balayage des marqueurs ne sert que s'il y en a : le cas courant
+  // est un texte qui n'en porte aucun.
+  if (!/[*_`]/.test(texte)) {
+    sortie = texte;
+    reste = '';
+  }
+
+  while (reste.length > 0) {
+    let trouve: { debut: number; fin: number; signe: string } | null = null;
+
+    for (let i = 0; i < reste.length && !trouve; i += 1) {
+      const signe = signes.find((s) => reste.startsWith(s, i));
+      if (!signe) continue;
+
+      const litteral = signe === '`';
+      if (!litteral && !ouvre(reste, i, signe.length)) continue;
+
+      const depart = i + signe.length;
+      for (let j = depart; j < reste.length; j += 1) {
+        if (!reste.startsWith(signe, j)) continue;
+        if (j === depart) continue;
+        if (!litteral && !ferme(reste, j, signe.length)) continue;
+        trouve = { debut: i, fin: j, signe };
+        break;
+      }
+    }
+
+    if (!trouve) {
+      sortie += reste;
+      break;
+    }
+
+    sortie += reste.slice(0, trouve.debut);
+    // Récursif par la boucle : le contenu repasse et perd ses marques
+    // internes, un gras pouvant porter de l'italique.
+    reste =
+      reste.slice(trouve.debut + trouve.signe.length, trouve.fin) +
+      reste.slice(trouve.fin + trouve.signe.length);
+  }
+
+  // En tête de ligne, trois traitements distincts — et c'est là qu'est le
+  // point délicat de cette fonction.
+  //
+  // LE TIRET RESTE. Une énumération ouverte par un tiret est une forme
+  // administrative française parfaitement ordinaire, qui s'imprime telle
+  // quelle sans choquer personne dans un TDR. La retirer détruirait la
+  // structure d'un champ « résultats attendus », dont la consigne dit
+  // justement « un par ligne ».
+  //
+  // L'ASTÉRISQUE DEVIENT UN TIRET. Employé comme puce, il ne se lit pas :
+  // c'est une convention d'écriture technique, pas de rédaction.
+  //
+  // LE DIÈSE PART. « ## Contexte » n'a aucun sens sur une pièce imprimée.
+  return sortie
+    .split('\n')
+    .map((l) =>
+      l.replace(/^( {0,3})\*(\s+)/, '$1-$2').replace(/^ {0,3}#{1,6}\s+/, ''),
+    )
+    .join('\n')
+    .trim();
 }

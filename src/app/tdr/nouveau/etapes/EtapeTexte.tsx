@@ -99,6 +99,13 @@ export function EtapeTexte({
         if (ev.type === "texte") {
           accumule += ev.delta;
           ecrire(accumule, true);
+        } else if (ev.type === "fin") {
+          // Le texte définitif remplace ce qui a défilé : les fragments
+          // montrent la rédaction en cours, mais ce qui RESTE dans le champ
+          // ne doit porter aucun balisage — le document n'en rend aucun, et
+          // « **Contexte** » y sortirait avec ses astérisques.
+          accumule = ev.texte;
+          ecrire(accumule, true);
         } else if (ev.type === "erreur") {
           echec = ev.message;
           break;

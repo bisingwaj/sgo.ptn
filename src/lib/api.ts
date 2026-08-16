@@ -87,11 +87,58 @@ async function parseError(response: Response): Promise<ApiError> {
   } catch {
     // Réponse sans corps JSON
   }
-  const message = Array.isArray(payload.message)
-    ? payload.message.join(" · ")
-    : (payload.message ?? `Erreur ${response.status}`);
+  return new ApiError(
+    messageLisible(payload.message, response.status),
+    response.status,
+    payload.blockers ?? [],
+    payload.warnings ?? [],
+  );
+}
 
-  return new ApiError(message, response.status, payload.blockers ?? [], payload.warnings ?? []);
+/**
+ * Le message qu'un agent public peut lire.
+ *
+ * Trois origines se mêlent dans la réponse d'erreur du serveur, et elles
+ * n'ont pas la même valeur pour celui qui la lit.
+ *
+ * UN TABLEAU ne vient jamais d'une décision métier : c'est le contrôle de
+ * saisie de la plateforme. Il écrit en anglais et nomme les colonnes de la
+ * base — « firstName must be a string », « property x should not exist ».
+ * Une quinzaine d'écrans réaffichent ce texte tel quel ; on ne garde donc
+ * que les phrases rédigées à la main, qui sont en français, et les
+ * tournures automatiques partent au journal.
+ *
+ * UNE CHAÎNE a été écrite par quelqu'un, en français, et dit quoi faire :
+ * « L'exercice 2026 est clos. » On la relaie mot pour mot — la remplacer par
+ * une paraphrase priverait le lecteur du seul motif qui lui permette d'agir.
+ * Seule exception, le libellé que la plateforme émet d'elle-même sur une
+ * panne interne, unique texte anglais qu'elle produise.
+ *
+ * RIEN DU TOUT, enfin : un code de réponse ne dit rien à un agent et ne lui
+ * indique aucune suite. Il part au journal, où l'exploitant le cherchera.
+ */
+function messageLisible(brut: string | string[] | undefined, status: number): string {
+  const GENERIQUE =
+    "Le service n’a pas pu traiter cette demande. Réessayez dans un instant ; si cela persiste, signalez-le à votre administrateur en précisant l’heure et l’écran concerné.";
+
+  // Les tournures de la bibliothèque de validation, reconnaissables à ces
+  // deux verbes anglais qu'aucun message français du projet n'emploie.
+  const AUTOMATIQUE = /\b(must|should)\b/i;
+
+  if (Array.isArray(brut)) {
+    const redigees = brut.filter((m) => !AUTOMATIQUE.test(m));
+    if (redigees.length < brut.length) {
+      console.error("[api] contrôle de saisie refusé :", brut);
+    }
+    return redigees.length > 0
+      ? redigees.join(" · ")
+      : "Certaines informations saisies n’ont pas été acceptées. Reprenez le formulaire et vérifiez les champs renseignés avant de le renvoyer.";
+  }
+
+  if (brut && brut !== "Internal server error") return brut;
+
+  console.error(`[api] réponse ${status} sans message exploitable`);
+  return GENERIQUE;
 }
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
@@ -118,8 +165,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     // `fetch` ne rejette que sur une panne réseau : serveur arrêté, DNS,
     // CORS. Distinguer ce cas d'une erreur métier évite d'afficher un
     // « Failed to fetch » brut à l'utilisateur.
+    // Le message ne nomme ni adresse, ni port, ni service à redémarrer :
+    // celui qui le lit est un agent public, pas un exploitant. Il ne peut
+    // rien faire d'une adresse technique, et la lui montrer donne le
+    // sentiment d'une panne qui lui incombe. Ce qu'il peut faire : attendre
+    // et réessayer, signaler si cela dure. L'adresse reste à la console.
+    console.error(`[api] service injoignable à ${API_BASE}`);
     throw new ApiError(
-      `Service injoignable à l'adresse ${API_BASE}. Vérifiez que l'API est démarrée.`,
+      "Le service est momentanément indisponible. Réessayez dans un instant ; si cela persiste, signalez-le à votre administrateur.",
       0,
     );
   }
@@ -169,6 +222,51 @@ async function tryRefresh(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Récupère un fichier protégé.
+ *
+ * Le jeton d'accès vit en mémoire, jamais dans un cookie : ni un lien nu ni
+ * une balise `<img>` ne peuvent le porter, et la route répondrait 401. Tout
+ * fichier du dossier passe donc par ici.
+ */
+async function recupererBlob(url: string): Promise<Blob> {
+  const reponse = await fetch(url, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+  if (!reponse.ok) throw await parseError(reponse);
+  return reponse.blob();
+}
+
+/**
+ * L'adresse locale d'une pièce, pour l'afficher.
+ *
+ * Distincte de `telechargerFichier` à dessein : celui-ci force
+ * l'enregistrement sur disque et révoque au bout de dix secondes — une
+ * vignette bâtie dessus deviendrait blanche. Ici l'adresse est rendue à
+ * l'appelant, à qui il revient de la révoquer au démontage.
+ */
+export async function apercuDePiece(url: string): Promise<string> {
+  return URL.createObjectURL(await recupererBlob(url));
+}
+
+/**
+ * Télécharge un fichier protégé et le remet au navigateur.
+ *
+ * On récupère le fichier avec le jeton, puis on déclenche l'enregistrement
+ * depuis un objet local.
+ */
+export async function telechargerFichier(url: string, nom: string): Promise<void> {
+  const blob = await recupererBlob(url);
+  const lien = document.createElement("a");
+  lien.href = URL.createObjectURL(blob);
+  lien.download = nom;
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+  // Sans cela, le blob reste en mémoire pour la durée de la page.
+  setTimeout(() => URL.revokeObjectURL(lien.href), 10_000);
 }
 
 export const api = {
@@ -810,6 +908,39 @@ export interface TdrListItem {
   organisation: { code: string; name: string };
 }
 
+/** Une pièce apportée au dossier, vue du rédacteur. */
+export interface PieceJointeApi {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  /** L'assistant lit-il cette pièce, ou la garde-t-on à l'archive seulement ? */
+  lisibleParAssistant: boolean;
+}
+
+/** Plan du document final, tel qu'il sera imprimé. */
+export interface PlanDocumentApi {
+  reference: string;
+  titre: string;
+  typeCode: string;
+  typeNom: string;
+  organisation: string;
+  dateComposition: string;
+  entete: Array<{ cle: string; valeur: string }>;
+  sections: Array<{
+    numero: string;
+    titre: string;
+    blocs: Array<
+      | { genre: "paragraphe"; texte: string }
+      | { genre: "liste"; entrees: string[] }
+      | { genre: "definitions"; lignes: Array<{ cle: string; valeur: string }> }
+      | { genre: "absent"; mention: string }
+    >;
+  }>;
+  champsAssistes: string[];
+}
+
 export const tdrApi = {
   list: (statut?: string) =>
     api.get<TdrListItem[]>(`/tdr${statut ? `?statut=${statut}` : ""}`),
@@ -826,6 +957,35 @@ export const tdrApi = {
    * est restreinte à l'organisation de l'appelant.
    */
   envelope: (id: string) => api.get<TdrEnvelopeApi | null>(`/tdr/${id}/enveloppe`),
+  /** Les pièces apportées au dossier */
+  pieces: (id: string) => api.get<PieceJointeApi[]>(`/tdr/${id}/pieces`),
+  /**
+   * Verse une pièce. Passe par `fetch` sans en-tête de type : le navigateur
+   * doit poser lui-même la frontière du multipart, qu'on ne peut pas deviner.
+   */
+  verserPiece: async (id: string, fichier: File): Promise<PieceJointeApi> => {
+    const corps = new FormData();
+    corps.append("fichier", fichier);
+    const reponse = await fetch(`${API_BASE}/tdr/${id}/pieces`, {
+      method: "POST",
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      body: corps,
+    });
+    if (!reponse.ok) throw await parseError(reponse);
+    return (await reponse.json()) as PieceJointeApi;
+  },
+  retirerPiece: (id: string, pieceId: string) =>
+    api.del<{ id: string }>(`/tdr/${id}/pieces/${pieceId}`),
+  pieceUrl: (id: string, pieceId: string) => `${API_BASE}/tdr/${id}/pieces/${pieceId}`,
+  /** Le plan du document, pour relire avant de fabriquer le fichier */
+  documentPlan: (id: string) => api.get<PlanDocumentApi>(`/tdr/${id}/document/apercu`),
+  /**
+   * Adresse du fichier. Le jeton d'accès vit en mémoire et ne peut pas
+   * voyager dans une balise de téléchargement : on récupère donc le
+   * document par `fetch`, puis on le remet au navigateur.
+   */
+  documentUrl: (id: string, format: "pdf" | "docx") =>
+    `${API_BASE}/tdr/${id}/document${format === "docx" ? "?format=docx" : ""}`,
   createDraft: (payload: { tdrTypeCode: string; title: string; ptbaActivityId?: string }) =>
     api.post<TdrApi>("/tdr", payload),
   update: (id: string, patch: Record<string, unknown>) =>

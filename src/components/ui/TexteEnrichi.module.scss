@@ -1,0 +1,74 @@
+/**
+ * Mise en forme du texte de l'assistant.
+ *
+ * Discrète à dessein : le gras sert à repérer un intitulé dans un
+ * récapitulatif, pas à hausser la voix. Rien ici ne prend l'accent, et
+ * surtout pas le violet — celui-ci marque ce qu'un modèle ÉCRIT DANS UN
+ * CHAMP, et une phrase de conversation n'est pas une écriture.
+ */
+
+.texte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-03);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: inherit;
+  /* Un nom de fichier ou une référence longue ne doit pas élargir le
+     panneau ni déborder sous la barre de défilement. */
+  overflow-wrap: anywhere;
+
+  p {
+    margin: 0;
+  }
+
+  strong {
+    font-weight: 600;
+    color: var(--cds-text-primary, #161616);
+  }
+
+  em {
+    font-style: italic;
+  }
+}
+
+/* Un intitulé de section, sans hiérarchie de titres : le panneau est une
+   conversation, pas un document. */
+.intitule {
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-01);
+  margin: 0;
+  padding-left: 1.15rem;
+
+  li {
+    /* La puce Carbon est retirée par le reset ; on la rétablit ici plutôt
+       que globalement, pour ne pas la ramener partout ailleurs. */
+    list-style: revert;
+    padding-left: 0.15rem;
+  }
+}
+
+ul.liste li {
+  list-style-type: disc;
+}
+
+ol.liste li {
+  list-style-type: decimal;
+}
+
+/* Un fragment littéral — un code de champ, une référence. Fond neutre et
+   non accentué : c'est une citation, pas une alerte. */
+.code {
+  font-family: var(--cds-code-01-font-family, "IBM Plex Mono", monospace);
+  font-size: 0.75rem;
+  padding: 0.05rem 0.25rem;
+  background: var(--cds-layer-accent, #e0e0e0);
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+}

@@ -1,10 +1,38 @@
-import { HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** Un tour de conversation, au format des API compatibles OpenAI. */
+/**
+ * Un morceau de message.
+ *
+ * Le texte suffit presque toujours. Les deux autres formes servent à
+ * transmettre une pièce apportée par l'auteur : le modèle lit nativement
+ * les PDF et les images, sans extraction intermédiaire — ce qui évite la
+ * déformation qu'introduit toute conversion en texte, et notamment la perte
+ * des tableaux.
+ */
+export type MorceauMessage =
+  | { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }
+  | {
+      type: 'image_url';
+      image_url: { url: string };
+      cache_control?: { type: 'ephemeral' };
+    }
+  | {
+      type: 'file';
+      file: { filename: string; file_data: string };
+      cache_control?: { type: 'ephemeral' };
+    };
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  content: string | MorceauMessage[] | null;
   /** Renseigné par l'assistant lorsqu'il demande l'exécution d'outils */
   tool_calls?: ToolCall[];
   /** Renseigné sur un message de rôle `tool` : à quel appel il répond */
@@ -74,8 +102,18 @@ export interface GenerationResult {
  */
 export type StreamEvent =
   | { type: 'texte'; delta: string }
-  | { type: 'outil'; index: number; id?: string; nom?: string; argsDelta?: string }
-  | { type: 'fin'; finishReason?: string; usage?: { prompt: number; completion: number } };
+  | {
+      type: 'outil';
+      index: number;
+      id?: string;
+      nom?: string;
+      argsDelta?: string;
+    }
+  | {
+      type: 'fin';
+      finishReason?: string;
+      usage?: { prompt: number; completion: number };
+    };
 
 /**
  * Appels de modèle, via OpenRouter.
@@ -90,7 +128,8 @@ export type StreamEvent =
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private static readonly ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+  private static readonly ENDPOINT =
+    'https://openrouter.ai/api/v1/chat/completions';
 
   /** Un tour de conversation est court ; composer une section ne l'est pas. */
   private static readonly TIMEOUT_DEFAUT = 60_000;
@@ -102,7 +141,10 @@ export class AiService {
   }
 
   get model(): string {
-    return this.config.get<string>('OPENROUTER_MODEL') ?? 'anthropic/claude-sonnet-4.5';
+    return (
+      this.config.get<string>('OPENROUTER_MODEL') ??
+      'anthropic/claude-sonnet-4.5'
+    );
   }
 
   private apiKey(): string {
@@ -120,7 +162,8 @@ export class AiService {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       // Recommandé par OpenRouter pour l'attribution des appels.
-      'HTTP-Referer': this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000',
+      'HTTP-Referer':
+        this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000',
       'X-Title': 'PTN-RDC · Plateforme de gouvernance',
     };
   }
@@ -140,14 +183,22 @@ export class AiService {
         ? {
             role: 'system',
             content: [
-              { type: 'text', text: m.content, cache_control: { type: 'ephemeral' } },
+              {
+                type: 'text',
+                text: m.content,
+                cache_control: { type: 'ephemeral' },
+              },
             ],
           }
         : m,
     );
   }
 
-  private async post(body: unknown, timeoutMs: number, apiKey: string): Promise<Response> {
+  private async post(
+    body: unknown,
+    timeoutMs: number,
+    apiKey: string,
+  ): Promise<Response> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -159,7 +210,9 @@ export class AiService {
       });
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
-        this.logger.error(`OpenRouter ${response.status} — ${detail.slice(0, 400)}`);
+        this.logger.error(
+          `OpenRouter ${response.status} — ${detail.slice(0, 400)}`,
+        );
         throw new HttpException(
           `Le service de génération a répondu ${response.status}. Vérifiez la clé et le modèle configurés.`,
           HttpStatus.BAD_GATEWAY,
@@ -174,8 +227,14 @@ export class AiService {
           HttpStatus.GATEWAY_TIMEOUT,
         );
       }
-      this.logger.error('Appel au service de génération impossible', error as Error);
-      throw new HttpException('Service de génération injoignable.', HttpStatus.BAD_GATEWAY);
+      this.logger.error(
+        'Appel au service de génération impossible',
+        error as Error,
+      );
+      throw new HttpException(
+        'Service de génération injoignable.',
+        HttpStatus.BAD_GATEWAY,
+      );
     } finally {
       // Le délai couvre l'établissement de la requête ; la lecture du corps,
       // en flux, dure aussi longtemps que le modèle écrit et ne peut pas être
@@ -222,7 +281,10 @@ export class AiService {
     const toolCalls = choice?.message?.tool_calls;
 
     if (!text && !toolCalls?.length) {
-      throw new HttpException('Réponse vide du service de génération.', HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        'Réponse vide du service de génération.',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     return {
@@ -231,7 +293,10 @@ export class AiService {
       finishReason: choice?.finish_reason,
       toolCalls,
       usage: payload.usage
-        ? { prompt: payload.usage.prompt_tokens ?? 0, completion: payload.usage.completion_tokens ?? 0 }
+        ? {
+            prompt: payload.usage.prompt_tokens ?? 0,
+            completion: payload.usage.completion_tokens ?? 0,
+          }
         : undefined,
     };
   }
@@ -286,7 +351,14 @@ export class AiService {
 
         let bloc: {
           choices?: Array<{
-            delta?: { content?: string | null; tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> };
+            delta?: {
+              content?: string | null;
+              tool_calls?: Array<{
+                index: number;
+                id?: string;
+                function?: { name?: string; arguments?: string };
+              }>;
+            };
             finish_reason?: string;
           }>;
           usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -319,7 +391,10 @@ export class AiService {
             type: 'fin',
             finishReason: choix.finish_reason,
             usage: bloc.usage
-              ? { prompt: bloc.usage.prompt_tokens ?? 0, completion: bloc.usage.completion_tokens ?? 0 }
+              ? {
+                  prompt: bloc.usage.prompt_tokens ?? 0,
+                  completion: bloc.usage.completion_tokens ?? 0,
+                }
               : undefined,
           };
         }
@@ -352,13 +427,19 @@ export class AiService {
     );
 
     const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+      choices?: Array<{
+        message?: { content?: string };
+        finish_reason?: string;
+      }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
 
     const text = payload.choices?.[0]?.message?.content?.trim();
     if (!text) {
-      throw new HttpException('Réponse vide du service de génération.', HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        'Réponse vide du service de génération.',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     return {
@@ -366,7 +447,10 @@ export class AiService {
       model,
       finishReason: payload.choices?.[0]?.finish_reason,
       usage: payload.usage
-        ? { prompt: payload.usage.prompt_tokens ?? 0, completion: payload.usage.completion_tokens ?? 0 }
+        ? {
+            prompt: payload.usage.prompt_tokens ?? 0,
+            completion: payload.usage.completion_tokens ?? 0,
+          }
         : undefined,
     };
   }
