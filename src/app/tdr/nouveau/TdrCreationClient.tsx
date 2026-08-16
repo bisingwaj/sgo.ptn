@@ -28,6 +28,8 @@ import {
   type ClauseApi,
   type IndicatorApi,
   type LibraryEntry,
+  telechargerFichier,
+  type PlanDocumentApi,
   type PtbaActivityApi,
   type ComponentApi,
   type OrganisationApi,
@@ -39,6 +41,9 @@ import {
 } from "@/lib/api";
 import {
   CheckmarkFilled,
+  // « Document » est aussi un type global du navigateur : sans alias, il
+  // l'emporte et TypeScript refuse la balise.
+  Document as IconeDocument,
   Locked,
   WarningAltFilled,
 } from "@carbon/icons-react";
@@ -1267,6 +1272,174 @@ function RecapListe({ cle, items }: { cle: string; items: string[] }) {
   );
 }
 
+/**
+ * Le document final, avant transmission.
+ *
+ * Ce n'est pas le récapitulatif : celui-ci montre les champs saisis, celui-là
+ * montre la pièce composée — sections numérotées, page de garde, logo. C'est
+ * elle qui part à l'UGP, et c'est sur elle que l'auteur signe ses deux
+ * attestations.
+ *
+ * Il montre donc le TEXTE, et pas seulement le plan. Une liste de titres de
+ * sections ferait signer une attestation de conformité sur un sommaire : ce
+ * que l'auteur atteste doit être sous ses yeux au moment où il le fait.
+ *
+ * Rien n'y est rédigé par une machine. Chaque valeur vient du dossier, mot
+ * pour mot — une réécriture à la composition porterait sur un texte qu'il
+ * n'aurait pas relu.
+ */
+function DocumentFinal({ tdrId }: { tdrId: string | null }) {
+  const [plan, setPlan] = useState<PlanDocumentApi | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [occupe, setOccupe] = useState<"pdf" | "docx" | null>(null);
+  const [deplie, setDeplie] = useState(false);
+
+  useEffect(() => {
+    if (!tdrId) return;
+    tdrApi
+      .documentPlan(tdrId)
+      .then(setPlan)
+      .catch((e) => setErreur(e instanceof Error ? e.message : "Aperçu indisponible."));
+  }, [tdrId]);
+
+  const recuperer = async (format: "pdf" | "docx") => {
+    if (!tdrId || !plan) return;
+    setOccupe(format);
+    setErreur(null);
+    try {
+      await telechargerFichier(tdrApi.documentUrl(tdrId, format), `${plan.reference}.${format}`);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Téléchargement impossible.");
+    } finally {
+      setOccupe(null);
+    }
+  };
+
+  if (!tdrId) return <p className={styles.hint}>Le brouillon n’est pas encore ouvert.</p>;
+  if (erreur && !plan)
+    return (
+      <Note tone="danger" title="Document indisponible">
+        {erreur}
+      </Note>
+    );
+  if (!plan) return <p className={styles.hint}>Composition du document…</p>;
+
+  const manquantes = plan.sections.filter((section) =>
+    section.blocs.every((bloc) => bloc.genre === "absent"),
+  ).length;
+
+  return (
+    <div className={styles.document}>
+      <div className={styles.documentTete}>
+        <div>
+          <span className={`${styles.documentRef} ptn-mono`}>{plan.reference}</span>
+          <p className={styles.documentTitre}>{plan.titre}</p>
+          <p className={styles.hint}>
+            {plan.sections.length} sections · composé le {plan.dateComposition}
+            {manquantes > 0 &&
+              ` · ${manquantes} section${manquantes > 1 ? "s" : ""} sans contenu`}
+          </p>
+        </div>
+        <div className={styles.documentActions}>
+          <button
+            type="button"
+            className={styles.btnGhost}
+            onClick={() => void recuperer("pdf")}
+            disabled={occupe !== null}
+          >
+            <IconeDocument size={14} aria-hidden />
+            {occupe === "pdf" ? "Composition…" : "PDF"}
+          </button>
+          <button
+            type="button"
+            className={styles.btnGhost}
+            onClick={() => void recuperer("docx")}
+            disabled={occupe !== null}
+          >
+            <IconeDocument size={14} aria-hidden />
+            {occupe === "docx" ? "Composition…" : "DOCX"}
+          </button>
+        </div>
+      </div>
+
+      {erreur && (
+        <Note tone="danger" title="Téléchargement impossible">
+          {erreur}
+        </Note>
+      )}
+
+      {/* Replié par défaut : l'étape porte déjà le récapitulatif, et deux
+          lectures complètes l'une sous l'autre décourageraient la seule qui
+          compte. Mais elle est là, et à un clic. */}
+      <button
+        type="button"
+        className={styles.documentBascule}
+        onClick={() => setDeplie((d) => !d)}
+        aria-expanded={deplie}
+      >
+        {deplie ? "Masquer le texte du document" : "Lire le document tel qu’il sera transmis"}
+      </button>
+
+      <ol className={styles.documentPlan}>
+        {plan.sections.map((s) => {
+          const vide = s.blocs.every((b) => b.genre === "absent");
+          return (
+            <li key={s.numero} className={vide ? styles.documentVide : undefined}>
+              <p className={styles.documentSection}>
+                <span className="ptn-mono">{s.numero}</span>
+                <span>{s.titre}</span>
+                {vide && <em>non renseignée</em>}
+              </p>
+
+              {deplie &&
+                s.blocs.map((b, i) => {
+                  if (b.genre === "absent")
+                    return (
+                      <p key={i} className={styles.documentAbsent}>
+                        {b.mention}
+                      </p>
+                    );
+                  if (b.genre === "paragraphe")
+                    return (
+                      <p key={i} className={styles.documentProse}>
+                        {b.texte}
+                      </p>
+                    );
+                  if (b.genre === "liste")
+                    return (
+                      <ul key={i} className={styles.documentListe}>
+                        {b.entrees.map((e, j) => (
+                          <li key={j}>{e}</li>
+                        ))}
+                      </ul>
+                    );
+                  return (
+                    <dl key={i} className={styles.documentDefinitions}>
+                      {b.lignes.map((l, j) => (
+                        <div key={j}>
+                          <dt>{l.cle}</dt>
+                          <dd>{l.valeur}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  );
+                })}
+            </li>
+          );
+        })}
+      </ol>
+
+      {plan.champsAssistes.length > 0 && (
+        <p className={styles.hint}>
+          Le document mentionnera en page de garde que la rédaction a été assistée sur :{" "}
+          {plan.champsAssistes.join(", ")}. Une pièce contractuelle dit ce qui a été écrit avec
+          une assistance automatique.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ReviewStep({
   state, set, persist, types, activities, provinces,
 }: {
@@ -1333,6 +1506,13 @@ function ReviewStep({
         qu’il vous soit retourné.
       </p>
       <Recap state={state} types={types} activities={activities} provinces={provinces} />
+
+      {/* Le document qui partira réellement. Le récapitulatif ci-dessus montre
+          les champs ; celui-ci montre la pièce composée, page de garde et
+          numérotation comprises — et c'est sur elle que portent les deux
+          attestations ci-dessous. */}
+      <h3 className={styles.sectionTitle}>Le document transmis</h3>
+      <DocumentFinal tdrId={state.tdrId} />
 
       <h3 className={styles.sectionTitle}>Engagements</h3>
       <label className={styles.consent}>

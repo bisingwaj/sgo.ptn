@@ -686,3 +686,166 @@
   flex-direction: column;
   gap: 3px;
 }
+/* Le document final ------------------------------------------------------
+   Encadré, à la différence du récapitulatif : celui-ci liste des champs
+   saisis, celui-là montre une pièce distincte, qui existe en dehors du
+   formulaire et qui part telle quelle. La bordure marque cette frontière. */
+
+.document {
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-layer-01, #f4f4f4);
+  padding: var(--ptn-space-05);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-04);
+}
+
+.documentTete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ptn-space-05);
+  flex-wrap: wrap;
+}
+
+.documentRef {
+  font-size: 11px;
+  color: var(--cds-text-helper, #6f6f6f);
+  letter-spacing: 0.02em;
+}
+
+.documentTitre {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+  margin: 2px 0 4px;
+  max-width: 52ch;
+}
+
+.documentActions {
+  display: flex;
+  gap: var(--ptn-space-02);
+  flex-shrink: 0;
+}
+
+/* Le plan, numéroté comme dans le fichier : on retrouve à l'écran la
+   section que l'on cherchera au téléchargement. */
+.documentPlan {
+  /* Une seule colonne, et non deux : chaque section peut se déplier sur son
+     texte, et un texte réparti en deux colonnes de 280 px ne se lit plus. */
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+/* Une section vide n'est pas une erreur — toutes ne s'appliquent pas à tous
+   les types. Elle s'efface donc au lieu de s'alarmer. */
+.documentVide {
+  opacity: 0.55;
+}
+
+.successActions {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-05);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Le texte du document, déplié -------------------------------------------
+   L'auteur signe deux attestations sur cette pièce : elle doit être lisible
+   ici, et pas seulement téléchargeable. La colonne est resserrée à la
+   mesure d'un paragraphe imprimé — une ligne de 130 caractères ne se lit
+   pas, elle se parcourt. */
+
+.documentBascule {
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--cds-link-primary, #0f62fe);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
+.documentSection {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ptn-space-03);
+  font-size: 12px;
+  color: var(--cds-text-secondary, #525252);
+  padding: 3px 0;
+
+  span:first-child {
+    color: var(--cds-text-helper, #6f6f6f);
+    font-size: 11px;
+    min-width: 22px;
+  }
+
+  em {
+    font-style: normal;
+    font-size: 11px;
+    color: var(--cds-text-helper, #6f6f6f);
+    margin-left: auto;
+  }
+}
+
+.documentProse {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--cds-text-primary, #161616);
+  white-space: pre-wrap;
+  max-width: 72ch;
+  margin: var(--ptn-space-02) 0 var(--ptn-space-03) 30px;
+}
+
+.documentListe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--ptn-space-02) 0 var(--ptn-space-03) 30px;
+  padding-left: 1.1rem;
+  max-width: 72ch;
+
+  li {
+    list-style: disc;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--cds-text-primary, #161616);
+  }
+}
+
+.documentDefinitions {
+  margin: var(--ptn-space-02) 0 var(--ptn-space-03) 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  div {
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    gap: var(--ptn-space-03);
+    align-items: baseline;
+  }
+
+  dt {
+    font-size: 12px;
+    color: var(--cds-text-helper, #6f6f6f);
+  }
+
+  dd {
+    font-size: 13px;
+    color: var(--cds-text-primary, #161616);
+  }
+}
+
+/* Une section vide n'est pas une faute : toutes ne s'appliquent pas à tous
+   les types. Elle le dit sans s'alarmer. */
+.documentAbsent {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--cds-text-helper, #6f6f6f);
+  margin: var(--ptn-space-02) 0 var(--ptn-space-03) 30px;
+}

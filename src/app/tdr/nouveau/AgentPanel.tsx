@@ -38,6 +38,52 @@ const SUGGESTIONS = [
   "Raccourcis la justification de moitié.",
 ];
 
+/**
+ * Le nom d'un champ, tel que l'auteur le lit dans le formulaire.
+ *
+ * Le registre du serveur ne connaît que des clés de colonne —
+ * « budgetIdaUsd », « expectedResults » — qui ne disent rien à un agent. Le
+ * bandeau d'annulation, l'aperçu et les refus doivent désigner le champ avec
+ * les mots déjà sous ses yeux. Miroir de FIELDS
+ * (backend/src/ai/field-registry.ts) : une entrée ajoutée là-bas doit l'être
+ * ici.
+ */
+const LIBELLES_CHAMPS: Record<string, string> = {
+  context: "Contexte",
+  justification: "Justification",
+  beneficiaries: "Bénéficiaires visés",
+  expectedResults: "Résultats attendus",
+  objectives: "Objectifs SMART",
+  deliverables: "Livrables",
+  approach: "Approche générale",
+  methodology: "Méthodes et outils",
+  constraints: "Contraintes",
+  expertise: "Expertise requise",
+  startDate: "Démarrage souhaité",
+  durationMonths: "Durée du marché",
+  effortDays: "Volume d’effort",
+  budgetTotalUsd: "Budget total",
+  budgetIdaUsd: "Part IDA",
+  budgetAfdUsd: "Part AFD",
+  budgetGovUsd: "Part Gouvernement",
+  beneficiaryOrganisation: "Maîtrise d’ouvrage bénéficiaire",
+};
+
+/** Un champ inconnu reste annulable : on reste vague plutôt que technique. */
+const libelleChamp = (cle: string) => LIBELLES_CHAMPS[cle] ?? "Un champ du dossier";
+
+/**
+ * Un refus, dit à l'auteur.
+ *
+ * Les motifs du serveur s'ouvrent sur la clé du champ (« budgetTotalUsd
+ * attend un montant… ») : on la retire, sinon elle reparaît derrière le
+ * libellé traduit.
+ */
+function motifLisible(cle: string, motif: string): string {
+  const reste = motif.startsWith(cle) ? motif.slice(cle.length).replace(/^\s*:?\s*/, "") : motif;
+  return reste ? `${libelleChamp(cle)} : ${reste}` : libelleChamp(cle);
+}
+
 export function AgentPanel({
   tdrId,
   onEcriture,
@@ -164,8 +210,10 @@ export function AgentPanel({
               et signale ce qu’il a touché.
             </p>
             <p className="text-caption text-helper border-subtle border-l-2 pl-3">
-              Les montants, le rattachement au plan et les attestations de conformité ne lui
-              sont pas ouverts : ils se décident, ils ne se rédigent pas.
+              Il transcrit ce que vous dictez, montants et dates compris, mais n’en propose
+              aucun de lui-même. Le type d’activité, le rattachement au plan et les
+              attestations de conformité restent à vous : ils se décident, ils ne se
+              rédigent pas.
             </p>
             <div className="flex flex-col gap-2">
               {SUGGESTIONS.map((sug) => (
@@ -233,7 +281,7 @@ export function AgentPanel({
                   className="border-ai bg-ai-surface flex flex-wrap items-center gap-2 border px-3 py-2"
                 >
                   <span className="text-caption text-ai-text flex-1">
-                    Écrit dans <strong>{e.champ}</strong> · étape {e.etape}
+                    Écrit dans <strong>{libelleChamp(e.champ)}</strong> · étape {e.etape}
                   </span>
                   <button
                     type="button"
@@ -253,7 +301,7 @@ export function AgentPanel({
         {apercu && (
           <div className="border-ai bg-ai-surface border p-3">
             <span className="text-caption text-ai-text block">
-              Écriture dans <strong>{apercu.champ}</strong>
+              Écriture dans <strong>{libelleChamp(apercu.champ)}</strong>
             </span>
             <p className="text-body text-primary mt-1 whitespace-pre-wrap">{apercu.texte}</p>
           </div>
@@ -559,7 +607,7 @@ function appliquer(
       onEcriture(e);
       majDerniere((b) => ({
         ...b,
-        actes: [...b.actes, { genre: "ecriture", libelle: `Champ ${ev.champ} écrit`, champ: ev.champ }],
+        actes: [...b.actes, { genre: "ecriture", libelle: `${libelleChamp(ev.champ)} écrit`, champ: ev.champ }],
         ecritures: [...b.ecritures.filter((x) => x.champ !== e.champ), e],
       }));
       break;
@@ -568,7 +616,7 @@ function appliquer(
     case "refus":
       majDerniere((b) => ({
         ...b,
-        actes: [...b.actes, { genre: "refus", libelle: `${ev.champ} : ${ev.motif}` }],
+        actes: [...b.actes, { genre: "refus", libelle: motifLisible(ev.champ, ev.motif) }],
       }));
       break;
 
