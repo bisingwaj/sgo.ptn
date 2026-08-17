@@ -1404,6 +1404,15 @@ function DocumentFinal({ tdrId }: { tdrId: string | null }) {
 
               {deplie &&
                 s.blocs.map((b, i) => {
+                  // Nomme une partie dans la section : sans lui, l'approche,
+                  // la méthodologie et les contraintes se lisaient d'affilée
+                  // sans que rien ne les sépare.
+                  if (b.genre === "sousTitre")
+                    return (
+                      <p key={i} className={styles.documentSousTitre}>
+                        {b.texte}
+                      </p>
+                    );
                   if (b.genre === "absent")
                     return (
                       <p key={i} className={styles.documentAbsent}>

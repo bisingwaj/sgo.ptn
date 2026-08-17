@@ -875,6 +875,8 @@ export interface TdrEnvelopeApi {
  * doit voir ce qui manque, pas une section muette.
  */
 export type BlocDocumentApi =
+  /** Nomme une partie dans une section — voir `document-plan.ts` côté serveur. */
+  | { genre: "sousTitre"; texte: string }
   | { genre: "paragraphe"; texte: string }
   | { genre: "liste"; entrees: string[] }
   | { genre: "definitions"; lignes: Array<{ cle: string; valeur: string }> }
@@ -899,7 +901,32 @@ export interface PlanDocumentApi {
   sections: SectionDocumentApi[];
   /** Champs auxquels l'assistant a contribué — déclarés en tête du document. */
   champsAssistes: string[];
+  /** Qui a rédigé, et sous quelle entité. */
+  auteur: { nom: string; entite: string } | null;
+  /** Engagements de l'auteur, horodatés par le serveur. `date` nulle = non portée. */
+  attestations: Array<{ intitule: string; date: string | null }>;
+  /** Intitulés des pièces versées au dossier. */
+  annexes: string[];
 }
+
+/**
+ * Identification institutionnelle de la page de garde.
+ *
+ * Reprise telle quelle du composeur serveur (`document-plan.ts`) : l'écran
+ * et le fichier doivent porter le même en-tête, sans quoi deux versions
+ * d'une pièce contractuelle circuleraient.
+ */
+export const EN_TETE_INSTITUTIONNEL = [
+  "RÉPUBLIQUE DÉMOCRATIQUE DU CONGO",
+  "Ministère des Postes, Télécommunications et Numérique",
+  "Unité de Gestion du Projet de Transformation Numérique",
+] as const;
+
+export const PROJET_DOCUMENT = {
+  intitule: "Projet de Transformation Numérique de la République Démocratique du Congo",
+  sigle: "PTN-RDC",
+  code: "P180495",
+} as const;
 
 export interface TdrApi {
   id: string;

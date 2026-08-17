@@ -292,9 +292,23 @@ samp,
     break-inside: auto;
   }
 
-  [data-document] h2 {
+  // Un titre — de section comme de partie — ne reste jamais seul en bas de
+  // page. `h3` porte les intitulés de partie ajoutés au plan : sans cette
+  // ligne, « CONTRAINTES À OBSERVER » se retrouvait au bas d'un feuillet et
+  // sa liste au suivant.
+  [data-document] h2,
+  [data-document] h3 {
     page-break-after: avoid;
     break-after: avoid;
+  }
+
+  // La page de garde et le sommaire occupent chacun leur feuillet, comme
+  // dans le PDF. Écrit ici et non en utilitaire : ces règles-ci sont hors
+  // couche et l'emporteraient de toute façon.
+  [data-document] > header,
+  [data-document] > nav {
+    page-break-after: always;
+    break-after: page;
   }
 
   [data-document] p,
@@ -302,6 +316,13 @@ samp,
   [data-document] dd {
     orphans: 3;
     widows: 3;
+  }
+
+  // Les lignes d'un tableau de définitions ne se coupent pas : un intitulé
+  // sur une page et sa valeur sur la suivante ne se rattachent plus.
+  [data-document] dl > div {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   // Filigrane / en-tête PDF

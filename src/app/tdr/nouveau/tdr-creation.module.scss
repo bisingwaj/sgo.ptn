@@ -799,6 +799,18 @@
   }
 }
 
+/* Nomme une partie dans une section du document. Accentué et espacé : il
+   doit se distinguer d'une ligne de prose sans prendre le poids d'un titre
+   de section, qui est déjà pris au-dessus. */
+.documentSousTitre {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cds-link-primary, #0f62fe);
+  margin: var(--ptn-space-04) 0 var(--ptn-space-02) 30px;
+}
+
 .documentProse {
   font-size: 13px;
   line-height: 1.55;

@@ -16,6 +16,19 @@
  */
 
 export type Bloc =
+  /**
+   * Nomme une partie DANS une section.
+   *
+   * Sans lui, une section qui réunit plusieurs champs les servait bout à
+   * bout, sans rien dire de leur nature : la section « Méthodologie »
+   * enchaînait l'approche, la méthodologie et les contraintes — trois
+   * champs rédigés séparément, à trois questions distinctes du parcours —
+   * en un seul bloc muet. Le lecteur ne pouvait pas savoir où l'un finissait.
+   *
+   * Ce n'était pas un défaut d'apparence : le plan n'avait aucun moyen de
+   * l'exprimer, et les trois rendus héritaient donc du même silence.
+   */
+  | { genre: 'sousTitre'; texte: string }
   | { genre: 'paragraphe'; texte: string }
   | { genre: 'liste'; entrees: string[] }
   | { genre: 'definitions'; lignes: Array<{ cle: string; valeur: string }> }
@@ -25,6 +38,40 @@ export interface Section {
   numero: string;
   titre: string;
   blocs: Bloc[];
+}
+
+/**
+ * Identification institutionnelle, en tête de la page de garde.
+ *
+ * Reprise du MEP du 23 juin 2025, jamais composée ici : l'intitulé du
+ * ministère de tutelle est celui du corpus, « jamais abrégé en PTN ni
+ * MinNum ».
+ */
+export const EN_TETE_INSTITUTIONNEL = [
+  'RÉPUBLIQUE DÉMOCRATIQUE DU CONGO',
+  'Ministère des Postes, Télécommunications et Numérique',
+  'Unité de Gestion du Projet de Transformation Numérique',
+] as const;
+
+/** Le programme sous lequel la pièce est émise. Chiffres du MEP. */
+export const PROJET = {
+  intitule: 'Projet de Transformation Numérique de la République Démocratique du Congo',
+  sigle: 'PTN-RDC',
+  code: 'P180495',
+  financement: 'Financement IDA — Banque mondiale et Agence Française de Développement',
+} as const;
+
+/**
+ * Une attestation portée par l'auteur, horodatée par le serveur.
+ *
+ * C'est la seule marque du dossier qu'on ne peut pas antidater : elle vaut
+ * donc d'être portée au document, alors qu'elle n'y figurait pas. Une pièce
+ * qui part chez un bailleur doit dire ce que son auteur a engagé, et quand.
+ */
+export interface Attestation {
+  intitule: string;
+  /** Date en toutes lettres, ou `null` si l'attestation n'a pas été portée. */
+  date: string | null;
 }
 
 export interface PlanDocument {
@@ -40,6 +87,24 @@ export interface PlanDocument {
   sections: Section[];
   /** Champs auxquels l'assistant a contribué — mention en fin de document */
   champsAssistes: string[];
+
+  /**
+   * Qui a rédigé, et sous quelle entité. Une pièce contractuelle porte son
+   * auteur : « établi par » n'est pas une politesse, c'est ce qui permet de
+   * revenir vers quelqu'un des années plus tard.
+   */
+  auteur: { nom: string; entite: string } | null;
+
+  /** Les engagements portés par l'auteur, avec leur horodatage serveur. */
+  attestations: Attestation[];
+
+  /**
+   * Les pièces versées au dossier, annoncées en fin de document.
+   *
+   * Seuls les intitulés : le document dit ce qui l'accompagne, il ne
+   * l'incorpore pas.
+   */
+  annexes: string[];
 }
 
 /** Ce qu'on écrit quand un champ est vide : dire le vide, non le masquer. */
@@ -170,10 +235,15 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
     blocs: [prose(tdr.beneficiaries)],
   });
 
+  // Deux champs distincts du parcours — les objectifs SMART (étape 08) et
+  // les résultats attendus (étape 07). Ils se suivaient sans être nommés :
+  // on lisait une liste, puis une autre, sans savoir que la seconde
+  // répondait à une question différente.
   sections.push({
     numero: '4',
-    titre: 'Objectifs',
+    titre: 'Objectifs et résultats attendus',
     blocs: [
+      { genre: 'sousTitre', texte: 'Objectifs' },
       tdr.objectives.length
         ? {
             genre: 'liste',
@@ -182,9 +252,8 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
             ),
           }
         : { genre: 'absent', mention: 'Aucun objectif défini.' },
-      ...(tdr.expectedResults?.trim()
-        ? ([listeOuProse(tdr.expectedResults)] as Bloc[])
-        : []),
+      { genre: 'sousTitre', texte: 'Résultats attendus' },
+      listeOuProse(tdr.expectedResults),
     ],
   });
 
@@ -192,6 +261,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
     numero: '5',
     titre: 'Livrables attendus',
     blocs: [
+      { genre: 'sousTitre', texte: 'Livrables' },
       tdr.deliverables.length
         ? {
             genre: 'liste',
@@ -203,30 +273,45 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
             ),
           }
         : { genre: 'absent', mention: 'Aucun livrable défini.' },
-      ...(tdr.deliverableFormat || tdr.reportingRhythm
-        ? ([
-            {
-              genre: 'definitions',
-              lignes: [
-                ...(tdr.deliverableFormat
-                  ? [{ cle: 'Format de remise', valeur: FORMATS[tdr.deliverableFormat] ?? tdr.deliverableFormat }]
-                  : []),
-                ...(tdr.reportingRhythm
-                  ? [{ cle: 'Rythme de reporting', valeur: RYTHMES[tdr.reportingRhythm] ?? tdr.reportingRhythm }]
-                  : []),
-              ],
-            },
-          ] as Bloc[])
-        : []),
+      { genre: 'sousTitre', texte: 'Modalités de remise' },
+      {
+        genre: 'definitions',
+        lignes: [
+          {
+            cle: 'Format de remise',
+            valeur: tdr.deliverableFormat
+              ? FORMATS[tdr.deliverableFormat] ?? tdr.deliverableFormat
+              : '—',
+          },
+          {
+            cle: 'Rythme de reporting',
+            valeur: tdr.reportingRhythm
+              ? RYTHMES[tdr.reportingRhythm] ?? tdr.reportingRhythm
+              : '—',
+          },
+        ],
+      },
     ],
   });
 
+  // Trois champs, trois questions du parcours, un seul titre : l'approche
+  // (10), la méthodologie (11) et les contraintes (12) se servaient bout à
+  // bout, sans que rien ne les sépare. Le lecteur voyait de la prose, puis
+  // deux listes, sans savoir laquelle disait quoi.
+  //
+  // L'approche reste de la prose : elle expose une voie, elle ne s'énumère
+  // pas. Les étapes et les contraintes, si.
   sections.push({
     numero: '6',
-    titre: 'Méthodologie',
-    // L'approche reste de la prose : elle expose une voie, elle ne
-    // s'énumère pas. Les étapes et les contraintes, si.
-    blocs: [prose(tdr.approach), listeOuProse(tdr.methodology), listeOuProse(tdr.constraints)],
+    titre: 'Approche et méthodologie',
+    blocs: [
+      { genre: 'sousTitre', texte: 'Approche retenue' },
+      prose(tdr.approach),
+      { genre: 'sousTitre', texte: 'Méthodologie' },
+      listeOuProse(tdr.methodology),
+      { genre: 'sousTitre', texte: 'Contraintes à observer' },
+      listeOuProse(tdr.constraints),
+    ],
   });
 
   sections.push({
@@ -253,7 +338,9 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
           },
         ],
       },
+      { genre: 'sousTitre', texte: 'Expertise requise' },
       listeOuProse(tdr.expertise),
+      { genre: 'sousTitre', texte: 'Profils-clés attendus' },
       tdr.keyProfiles.length
         ? { genre: 'liste', entrees: tdr.keyProfiles.map((p) => PROFILS[p] ?? p) }
         : { genre: 'absent', mention: 'Aucun profil-clé désigné.' },
@@ -328,6 +415,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
     numero: '12',
     titre: 'Sauvegardes environnementales et sociales',
     blocs: [
+      { genre: 'sousTitre', texte: 'Catégorisation' },
       {
         genre: 'definitions',
         lignes: [
@@ -337,6 +425,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
           },
         ],
       },
+      { genre: 'sousTitre', texte: 'Risques identifiés' },
       tdr.esRisks.length
         ? { genre: 'liste', entrees: tdr.esRisks.map((r) => RISQUES_ES[r] ?? r) }
         : { genre: 'absent', mention: 'Aucun risque environnemental et social identifié.' },
@@ -374,6 +463,31 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
     ],
     sections,
     champsAssistes: nommerChampsAssistes(tdr.aiAssistedFields),
+
+    auteur: tdr.author
+      ? {
+          nom: `${tdr.author.firstName} ${tdr.author.lastName}`.trim(),
+          entite: tdr.organisation.fullName,
+        }
+      : null,
+
+    // Horodatées par le serveur au moment où l'auteur les a portées. Une
+    // attestation non portée le dit — elle ne disparaît pas de la liste,
+    // sans quoi un dossier incomplet ressemblerait à un dossier complet.
+    attestations: [
+      {
+        intitule:
+          'Conformité au Manuel d’Exécution du Projet et aux règles de passation applicables',
+        date: tdr.consentMepAt ? dateEnToutesLettres(new Date(tdr.consentMepAt)) : null,
+      },
+      {
+        intitule:
+          'Protection des données à caractère personnel et confidentialité des informations traitées',
+        date: tdr.consentRgpdAt ? dateEnToutesLettres(new Date(tdr.consentRgpdAt)) : null,
+      },
+    ],
+
+    annexes: tdr.attachments?.map((p) => p.filename) ?? [],
   };
 }
 
@@ -448,6 +562,10 @@ export interface DossierComplet {
   esCategory: string | null;
   esRisks: string[];
   aiAssistedFields: string[];
+  consentMepAt: Date | null;
+  consentRgpdAt: Date | null;
+  author: { firstName: string; lastName: string } | null;
+  attachments?: Array<{ filename: string }>;
   objectives: Array<{ title: string; criteria: string }>;
   deliverables: Array<{ title: string; format: string | null; deadline: string | null }>;
   clauses: Array<{ label: string; text: string }>;

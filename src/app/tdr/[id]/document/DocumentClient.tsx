@@ -3,15 +3,17 @@
 /**
  * Le document de termes de référence, à l'écran et sur papier.
  *
- * Le composeur existait depuis le début côté serveur — PDF et DOCX, douze
- * sections, journalisation à chaque génération — sans qu'aucun écran n'y
- * mène. On le déclenchait depuis Swagger. Cette page est le chemin qui
- * manquait.
- *
  * UN SEUL PLAN, TROIS RENDUS. `GET /document/apercu` rend le contenu exact
  * du fichier ; cette page ne décide que de son apparence, comme le font les
  * deux composeurs. Rien n'est recomposé ici : reformuler une section dans
  * le navigateur ferait circuler deux versions d'une pièce contractuelle.
+ *
+ * L'ÉCRAN SUIT LE PDF, PAS L'INVERSE. Auparavant les deux divergeaient — le
+ * fichier ouvrait sur une page de garde, l'écran commençait au titre, et
+ * imprimer depuis le navigateur donnait une pièce différente de celle qu'on
+ * téléchargeait. Même page de garde, même sommaire, mêmes intitulés de
+ * partie, même bloc de clôture : ce qui sort de l'imprimante et ce qui sort
+ * du serveur doivent se ressembler assez pour se classer ensemble.
  *
  * POURQUOI IMPRIMER D'ICI, ET PAS DE LA FICHE. La fiche de consultation est
  * un écran de travail — statut, actions, rappels. Le document est la pièce
@@ -24,17 +26,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Shell } from "@/components/shell/Shell";
 import { useAuth } from "@/components/auth/AuthContext";
 import {
   tdrApi,
   ApiError,
+  EN_TETE_INSTITUTIONNEL,
+  PROJET_DOCUMENT,
   type BlocDocumentApi,
   type PlanDocumentApi,
 } from "@/lib/api";
 import { enregistrerFichier } from "@/lib/telechargement";
 import {
   ArrowLeft,
+  Checkmark,
   DocumentPdf,
   DocumentWordProcessor,
   Printer,
@@ -131,11 +137,7 @@ export function DocumentClient({ id }: { id: string }) {
 
         <span className="flex-1" />
 
-        <button
-          type="button"
-          className="demoBtnSecondary"
-          onClick={() => window.print()}
-        >
+        <button type="button" className="demoBtnSecondary" onClick={() => window.print()}>
           <Printer size={14} aria-hidden />
           <span>Imprimer</span>
         </button>
@@ -170,51 +172,23 @@ export function DocumentClient({ id }: { id: string }) {
           format de page et sauts — que les utilitaires ne peuvent pas dire. */}
       <article
         data-document
-        className="bg-background border-subtle mx-auto w-full max-w-[46rem] border p-8 print:max-w-none print:border-0 print:p-0"
+        className="bg-background border-subtle mx-auto w-full max-w-[48rem] border px-10 py-12 print:max-w-none print:border-0 print:px-0 print:py-0"
       >
-        <header className="border-strong border-b pb-4">
-          <div className="text-caption text-secondary flex flex-wrap items-baseline justify-between gap-2">
-            <span className="ptn-mono">{plan.reference}</span>
-            <span>{plan.statut}</span>
-          </div>
-          <h1 className="text-heading-04 text-primary mt-3">{plan.titre}</h1>
-          <p className="text-body text-secondary mt-2">
-            {plan.typeCode} · {plan.typeNom} — {plan.organisation}
-          </p>
-        </header>
-
-        {plan.entete.length > 0 && (
-          <dl className="border-subtle grid gap-x-8 gap-y-2 border-b py-4 sm:grid-cols-2">
-            {plan.entete.map((l) => (
-              <div key={l.cle} className="flex flex-col">
-                <dt className="text-caption text-secondary">{l.cle}</dt>
-                <dd className="text-body text-primary">{l.valeur}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-
-        {/* Déclarée, jamais tue. Une pièce contractuelle dit ce qui a été
-            écrit avec une assistance automatique ; le taire serait une
-            omission, non une discrétion. */}
-        {plan.champsAssistes.length > 0 && (
-          <p className="border-ai bg-ai-surface text-caption text-primary mt-4 border-l-2 px-4 py-3">
-            Rédaction assistée par un modèle de langage sur{" "}
-            {plan.champsAssistes.length === 1 ? "la section" : "les sections"} :{" "}
-            {plan.champsAssistes.join(", ")}. Le contenu a été relu et repris par l’auteur,
-            qui en porte la responsabilité.
-          </p>
-        )}
+        <PageDeGarde plan={plan} />
+        <Sommaire plan={plan} />
 
         {plan.sections.map((s) => (
-          <section key={s.numero} className="mt-8">
+          <section key={s.numero} id={`section-${s.numero}`} className="mt-10 first:mt-0">
             {/* `break-after-avoid` : un titre seul en bas de page renvoie
                 son texte au feuillet suivant, et le lecteur tourne pour rien. */}
-            <h2 className="text-heading-02 text-primary break-after-avoid">
-              <span className="ptn-mono text-secondary mr-2">{s.numero}</span>
-              {s.titre}
+            <h2 className="flex items-baseline gap-3 break-after-avoid">
+              <span className="ptn-mono text-caption text-accent shrink-0">
+                {s.numero.padStart(2, "0")}
+              </span>
+              <span className="text-heading-03 text-primary">{s.titre}</span>
             </h2>
-            <div className="mt-2 flex flex-col gap-3">
+            <div className="border-accent mt-1 border-b-2" />
+            <div className="mt-4 flex flex-col gap-3 pl-[2.1rem]">
               {s.blocs.map((b, i) => (
                 <BlocRendu key={i} bloc={b} />
               ))}
@@ -222,16 +196,213 @@ export function DocumentClient({ id }: { id: string }) {
           </section>
         ))}
 
-        <footer className="border-subtle text-caption text-secondary mt-10 border-t pt-4">
-          {plan.reference} · composé le {plan.dateComposition}
-        </footer>
+        <Cloture plan={plan} />
       </article>
     </Shell>
   );
 }
 
 /**
- * Les quatre genres de bloc du plan, et rien d'autre.
+ * La page de garde, calquée sur celle du PDF.
+ *
+ * L'ordonnance suit celle des pièces publiques congolaises : la puissance
+ * émettrice d'abord, le programme ensuite, la nature de l'acte, son objet,
+ * puis les mentions d'identification. On lit du plus général au plus
+ * particulier, et c'est ce qui permet de classer sans ouvrir.
+ */
+function PageDeGarde({ plan }: { plan: PlanDocumentApi }) {
+  return (
+    <header className="break-after-page">
+      <div className="bg-accent -mx-10 -mt-12 mb-10 h-1.5 print:mx-0 print:mt-0" />
+
+      <div className="flex flex-col items-center text-center">
+        {/* `unoptimized` : next/image sert du WebP à qualité 75 et salit les
+            aplats du logo. Voir public/brand/README.md. */}
+        <Image
+          src="/brand/ugptn-logo.png"
+          alt=""
+          width={132}
+          height={56}
+          unoptimized
+          className="mb-6 h-14 w-auto"
+        />
+
+        <p className="text-body text-primary font-semibold tracking-wide">
+          {EN_TETE_INSTITUTIONNEL[0]}
+        </p>
+        {EN_TETE_INSTITUTIONNEL.slice(1).map((l) => (
+          <p key={l} className="text-body text-secondary mt-0.5">
+            {l}
+          </p>
+        ))}
+
+        <div className="border-subtle my-5 w-20 border-t" />
+
+        <p className="text-caption text-secondary">{PROJET_DOCUMENT.intitule}</p>
+        <p className="ptn-mono text-caption text-accent mt-1">
+          {PROJET_DOCUMENT.sigle} · {PROJET_DOCUMENT.code}
+        </p>
+
+        <p className="text-caption text-accent mt-16 font-semibold tracking-[0.22em]">
+          TERMES DE RÉFÉRENCE
+        </p>
+        <h1 className="text-heading-05 text-primary mt-5 max-w-[34rem] text-balance">
+          {plan.titre}
+        </h1>
+        <p className="text-body text-secondary mt-4">
+          {plan.typeCode} — {plan.typeNom}
+        </p>
+      </div>
+
+      {/* Le cartouche d'identification. Encadré parce qu'il se consulte sans
+          se lire : on y vient chercher une référence. */}
+      <dl className="border-subtle mt-16 grid grid-cols-[minmax(0,11rem)_1fr] gap-x-6 gap-y-3 border p-5">
+        {plan.entete.map((l) => (
+          <div key={l.cle} className="contents">
+            <dt className="text-caption text-secondary uppercase">{l.cle}</dt>
+            <dd className="text-body text-primary">{l.valeur}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="border-subtle text-caption text-secondary mt-4 flex flex-wrap items-baseline justify-between gap-2 border-t pt-3">
+        <span>Document composé le {plan.dateComposition}</span>
+        {/* Le statut figure ici parce qu'un brouillon imprimé doit se
+            reconnaître comme tel, sans qu'on ait à l'ouvrir. */}
+        <span className="text-primary font-semibold">{plan.statut}</span>
+      </div>
+    </header>
+  );
+}
+
+/**
+ * Le sommaire.
+ *
+ * Sans numéros de page : à l'écran ils n'existent pas, et sur papier le
+ * navigateur ne les expose pas au CSS. Les entrées sont donc des liens —
+ * ce que le PDF ne peut pas offrir et que l'écran, lui, doit.
+ */
+function Sommaire({ plan }: { plan: PlanDocumentApi }) {
+  return (
+    <nav aria-label="Sommaire" className="break-after-page">
+      <h2 className="text-heading-03 text-primary">Sommaire</h2>
+      <div className="border-accent mt-1 border-b-2" />
+      <ol className="mt-5 flex flex-col">
+        {plan.sections.map((s) => (
+          <li key={s.numero}>
+            <a
+              href={`#section-${s.numero}`}
+              className="border-subtle text-body text-primary hover:bg-layer flex items-baseline gap-3 border-b py-2.5 no-underline print:border-0 print:py-1.5"
+            >
+              <span className="ptn-mono text-caption text-accent shrink-0">
+                {s.numero.padStart(2, "0")}
+              </span>
+              <span>{s.titre}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+/**
+ * Ce qui ferme le document : les engagements de l'auteur, ses annexes, la
+ * déclaration d'assistance et sa signature.
+ *
+ * Les attestations sont horodatées par le serveur — c'est la seule marque du
+ * dossier qu'on ne puisse pas antidater, et elle n'apparaissait nulle part.
+ */
+function Cloture({ plan }: { plan: PlanDocumentApi }) {
+  // Pas de `break-inside-avoid` ici : `[data-document] section` est écrit
+  // hors couche dans globals.scss et l'emporterait sur l'utilitaire. Le bloc
+  // se tient par ses titres, qui ne se détachent pas de leur suite.
+  return (
+    <section className="mt-10">
+      <h2 className="text-heading-03 text-primary pl-[2.1rem]">Engagements et pièces jointes</h2>
+      <div className="border-accent mt-1 border-b-2" />
+
+      <div className="mt-5 flex flex-col gap-6 pl-[2.1rem]">
+        <div>
+          <SousTitre>Attestations portées par l’auteur</SousTitre>
+          <ul className="mt-2 flex flex-col gap-3">
+            {plan.attestations.map((a) => (
+              <li key={a.intitule} className="flex items-start gap-3">
+                {/* La coche n'est portée que si l'attestation l'a été : une
+                    case cochée d'avance vaudrait signature de quelque chose
+                    qui n'a pas eu lieu. */}
+                <span
+                  aria-hidden
+                  className={`mt-0.5 flex size-4 shrink-0 items-center justify-center border ${
+                    a.date ? "border-accent text-accent" : "border-subtle"
+                  }`}
+                >
+                  {a.date && <Checkmark size={12} />}
+                </span>
+                <span>
+                  <span className="text-body text-primary block">{a.intitule}</span>
+                  <span className="text-caption text-secondary">
+                    {a.date ? `Portée le ${a.date}` : "Non portée à la date de composition"}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <SousTitre>Pièces jointes au dossier</SousTitre>
+          {plan.annexes.length === 0 ? (
+            <p className="text-body text-helper mt-2 italic">Aucune pièce jointe au dossier.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1">
+              {plan.annexes.map((nom, i) => (
+                <li key={nom} className="flex items-baseline gap-3">
+                  <span className="ptn-mono text-caption text-secondary shrink-0">A{i + 1}</span>
+                  <span className="text-body text-primary">{nom}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Déclarée, jamais tue. Une pièce contractuelle dit ce qui a été
+            écrit avec une assistance automatique ; le taire serait une
+            omission, non une discrétion. */}
+        {plan.champsAssistes.length > 0 && (
+          <div className="border-ai border-l-2 pl-4">
+            <SousTitre>Rédaction assistée</SousTitre>
+            <p className="text-body text-primary mt-1">
+              Un modèle de langage a contribué à la rédaction{" "}
+              {plan.champsAssistes.length === 1 ? "de la section" : "des sections"} :{" "}
+              {plan.champsAssistes.join(", ")}. Le texte a été relu et repris par son auteur, qui
+              en porte la responsabilité.
+            </p>
+          </div>
+        )}
+
+        {plan.auteur && (
+          <div>
+            <p className="text-caption text-secondary uppercase">Établi par</p>
+            <p className="text-body-lg text-primary mt-1 font-semibold">{plan.auteur.nom}</p>
+            <p className="text-body text-secondary">{plan.auteur.entite}</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SousTitre({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-caption text-accent break-after-avoid font-semibold tracking-wider uppercase">
+      {children}
+    </h3>
+  );
+}
+
+/**
+ * Les cinq genres de bloc du plan, et rien d'autre.
  *
  * Aucun balisage n'est interprété — ni gras, ni italique, ni titre. C'est
  * la contrepartie de l'éditeur du parcours, dont la barre d'outils ne porte
@@ -239,9 +410,18 @@ export function DocumentClient({ id }: { id: string }) {
  */
 function BlocRendu({ bloc }: { bloc: BlocDocumentApi }) {
   switch (bloc.genre) {
+    case "sousTitre":
+      // Nomme une partie DANS la section. Sans lui, trois champs rédigés
+      // séparément se lisaient comme un seul bloc muet.
+      return (
+        <div className="mt-2 first:mt-0">
+          <SousTitre>{bloc.texte}</SousTitre>
+        </div>
+      );
+
     case "paragraphe":
       return (
-        <p className="text-body text-primary whitespace-pre-wrap">{bloc.texte}</p>
+        <p className="text-body text-primary text-justify whitespace-pre-wrap">{bloc.texte}</p>
       );
 
     case "liste":
@@ -257,10 +437,13 @@ function BlocRendu({ bloc }: { bloc: BlocDocumentApi }) {
 
     case "definitions":
       return (
-        <dl className="flex flex-col gap-1">
+        <dl className="flex flex-col">
           {bloc.lignes.map((l) => (
-            <div key={l.cle} className="flex flex-wrap gap-x-2">
-              <dt className="text-body text-secondary">{l.cle} :</dt>
+            <div
+              key={l.cle}
+              className="border-subtle grid grid-cols-[minmax(0,11rem)_1fr] gap-x-4 border-b py-1.5 last:border-0"
+            >
+              <dt className="text-caption text-secondary uppercase">{l.cle}</dt>
               <dd className="text-body text-primary">{l.valeur}</dd>
             </div>
           ))}
