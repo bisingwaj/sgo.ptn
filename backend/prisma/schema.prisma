@@ -184,6 +184,8 @@ model Organisation {
   authoredTdrs    Tdr[] @relation("TdrAuthorOrganisation")
   /// TDR conduits au bénéfice de cette organisation
   beneficiaryTdrs Tdr[] @relation("TdrBeneficiaryOrganisation")
+  /// Offres deposees au nom de cette organisation
+  soumissions     Soumission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -761,6 +763,8 @@ model ProcurementMethod {
 
   @@index([category])
   @@map("procurement_methods")
+  /// Marches passes selon cette methode
+  marches Marche[]
 }
 
 /// Seuil déterminant la méthode applicable et le type de revue.
@@ -1106,6 +1110,9 @@ model Tdr {
   risks        TdrRisk[]
   versions     TdrVersion[]
   attachments  TdrAttachment[]
+  /// Le marche ne naît qu'a la validation : nul tant que le dossier
+  /// n'a pas ete arrete par l'UGP.
+  marche       Marche?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1254,4 +1261,218 @@ model TdrSequence {
   lastSeq Int @default(0)
 
   @@map("tdr_sequences")
+}
+
+// ====================================================================
+// L'AVAL DU TDR — marché, appel d'offres, soumission, non-objection
+// ====================================================================
+//
+// Le corpus fixe le pipeline : Initiative → TDR → Revue UGPTN → ANO →
+// DAO → Évaluation → Attribution. Le TDR s'arrêtait à sa transmission ;
+// ces modèles portent la suite.
+//
+// UN SEUL FIL, DEUX RÉFÉRENCES. Le marché reprend la référence de son
+// TDR : c'est le même objet de passation, et lui en donner une autre
+// obligerait à tenir une correspondance que personne ne lirait. L'appel
+// d'offres, lui, porte la sienne — un avis publié est un acte public, et
+// il s'annonce sous son propre numéro.
+
+/// Étapes d'un marché, du dossier validé au contrat.
+enum MarcheStatus {
+  /// TDR validé par l'UGP, marché inscrit au PPM
+  PLANIFIE
+  /// Dossier d'appel d'offres en préparation
+  DAO_PREPARATION
+  /// DAO soumis à non-objection
+  DAO_ANO
+  /// Avis publié, offres recevables
+  PUBLIE
+  /// Date limite passée, offres closes
+  CLOTURE
+  /// Commissions en cours
+  EVALUATION
+  /// Attribué, contrat non signé
+  ATTRIBUE
+  /// Contrat signé
+  CONTRACTUALISE
+  /// Abandonné, avec motif
+  INFRUCTUEUX
+}
+
+/// Un objet de passation, du TDR validé jusqu'au contrat.
+///
+/// C'est la ligne du PPM : ce que l'on suit quand on demande « où en est
+/// ce marché ». Il naît d'un TDR validé et ne se crée pas autrement — un
+/// marché sans dossier serait une dépense sans objet.
+model Marche {
+  id        String @id @default(uuid()) @db.Uuid
+  /// Reprise du TDR — PTN-2026-019
+  reference String @unique
+
+  tdrId String @unique @db.Uuid
+  tdr   Tdr    @relation(fields: [tdrId], references: [id])
+
+  /// Repris du TDR à la validation, et figé : les seuils bougent, un
+  /// marché en cours ne change pas de méthode en chemin.
+  methodCode String
+  method     ProcurementMethod @relation(fields: [methodCode], references: [code])
+  reviewType ReviewType
+
+  status MarcheStatus @default(PLANIFIE)
+
+  /// Enveloppe estimative, en USD. Le montant du contrat sera ailleurs.
+  estimatedUsd Decimal @db.Decimal(14, 2)
+
+  /// Calendrier prévisionnel, tel qu'inscrit au PPM
+  plannedPublicationAt DateTime?
+  plannedAwardAt       DateTime?
+
+  appelOffres AppelOffres?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("marches")
+}
+
+/// L'avis publié, et le dossier qui l'accompagne.
+///
+/// C'est ce que liste le marketplace. Il n'existe qu'une fois le DAO
+/// couvert par une non-objection : publier sans elle exposerait le projet
+/// à une annulation de procédure.
+model AppelOffres {
+  id        String @id @default(uuid()) @db.Uuid
+  /// Référence de publication — AOI-2026-004
+  reference String @unique
+
+  marcheId String @unique @db.Uuid
+  marche   Marche @relation(fields: [marcheId], references: [id], onDelete: Cascade)
+
+  /// Objet tel qu'il paraît à l'avis, qui peut différer de l'intitulé du TDR
+  objet       String
+  /// Ce qu'un candidat doit lire avant de décider s'il concourt
+  resume      String  @db.Text
+  /// Qualifications exigées, une par entrée
+  qualifications String[] @default([])
+
+  publishedAt DateTime
+  /// Heure limite de dépôt. Une offre reçue après n'est pas recevable.
+  closingAt   DateTime
+  /// Lieu et modalités d'ouverture des plis
+  openingNote String? @db.Text
+
+  publishedById String? @db.Uuid
+
+  soumissions Soumission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([closingAt])
+  @@map("appels_offres")
+}
+
+/// Suites données à une offre.
+enum SoumissionStatus {
+  /// Constituée par le candidat, non encore déposée
+  BROUILLON
+  /// Déposée avant l'heure limite
+  DEPOSEE
+  /// Écartée à la préqualification administrative
+  IRRECEVABLE
+  /// Admise à l'évaluation technique
+  RECEVABLE
+  /// Retenue
+  ATTRIBUTAIRE
+  /// Non retenue, avec motif
+  ECARTEE
+}
+
+/// L'offre d'un candidat à un appel d'offres.
+///
+/// Une organisation ne dépose qu'une offre par appel : deux offres du même
+/// candidat au même marché sont une irrégularité, pas un cas d'usage.
+model Soumission {
+  id        String @id @default(uuid()) @db.Uuid
+  reference String @unique
+
+  appelOffresId String      @db.Uuid
+  appelOffres   AppelOffres @relation(fields: [appelOffresId], references: [id], onDelete: Cascade)
+
+  /// Le candidat. C'est cette clé qui borne ce qu'il voit.
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  status SoumissionStatus @default(BROUILLON)
+
+  /// Montant proposé, en USD. Nul tant que l'offre n'est pas déposée.
+  montantUsd Decimal? @db.Decimal(14, 2)
+  /// Ce que le candidat dit de son offre
+  note       String?  @db.Text
+
+  submittedById String?   @db.Uuid
+  submittedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([appelOffresId, organisationId])
+  @@index([organisationId])
+  @@map("soumissions")
+}
+
+/// Documents que le corpus soumet à non-objection.
+enum AnoObjet {
+  TDR
+  LISTE_RESTREINTE
+  DAO
+  RAPPORT_EVALUATION
+  PROJET_CONTRAT
+  AVENANT
+}
+
+enum AnoDecision {
+  /// En attente de décision du bailleur
+  EN_COURS
+  NON_OBJECTION
+  REFUS
+  DEMANDE_MODIFICATION
+}
+
+/// Une demande de non-objection, et sa décision.
+///
+/// Générique par nature : le corpus l'applique au TDR, à la liste
+/// restreinte, au DAO, au rapport d'évaluation, au projet de contrat et
+/// aux avenants au-delà de 15 %. Une table par document multiplierait six
+/// fois la même mécanique.
+///
+/// Aucune clé étrangère vers l'objet visé, pour la même raison que le
+/// journal d'audit : la référence survit à la suppression de ce qu'elle
+/// désigne, et une non-objection délivrée est un fait qui ne s'efface pas.
+model Ano {
+  id        String @id @default(uuid()) @db.Uuid
+  reference String @unique
+
+  objet    AnoObjet
+  /// Identifiant de l'objet visé, sans contrainte d'intégrité
+  objetId  String   @db.Uuid
+  /// Référence lisible de l'objet, figée au dépôt
+  objetRef String
+
+  /// Le bailleur saisi. Délais de service : 14 jours BM, 21 jours AFD.
+  donor    String
+
+  decision AnoDecision @default(EN_COURS)
+  /// Motivé dès qu'il ne s'agit pas d'une non-objection simple
+  motif    String?     @db.Text
+
+  submittedById String?   @db.Uuid
+  submittedAt   DateTime  @default(now())
+  decidedById   String?   @db.Uuid
+  decidedAt     DateTime?
+
+  @@index([objet, objetId])
+  @@index([decision])
+  @@map("anos")
 }

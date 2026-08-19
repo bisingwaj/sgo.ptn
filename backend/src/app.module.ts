@@ -15,6 +15,7 @@ import { TdrDocumentModule } from './tdr-document/tdr-document.module';
 import { TdrAttachmentModule } from './tdr-attachment/tdr-attachment.module';
 import { AiModule } from './ai/ai.module';
 import { AssistantModule } from './assistant/assistant.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 
@@ -33,6 +34,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
     TdrAttachmentModule,
     AiModule,
     AssistantModule,
+    MarketplaceModule,
   ],
   controllers: [AppController],
   providers: [
