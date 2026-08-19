@@ -41,6 +41,13 @@ const SUGGESTIONS = [
 /**
  * Le nom d'un champ, tel que l'auteur le lit dans le formulaire.
  *
+ * ALIGNÉ SUR LE REGISTRE SERVEUR, qui fait autorité depuis qu'il porte
+ * `libelle`. Six champs sur dix-huit avaient divergé : l'assistant
+ * annonçait « Méthodes et outils écrit », l'étape s'intitulait
+ * « Méthodologie », et la pièce imprimait « Méthodologie ». Cette table
+ * reste ici faute d'un point d'entrée qui la serve — elle doit être tenue
+ * à jour depuis backend/src/ai/field-registry.ts, et non pour elle-même.
+ *
  * Le registre du serveur ne connaît que des clés de colonne —
  * « budgetIdaUsd », « expectedResults » — qui ne disent rien à un agent. Le
  * bandeau d'annulation, l'aperçu et les refus doivent désigner le champ avec
@@ -53,10 +60,10 @@ const LIBELLES_CHAMPS: Record<string, string> = {
   justification: "Justification",
   beneficiaries: "Bénéficiaires visés",
   expectedResults: "Résultats attendus",
-  objectives: "Objectifs SMART",
-  deliverables: "Livrables",
-  approach: "Approche générale",
-  methodology: "Méthodes et outils",
+  objectives: "Objectifs",
+  deliverables: "Livrables attendus",
+  approach: "Approche",
+  methodology: "Méthodologie",
   constraints: "Contraintes",
   expertise: "Expertise requise",
   startDate: "Démarrage souhaité",

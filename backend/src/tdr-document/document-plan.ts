@@ -1,3 +1,4 @@
+import { FIELDS } from '../ai/field-registry';
 /**
  * Plan du document de termes de référence.
  *
@@ -55,10 +56,12 @@ export const EN_TETE_INSTITUTIONNEL = [
 
 /** Le programme sous lequel la pièce est émise. Chiffres du MEP. */
 export const PROJET = {
-  intitule: 'Projet de Transformation Numérique de la République Démocratique du Congo',
+  intitule:
+    'Projet de Transformation Numérique de la République Démocratique du Congo',
   sigle: 'PTN-RDC',
   code: 'P180495',
-  financement: 'Financement IDA — Banque mondiale et Agence Française de Développement',
+  financement:
+    'Financement IDA — Banque mondiale et Agence Française de Développement',
 } as const;
 
 /**
@@ -121,18 +124,19 @@ const VIDE = 'Non renseigné.';
  * Les libellés reprennent les titres de section du document, quand il y en
  * a un : le lecteur doit pouvoir aller voir la section nommée.
  */
-const NOM_CHAMP: Record<string, string> = {
-  context: 'Contexte',
-  justification: 'Justification',
-  beneficiaries: 'Bénéficiaires visés',
-  expectedResults: 'Résultats attendus',
-  objectives: 'Objectifs',
-  deliverables: 'Livrables attendus',
-  approach: 'Approche',
-  methodology: 'Méthodologie',
-  constraints: 'Contraintes',
-  expertise: 'Expertise requise',
-};
+/**
+ * Le nom d'un champ vient du REGISTRE, et non d'une table tenue ici.
+ *
+ * Celle qui vivait à cet endroit avait déjà divergé : elle ne portait que
+ * les dix champs de texte, si bien que le document imprimait
+ * « budgetTotalUsd, budgetIdaUsd, budgetAfdUsd, beneficiaryOrganisation »
+ * en clair dans sa mention de rédaction assistée — sur une pièce qui part
+ * chez un bailleur. Un champ ajouté au registre est désormais nommé ici
+ * sans que personne ait à y penser.
+ */
+const NOM_CHAMP: Record<string, string> = Object.fromEntries(
+  FIELDS.map((f) => [f.cle, f.libelle]),
+);
 
 /**
  * Une clé inconnue est rendue telle quelle plutôt qu'écartée : un champ
@@ -165,8 +169,18 @@ const NOM_STATUT: Record<string, string> = {
 };
 
 const MOIS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
 ];
 
 export function dateEnToutesLettres(d: Date): string {
@@ -177,7 +191,9 @@ const usd = (v: unknown): string =>
   v === null || v === undefined ? '—' : `${(Number(v) / 1e6).toFixed(2)} M USD`;
 
 const prose = (v: string | null | undefined): Bloc =>
-  v && v.trim() ? { genre: 'paragraphe', texte: v.trim() } : { genre: 'absent', mention: VIDE };
+  v && v.trim()
+    ? { genre: 'paragraphe', texte: v.trim() }
+    : { genre: 'absent', mention: VIDE };
 
 /**
  * Champs qui s'écrivent une entrée par ligne.
@@ -199,7 +215,12 @@ const listeOuProse = (v: string | null | undefined): Bloc => {
 
   const entrees = v
     .split('\n')
-    .map((l) => l.trim().replace(/^(?:[-–—•*]|\d+[.)])\s*/, '').trim())
+    .map((l) =>
+      l
+        .trim()
+        .replace(/^(?:[-–—•*]|\d+[.)])\s*/, '')
+        .trim(),
+    )
     .filter(Boolean);
 
   return entrees.length > 1
@@ -248,7 +269,8 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
         ? {
             genre: 'liste',
             entrees: tdr.objectives.map(
-              (o, i) => `O${i + 1} · ${o.title}${o.criteria ? ` — ${o.criteria}` : ''}`,
+              (o, i) =>
+                `O${i + 1} · ${o.title}${o.criteria ? ` — ${o.criteria}` : ''}`,
             ),
           }
         : { genre: 'absent', mention: 'Aucun objectif défini.' },
@@ -280,13 +302,13 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
           {
             cle: 'Format de remise',
             valeur: tdr.deliverableFormat
-              ? FORMATS[tdr.deliverableFormat] ?? tdr.deliverableFormat
+              ? (FORMATS[tdr.deliverableFormat] ?? tdr.deliverableFormat)
               : '—',
           },
           {
             cle: 'Rythme de reporting',
             valeur: tdr.reportingRhythm
-              ? RYTHMES[tdr.reportingRhythm] ?? tdr.reportingRhythm
+              ? (RYTHMES[tdr.reportingRhythm] ?? tdr.reportingRhythm)
               : '—',
           },
         ],
@@ -323,9 +345,14 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
         lignes: [
           {
             cle: 'Démarrage souhaité',
-            valeur: tdr.startDate ? dateEnToutesLettres(new Date(tdr.startDate)) : '—',
+            valeur: tdr.startDate
+              ? dateEnToutesLettres(new Date(tdr.startDate))
+              : '—',
           },
-          { cle: 'Durée', valeur: tdr.durationMonths ? `${tdr.durationMonths} mois` : '—' },
+          {
+            cle: 'Durée',
+            valeur: tdr.durationMonths ? `${tdr.durationMonths} mois` : '—',
+          },
           {
             cle: 'Volume d’effort',
             valeur: tdr.effortDays ? `${tdr.effortDays} jours-homme` : '—',
@@ -342,7 +369,10 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
       listeOuProse(tdr.expertise),
       { genre: 'sousTitre', texte: 'Profils-clés attendus' },
       tdr.keyProfiles.length
-        ? { genre: 'liste', entrees: tdr.keyProfiles.map((p) => PROFILS[p] ?? p) }
+        ? {
+            genre: 'liste',
+            entrees: tdr.keyProfiles.map((p) => PROFILS[p] ?? p),
+          }
         : { genre: 'absent', mention: 'Aucun profil-clé désigné.' },
     ],
   });
@@ -378,7 +408,10 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
     titre: 'Dispositions contractuelles',
     blocs: [
       tdr.clauses.length
-        ? { genre: 'liste', entrees: tdr.clauses.map((c) => `${c.label} — ${c.text}`) }
+        ? {
+            genre: 'liste',
+            entrees: tdr.clauses.map((c) => `${c.label} — ${c.text}`),
+          }
         : { genre: 'absent', mention: 'Aucune clause retenue.' },
     ],
   });
@@ -390,7 +423,9 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
       tdr.indicators.length
         ? {
             genre: 'liste',
-            entrees: tdr.indicators.map((i) => `${i.label} — ${i.measure}, cible ${i.target}`),
+            entrees: tdr.indicators.map(
+              (i) => `${i.label} — ${i.measure}, cible ${i.target}`,
+            ),
           }
         : { genre: 'absent', mention: 'Aucun indicateur retenu.' },
     ],
@@ -404,7 +439,8 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
         ? {
             genre: 'liste',
             entrees: tdr.risks.map(
-              (r) => `${r.label} [${r.level.toLowerCase()}] — ${r.description}. Atténuation : ${r.mitigation}`,
+              (r) =>
+                `${r.label} [${r.level.toLowerCase()}] — ${r.description}. Atténuation : ${r.mitigation}`,
             ),
           }
         : { genre: 'absent', mention: 'Aucun risque recensé.' },
@@ -421,14 +457,22 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
         lignes: [
           {
             cle: 'Catégorie de risque',
-            valeur: tdr.esCategory ? CATEGORIES[tdr.esCategory] ?? tdr.esCategory : 'Non déterminée',
+            valeur: tdr.esCategory
+              ? (CATEGORIES[tdr.esCategory] ?? tdr.esCategory)
+              : 'Non déterminée',
           },
         ],
       },
       { genre: 'sousTitre', texte: 'Risques identifiés' },
       tdr.esRisks.length
-        ? { genre: 'liste', entrees: tdr.esRisks.map((r) => RISQUES_ES[r] ?? r) }
-        : { genre: 'absent', mention: 'Aucun risque environnemental et social identifié.' },
+        ? {
+            genre: 'liste',
+            entrees: tdr.esRisks.map((r) => RISQUES_ES[r] ?? r),
+          }
+        : {
+            genre: 'absent',
+            mention: 'Aucun risque environnemental et social identifié.',
+          },
     ],
   });
 
@@ -478,12 +522,16 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
       {
         intitule:
           'Conformité au Manuel d’Exécution du Projet et aux règles de passation applicables',
-        date: tdr.consentMepAt ? dateEnToutesLettres(new Date(tdr.consentMepAt)) : null,
+        date: tdr.consentMepAt
+          ? dateEnToutesLettres(new Date(tdr.consentMepAt))
+          : null,
       },
       {
         intitule:
           'Protection des données à caractère personnel et confidentialité des informations traitées',
-        date: tdr.consentRgpdAt ? dateEnToutesLettres(new Date(tdr.consentRgpdAt)) : null,
+        date: tdr.consentRgpdAt
+          ? dateEnToutesLettres(new Date(tdr.consentRgpdAt))
+          : null,
       },
     ],
 
@@ -535,7 +583,12 @@ export interface DossierComplet {
   status: string;
   tdrTypeCode: string;
   tdrType: { name: string };
-  ptbaActivity: { code: string; title: string; componentCode: string; component: { label: string } } | null;
+  ptbaActivity: {
+    code: string;
+    title: string;
+    componentCode: string;
+    component: { label: string };
+  } | null;
   organisation: { fullName: string };
   beneficiaryOrganisation: { fullName: string } | null;
   provinces: Array<{ province: { label: string } }>;
@@ -567,8 +620,17 @@ export interface DossierComplet {
   author: { firstName: string; lastName: string } | null;
   attachments?: Array<{ filename: string }>;
   objectives: Array<{ title: string; criteria: string }>;
-  deliverables: Array<{ title: string; format: string | null; deadline: string | null }>;
+  deliverables: Array<{
+    title: string;
+    format: string | null;
+    deadline: string | null;
+  }>;
   clauses: Array<{ label: string; text: string }>;
   indicators: Array<{ label: string; measure: string; target: string }>;
-  risks: Array<{ label: string; description: string; mitigation: string; level: string }>;
+  risks: Array<{
+    label: string;
+    description: string;
+    mitigation: string;
+    level: string;
+  }>;
 }

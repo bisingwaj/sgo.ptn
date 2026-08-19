@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import PDFDocument from 'pdfkit';
@@ -125,7 +129,8 @@ export class TdrDocumentService {
       join(process.cwd(), 'backend', 'assets', 'fonts'),
       join(__dirname, '..', '..', 'assets', 'fonts'),
     ]) {
-      if (existsSync(join(chemin, TdrDocumentService.POLICES.serif))) return chemin;
+      if (existsSync(join(chemin, TdrDocumentService.POLICES.serif)))
+        return chemin;
     }
     return null;
   }
@@ -167,7 +172,10 @@ export class TdrDocumentService {
         // l'autre n'étaient chargés, et le composeur ne pouvait donc pas les
         // rendre.
         author: { select: { firstName: true, lastName: true } },
-        attachments: { select: { filename: true }, orderBy: { uploadedAt: 'asc' } },
+        attachments: {
+          select: { filename: true },
+          orderBy: { uploadedAt: 'asc' },
+        },
         objectives: { orderBy: { position: 'asc' } },
         deliverables: { orderBy: { position: 'asc' } },
         clauses: { orderBy: { position: 'asc' } },
@@ -178,23 +186,30 @@ export class TdrDocumentService {
     if (!tdr) throw new NotFoundException('TDR introuvable.');
 
     const privilegie =
-      actor.permissions.includes('tdr:review') || actor.permissions.includes('ano:decide');
+      actor.permissions.includes('tdr:review') ||
+      actor.permissions.includes('ano:decide');
     if (!privilegie && tdr.organisationId !== actor.organisationId) {
-      throw new ForbiddenException('Ce TDR ne relève pas de votre organisation.');
+      throw new ForbiddenException(
+        'Ce TDR ne relève pas de votre organisation.',
+      );
     }
     return tdr;
   }
 
   async plan(id: string, actor: AuthenticatedUser): Promise<PlanDocument> {
     const tdr = await this.charger(id, actor);
-    return composerPlan(tdr as never);
+    return composerPlan(tdr);
   }
 
   // ============================================================
   // PDF
   // ============================================================
 
-  async pdf(id: string, actor: AuthenticatedUser, ctx?: RequestContext): Promise<Buffer> {
+  async pdf(
+    id: string,
+    actor: AuthenticatedUser,
+    ctx?: RequestContext,
+  ): Promise<Buffer> {
     const plan = await this.plan(id, actor);
 
     if (ctx) {
@@ -225,7 +240,12 @@ export class TdrDocumentService {
     return new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({
         size: 'A4',
-        margins: { top: P.haut, bottom: P.bas, left: P.gauche, right: P.droite },
+        margins: {
+          top: P.haut,
+          bottom: P.bas,
+          left: P.gauche,
+          right: P.droite,
+        },
         info: {
           Title: `${plan.reference} — ${plan.titre}`,
           Author: plan.auteur?.nom ?? plan.organisation,
@@ -361,7 +381,10 @@ export class TdrDocumentService {
     doc.text(PROJET.intitule, P.gauche, y, { width: col, align: 'center' });
     y = doc.y + 4;
     doc.font(f.mono).fontSize(9).fillColor(TdrDocumentService.ACCENT);
-    doc.text(`${PROJET.sigle} · ${PROJET.code}`, P.gauche, y, { width: col, align: 'center' });
+    doc.text(`${PROJET.sigle} · ${PROJET.code}`, P.gauche, y, {
+      width: col,
+      align: 'center',
+    });
 
     // La nature de l'acte, puis son objet. C'est le cœur de la couverture :
     // on lui laisse l'espace qu'on a repris au reste.
@@ -375,7 +398,11 @@ export class TdrDocumentService {
 
     y = doc.y + 20;
     doc.font(f.sansGras).fontSize(21).fillColor(TdrDocumentService.ENCRE);
-    doc.text(plan.titre, P.gauche, y, { width: col, align: 'center', lineGap: 5 });
+    doc.text(plan.titre, P.gauche, y, {
+      width: col,
+      align: 'center',
+      lineGap: 5,
+    });
 
     y = doc.y + 18;
     doc.font(f.sans).fontSize(10).fillColor(TdrDocumentService.GRIS);
@@ -481,11 +508,17 @@ export class TdrDocumentService {
       const page = positions.get(section.numero);
 
       doc.font(f.mono).fontSize(9).fillColor(TdrDocumentService.ACCENT);
-      doc.text(section.numero.padStart(2, '0'), P.gauche, y, { width: 24, lineBreak: false });
+      doc.text(section.numero.padStart(2, '0'), P.gauche, y, {
+        width: 24,
+        lineBreak: false,
+      });
 
       doc.font(f.sans).fontSize(10).fillColor(TdrDocumentService.ENCRE);
       const largeurTitre = col - 24 - 34;
-      doc.text(section.titre, P.gauche + 24, y, { width: largeurTitre, lineBreak: false });
+      doc.text(section.titre, P.gauche + 24, y, {
+        width: largeurTitre,
+        lineBreak: false,
+      });
 
       // Points de conduite : l'œil suit la ligne jusqu'au numéro sans se
       // perdre entre deux entrées.
@@ -591,7 +624,10 @@ export class TdrDocumentService {
           // Un intitulé seul en bas de page renvoie sa matière au feuillet
           // suivant : on exige de quoi le suivre de deux lignes.
           TdrDocumentService.placer(doc, 58);
-          doc.font(f.sansSemi).fontSize(9.5).fillColor(TdrDocumentService.ACCENT);
+          doc
+            .font(f.sansSemi)
+            .fontSize(9.5)
+            .fillColor(TdrDocumentService.ACCENT);
           doc.text(bloc.texte.toUpperCase(), x, doc.y, {
             width: largeur,
             characterSpacing: 0.9,
@@ -612,7 +648,10 @@ export class TdrDocumentService {
 
         case 'liste':
           for (const entree of bloc.entrees) {
-            doc.font(f.serif).fontSize(10.5).fillColor(TdrDocumentService.ENCRE);
+            doc
+              .font(f.serif)
+              .fontSize(10.5)
+              .fillColor(TdrDocumentService.ENCRE);
             // Mesurer avant de tracer : la puce se dessine, et une puce
             // tracée avant une rupture de page reste seule en bas du
             // feuillet précédent.
@@ -628,7 +667,10 @@ export class TdrDocumentService {
               .circle(x + 3.5, yl + 5.4, 1.5)
               .fillColor(TdrDocumentService.ACCENT)
               .fill();
-            doc.font(f.serif).fontSize(10.5).fillColor(TdrDocumentService.ENCRE);
+            doc
+              .font(f.serif)
+              .fontSize(10.5)
+              .fillColor(TdrDocumentService.ENCRE);
             doc.text(entree, x + 14, yl, { width: largeur - 14, lineGap: 2.4 });
             doc.moveDown(0.42);
           }
@@ -662,7 +704,10 @@ export class TdrDocumentService {
             });
             const basCle = doc.y;
 
-            doc.font(f.serif).fontSize(10.5).fillColor(TdrDocumentService.ENCRE);
+            doc
+              .font(f.serif)
+              .fontSize(10.5)
+              .fillColor(TdrDocumentService.ENCRE);
             doc.text(ligne.valeur, x + largeurCle, yl, {
               width: largeur - largeurCle,
               lineGap: 2,
@@ -683,8 +728,14 @@ export class TdrDocumentService {
         case 'absent':
           // Le vide se dit. Un relecteur doit voir ce qui manque, non
           // découvrir une section muette.
-          doc.font(f.serifItalique).fontSize(10).fillColor(TdrDocumentService.GRIS);
-          TdrDocumentService.placer(doc, doc.heightOfString(bloc.mention, { width: largeur }));
+          doc
+            .font(f.serifItalique)
+            .fontSize(10)
+            .fillColor(TdrDocumentService.GRIS);
+          TdrDocumentService.placer(
+            doc,
+            doc.heightOfString(bloc.mention, { width: largeur }),
+          );
           doc.text(bloc.mention, x, doc.y, { width: largeur });
           doc.moveDown(0.75);
           break;
@@ -723,13 +774,16 @@ export class TdrDocumentService {
       (plan.auteur ? 62 : 0);
 
     const reste = P.hauteur - P.bas - doc.y;
-    if (reste < Math.min(hauteurGroupe, P.hauteur - P.haut - P.bas)) doc.addPage();
+    if (reste < Math.min(hauteurGroupe, P.hauteur - P.haut - P.bas))
+      doc.addPage();
     else doc.moveDown(2.2);
 
     doc.font(f.sansSemi).fontSize(14).fillColor(TdrDocumentService.ENCRE);
     // Aligné sur les titres numérotés : la partie n'a pas de numéro, ce
     // n'est pas une raison pour qu'elle sorte de la colonne.
-    doc.text('Engagements et pièces jointes', P.gauche + 26, doc.y, { width: col - 26 });
+    doc.text('Engagements et pièces jointes', P.gauche + 26, doc.y, {
+      width: col - 26,
+    });
     doc.moveDown(0.35);
     let y = doc.y;
     doc
@@ -757,7 +811,11 @@ export class TdrDocumentService {
       // lieu.
       doc
         .rect(x, yl + 1.5, 9, 9)
-        .strokeColor(attestation.date ? TdrDocumentService.ACCENT : TdrDocumentService.FILET)
+        .strokeColor(
+          attestation.date
+            ? TdrDocumentService.ACCENT
+            : TdrDocumentService.FILET,
+        )
         .lineWidth(1)
         .stroke();
       if (attestation.date) {
@@ -771,7 +829,10 @@ export class TdrDocumentService {
       }
 
       doc.font(f.serif).fontSize(10).fillColor(TdrDocumentService.ENCRE);
-      doc.text(attestation.intitule, x + 18, yl, { width: largeur - 18, lineGap: 2 });
+      doc.text(attestation.intitule, x + 18, yl, {
+        width: largeur - 18,
+        lineGap: 2,
+      });
 
       doc.font(f.sans).fontSize(8.5).fillColor(TdrDocumentService.GRIS);
       doc.text(
@@ -814,7 +875,10 @@ export class TdrDocumentService {
       doc.moveDown(1.2);
       y = doc.y;
       const hauteur = 54;
-      doc.rect(P.gauche, y, 2.5, hauteur).fillColor(TdrDocumentService.ACCENT).fill();
+      doc
+        .rect(P.gauche, y, 2.5, hauteur)
+        .fillColor(TdrDocumentService.ACCENT)
+        .fill();
 
       doc.font(f.sansSemi).fontSize(8.5).fillColor(TdrDocumentService.ACCENT);
       doc.text('RÉDACTION ASSISTÉE', P.gauche + 14, y + 2, {
@@ -907,7 +971,9 @@ export class TdrDocumentService {
 
         doc.font(f.sans).fontSize(7.5).fillColor(TdrDocumentService.GRIS);
         doc.text(
-          rang === pageSommaire ? 'Sommaire' : `Termes de référence · ${plan.typeCode}`,
+          rang === pageSommaire
+            ? 'Sommaire'
+            : `Termes de référence · ${plan.typeCode}`,
           P.gauche,
           yPied,
           { width: col / 2, lineBreak: false },
@@ -929,7 +995,11 @@ export class TdrDocumentService {
   // DOCX
   // ============================================================
 
-  async docx(id: string, actor: AuthenticatedUser, ctx?: RequestContext): Promise<Buffer> {
+  async docx(
+    id: string,
+    actor: AuthenticatedUser,
+    ctx?: RequestContext,
+  ): Promise<Buffer> {
     const plan = await this.plan(id, actor);
 
     if (ctx) {
@@ -1010,7 +1080,12 @@ export class TdrDocumentService {
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: 'TERMES DE RÉFÉRENCE', bold: true, size: 22, color: '0F62FE' }),
+          new TextRun({
+            text: 'TERMES DE RÉFÉRENCE',
+            bold: true,
+            size: 22,
+            color: '0F62FE',
+          }),
         ],
         alignment: AlignmentType.CENTER,
       }),
@@ -1021,7 +1096,11 @@ export class TdrDocumentService {
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: `${plan.typeCode} — ${plan.typeNom}`, size: 19, color: '6F6F6F' }),
+          new TextRun({
+            text: `${plan.typeCode} — ${plan.typeNom}`,
+            size: 19,
+            color: '6F6F6F',
+          }),
         ],
         alignment: AlignmentType.CENTER,
         spacing: { after: 480 },
@@ -1098,7 +1177,11 @@ export class TdrDocumentService {
             enfants.push(
               new Paragraph({
                 children: [
-                  new TextRun({ text: `${ligne.cle} : `, color: '6F6F6F', size: 19 }),
+                  new TextRun({
+                    text: `${ligne.cle} : `,
+                    color: '6F6F6F',
+                    size: 19,
+                  }),
                   new TextRun({ text: ligne.valeur, size: 21 }),
                 ],
                 spacing: { after: 60 },
@@ -1108,7 +1191,14 @@ export class TdrDocumentService {
         } else if (bloc.genre === 'absent') {
           enfants.push(
             new Paragraph({
-              children: [new TextRun({ text: bloc.mention, italics: true, color: '6F6F6F', size: 20 })],
+              children: [
+                new TextRun({
+                  text: bloc.mention,
+                  italics: true,
+                  color: '6F6F6F',
+                  size: 20,
+                }),
+              ],
               spacing: { after: 160 },
             }),
           );
@@ -1210,7 +1300,9 @@ export class TdrDocumentService {
             new TextRun({
               text:
                 `Un modèle de langage a contribué à la rédaction ${
-                  plan.champsAssistes.length === 1 ? 'de la section' : 'des sections'
+                  plan.champsAssistes.length === 1
+                    ? 'de la section'
+                    : 'des sections'
                 } : ${plan.champsAssistes.join(', ')}. ` +
                 'Le texte a été relu et repris par son auteur, qui en porte la responsabilité.',
               size: 20,
@@ -1224,15 +1316,25 @@ export class TdrDocumentService {
     if (plan.auteur) {
       enfants.push(
         new Paragraph({
-          children: [new TextRun({ text: 'ÉTABLI PAR', size: 17, color: '6F6F6F' })],
+          children: [
+            new TextRun({ text: 'ÉTABLI PAR', size: 17, color: '6F6F6F' }),
+          ],
           spacing: { before: 320, after: 60 },
         }),
         new Paragraph({
-          children: [new TextRun({ text: plan.auteur.nom, bold: true, size: 23 })],
+          children: [
+            new TextRun({ text: plan.auteur.nom, bold: true, size: 23 }),
+          ],
           spacing: { after: 20 },
         }),
         new Paragraph({
-          children: [new TextRun({ text: plan.auteur.entite, size: 19, color: '6F6F6F' })],
+          children: [
+            new TextRun({
+              text: plan.auteur.entite,
+              size: 19,
+              color: '6F6F6F',
+            }),
+          ],
         }),
       );
     }
@@ -1244,6 +1346,6 @@ export class TdrDocumentService {
       sections: [{ children: enfants }],
     });
 
-    return Packer.toBuffer(document) as unknown as Promise<Buffer>;
+    return Packer.toBuffer(document);
   }
 }

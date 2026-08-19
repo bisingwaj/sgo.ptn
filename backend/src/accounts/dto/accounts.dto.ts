@@ -13,7 +13,12 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { ComponentCode, Language, ProfileKey, UserStatus } from '../../../generated/prisma/enums';
+import {
+  ComponentCode,
+  Language,
+  ProfileKey,
+  UserStatus,
+} from '../../../generated/prisma/enums';
 
 export class CreateAccountDto {
   // --- Étape 02 : identité ---
@@ -59,7 +64,10 @@ export class CreateAccountDto {
   @IsUUID(undefined, { message: 'Organisation de rattachement invalide.' })
   organisationId!: string;
 
-  @ApiPropertyOptional({ enum: ComponentCode, description: 'Obligatoire pour RC1, RC2, RC3' })
+  @ApiPropertyOptional({
+    enum: ComponentCode,
+    description: 'Obligatoire pour RC1, RC2, RC3',
+  })
   @IsOptional()
   @IsEnum(ComponentCode)
   componentCode?: keyof typeof ComponentCode;
@@ -72,7 +80,8 @@ export class CreateAccountDto {
   // --- Étape 04 : bornage et habilitation sensible ---
   @ApiPropertyOptional({
     example: 'AUD-EXT-2026-T1',
-    description: 'Obligatoire pour les profils de contrôle : l’accès expire avec la mission.',
+    description:
+      'Obligatoire pour les profils de contrôle : l’accès expire avec la mission.',
   })
   @IsOptional()
   @IsString()
@@ -146,7 +155,9 @@ export class AddAssignmentDto {
   @IsDateString({}, { message: 'Date de fin d’habilitation invalide.' })
   validUntil?: string;
 
-  @ApiPropertyOptional({ description: 'Obligatoire pour une habilitation sensible' })
+  @ApiPropertyOptional({
+    description: 'Obligatoire pour une habilitation sensible',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(1000)
@@ -154,7 +165,8 @@ export class AddAssignmentDto {
 
   @ApiPropertyOptional({
     default: false,
-    description: 'Fait de cette habilitation celle chargée par défaut à la connexion',
+    description:
+      'Fait de cette habilitation celle chargée par défaut à la connexion',
   })
   @IsOptional()
   @IsBoolean()
@@ -180,7 +192,9 @@ export class ListAccountsQueryDto {
   @IsEnum(UserStatus)
   status?: keyof typeof UserStatus;
 
-  @ApiPropertyOptional({ description: 'Recherche sur nom, prénom ou adresse électronique' })
+  @ApiPropertyOptional({
+    description: 'Recherche sur nom, prénom ou adresse électronique',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)

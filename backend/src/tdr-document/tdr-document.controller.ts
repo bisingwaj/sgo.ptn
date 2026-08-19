@@ -1,4 +1,12 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query, Req, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { TdrDocumentService } from './tdr-document.service';
@@ -25,7 +33,10 @@ export class TdrDocumentController {
     description:
       'Le contenu exact du document, avant de le fabriquer. Permet de relire ce qui partira sans télécharger un fichier.',
   })
-  apercu(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
+  apercu(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
     return this.documents.plan(id, actor);
   }
 
@@ -43,7 +54,10 @@ export class TdrDocumentController {
     @Res() res: Response,
     @Query('format') format?: string,
   ): Promise<void> {
-    const ctx = { ipAddress: req.ip ?? undefined, userAgent: req.get('user-agent') ?? undefined };
+    const ctx = {
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.get('user-agent') ?? undefined,
+    };
     const plan = await this.documents.plan(id, actor);
     const docx = format === 'docx';
 

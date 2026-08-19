@@ -1,13 +1,26 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { generateTemporaryPassword } from './password-generator';
-import type { AddAssignmentDto, CreateAccountDto, ListAccountsQueryDto } from './dto/accounts.dto';
+import type {
+  AddAssignmentDto,
+  CreateAccountDto,
+  ListAccountsQueryDto,
+} from './dto/accounts.dto';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
-import type { ComponentCode, Language, ProfileKey } from '../../generated/prisma/enums';
+import type {
+  ComponentCode,
+  Language,
+  ProfileKey,
+} from '../../generated/prisma/enums';
 
 export interface Guardrail {
   code: string;
@@ -66,7 +79,10 @@ export class AccountsService {
    * compte déjà créé : les incompatibilités s'évaluent alors au regard
    * de ses affectations en cours.
    */
-  async checkGuardrails(dto: GuardrailInput, existingUserId?: string): Promise<GuardrailReport> {
+  async checkGuardrails(
+    dto: GuardrailInput,
+    existingUserId?: string,
+  ): Promise<GuardrailReport> {
     const blockers: Guardrail[] = [];
     const warnings: Guardrail[] = [];
 
@@ -87,9 +103,14 @@ export class AccountsService {
     }
 
     // --- Sous-rôle ---
-    const subrole = await this.prisma.subrole.findUnique({ where: { code: dto.subroleCode } });
+    const subrole = await this.prisma.subrole.findUnique({
+      where: { code: dto.subroleCode },
+    });
     if (!subrole) {
-      blockers.push({ code: 'SUBROLE_UNKNOWN', message: `Sous-rôle inconnu : ${dto.subroleCode}.` });
+      blockers.push({
+        code: 'SUBROLE_UNKNOWN',
+        message: `Sous-rôle inconnu : ${dto.subroleCode}.`,
+      });
       return { blockers, warnings };
     }
     if (subrole.profile !== dto.profile) {
@@ -102,12 +123,50 @@ export class AccountsService {
     // --- Organisation ---
     const organisation = await this.prisma.organisation.findUnique({
       where: { id: dto.organisationId },
-      select: { id: true, code: true, name: true, isActive: true },
+      select: { id: true, code: true, name: true, type: true, isActive: true },
     });
     if (!organisation) {
-      blockers.push({ code: 'ORG_UNKNOWN', message: 'Organisation de rattachement introuvable.' });
+      blockers.push({
+        code: 'ORG_UNKNOWN',
+        message: 'Organisation de rattachement introuvable.',
+      });
     } else if (!organisation.isActive) {
-      blockers.push({ code: 'ORG_INACTIVE', message: `L’organisation ${organisation.name} est inactive.` });
+      blockers.push({
+        code: 'ORG_INACTIVE',
+        message: `L’organisation ${organisation.name} est inactive.`,
+      });
+    }
+
+    // --- Un candidat ne se loge pas chez l'acheteur ---
+    //
+    // Trois comptes de soumissionnaire ont été créés rattachés à l'UGPTN,
+    // à l'AFD et à une agence bénéficiaire. Ce n'est pas une coquille de
+    // saisie : le marketplace borne « mes offres » sur l'organisation, si
+    // bien qu'une offre se serait déposée au nom de l'unité qui attribue le
+    // marché, ou de celle qui le finance. Un conflit d'intérêt rendu
+    // possible par l'écran de création de comptes.
+    //
+    // Ne concerne que le profil SOUMISSIONNAIRE : un partenaire, un
+    // bénéficiaire SBP ou un auditeur se rattachent légitimement à une
+    // agence ou à un cabinet.
+    if (organisation && subrole.profile === 'SOUMISSIONNAIRE') {
+      const CANDIDATES = [
+        'ENTREPRISE',
+        'STARTUP',
+        'OSC',
+        'FEDERATION',
+        'HUB',
+        'AUTRE',
+      ];
+      if (!CANDIDATES.includes(organisation.type)) {
+        blockers.push({
+          code: 'SOUMISSIONNAIRE_ORG_INELIGIBLE',
+          message:
+            `${organisation.name} ne peut pas concourir : une entreprise candidate ne se rattache ` +
+            `ni à l’unité qui attribue les marchés, ni à un bailleur, ni à une agence bénéficiaire. ` +
+            `Rattachez ce compte à l’entreprise candidate elle-même.`,
+        });
+      }
     }
 
     // --- Unicité du poste (présentation UGPTN § 6.1) ---
@@ -119,7 +178,9 @@ export class AccountsService {
           status: 'ACTIVE',
           ...(existingUserId ? { userId: { not: existingUserId } } : {}),
         },
-        include: { user: { select: { firstName: true, lastName: true, email: true } } },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true } },
+        },
       });
       if (holder) {
         blockers.push({
@@ -190,7 +251,8 @@ export class AccountsService {
     if (dto.validUntil && new Date(dto.validUntil) <= new Date()) {
       blockers.push({
         code: 'VALID_UNTIL_PAST',
-        message: 'La date de fin d’habilitation doit être postérieure à aujourd’hui.',
+        message:
+          'La date de fin d’habilitation doit être postérieure à aujourd’hui.',
       });
     }
 
@@ -218,7 +280,11 @@ export class AccountsService {
   // Création
   // ==========================================================
 
-  async create(dto: CreateAccountDto, actor: AuthenticatedUser, ctx: RequestContext) {
+  async create(
+    dto: CreateAccountDto,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
     const report = await this.checkGuardrails(dto);
     if (report.blockers.length > 0) {
       throw new ConflictException({
@@ -229,7 +295,9 @@ export class AccountsService {
     }
 
     const email = dto.email.trim().toLowerCase();
-    const subrole = await this.prisma.subrole.findUniqueOrThrow({ where: { code: dto.subroleCode } });
+    const subrole = await this.prisma.subrole.findUniqueOrThrow({
+      where: { code: dto.subroleCode },
+    });
 
     const temporaryPassword = generateTemporaryPassword();
     const rounds = Number(this.config.get('BCRYPT_ROUNDS') ?? 12);
@@ -242,7 +310,7 @@ export class AccountsService {
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           phone: dto.phone?.trim() || null,
-          preferredLanguage: (dto.preferredLanguage ?? 'FR') as Language,
+          preferredLanguage: dto.preferredLanguage ?? 'FR',
           passwordHash: await bcrypt.hash(temporaryPassword, rounds),
           status: 'INVITE',
           mustChangePassword: true,
@@ -255,10 +323,10 @@ export class AccountsService {
         data: {
           userId: user.id,
           organisationId: dto.organisationId,
-          profile: dto.profile as ProfileKey,
+          profile: dto.profile,
           subroleId: subrole.id,
           isPrimary: dto.isPrimary ?? true,
-          componentCode: (dto.componentCode ?? null) as ComponentCode | null,
+          componentCode: dto.componentCode ?? null,
           provinceCode: dto.provinceCode ?? null,
           missionRef: dto.missionRef?.trim() || null,
           validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
@@ -314,7 +382,11 @@ export class AccountsService {
         lastName: created.user.lastName,
         status: created.user.status,
       },
-      assignment: { id: created.assignment.id, subroleCode: subrole.code, subroleLabel: subrole.label },
+      assignment: {
+        id: created.assignment.id,
+        subroleCode: subrole.code,
+        subroleLabel: subrole.label,
+      },
       /**
        * Affiché une seule fois à l'administrateur, jamais restitué
        * ensuite : seul son haché est conservé. À transmettre de vive voix
@@ -331,7 +403,10 @@ export class AccountsService {
   // ==========================================================
 
   /** Contrôle des règles pour un ajout d'habilitation sur un compte existant. */
-  async checkAssignmentGuardrails(userId: string, dto: AddAssignmentDto): Promise<GuardrailReport> {
+  async checkAssignmentGuardrails(
+    userId: string,
+    dto: AddAssignmentDto,
+  ): Promise<GuardrailReport> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { email: true },
@@ -359,10 +434,15 @@ export class AccountsService {
     });
     if (!user) throw new NotFoundException('Compte introuvable.');
     if (user.status === 'ARCHIVE') {
-      throw new BadRequestException('Compte archivé : aucune habilitation ne peut y être ajoutée.');
+      throw new BadRequestException(
+        'Compte archivé : aucune habilitation ne peut y être ajoutée.',
+      );
     }
 
-    const report = await this.checkGuardrails({ ...dto, email: user.email }, userId);
+    const report = await this.checkGuardrails(
+      { ...dto, email: user.email },
+      userId,
+    );
     if (report.blockers.length > 0) {
       throw new ConflictException({
         message: 'L’ajout est bloqué par des règles institutionnelles.',
@@ -388,10 +468,10 @@ export class AccountsService {
         data: {
           userId,
           organisationId: dto.organisationId,
-          profile: dto.profile as ProfileKey,
+          profile: dto.profile,
           subroleId: subrole.id,
           isPrimary: dto.isPrimary ?? false,
-          componentCode: (dto.componentCode ?? null) as ComponentCode | null,
+          componentCode: dto.componentCode ?? null,
           provinceCode: dto.provinceCode ?? null,
           missionRef: dto.missionRef?.trim() || null,
           validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
@@ -405,7 +485,9 @@ export class AccountsService {
     await this.audit.record({
       actorId: actor.userId,
       actorEmail: actor.email,
-      action: subrole.isSensitive ? 'assignment.granted.sensitive' : 'assignment.granted',
+      action: subrole.isSensitive
+        ? 'assignment.granted.sensitive'
+        : 'assignment.granted',
       entityType: 'Assignment',
       entityId: assignment.id,
       payload: {
@@ -420,7 +502,11 @@ export class AccountsService {
     });
 
     return {
-      assignment: { id: assignment.id, subroleCode: subrole.code, subroleLabel: subrole.label },
+      assignment: {
+        id: assignment.id,
+        subroleCode: subrole.code,
+        subroleLabel: subrole.label,
+      },
       warnings: report.warnings,
     };
   }
@@ -512,7 +598,9 @@ export class AccountsService {
 
     const where = {
       ...(query.status ? { status: query.status } : {}),
-      ...(query.profile ? { assignments: { some: { profile: query.profile } } } : {}),
+      ...(query.profile
+        ? { assignments: { some: { profile: query.profile } } }
+        : {}),
       ...(search
         ? {
             OR: [
@@ -548,7 +636,9 @@ export class AccountsService {
               isPrimary: true,
               validUntil: true,
               missionRef: true,
-              subrole: { select: { code: true, label: true, isSensitive: true } },
+              subrole: {
+                select: { code: true, label: true, isSensitive: true },
+              },
               organisation: { select: { code: true, name: true } },
             },
           },
@@ -594,9 +684,20 @@ export class AccountsService {
             createdAt: true,
             revokedAt: true,
             revokeReason: true,
-            subrole: { select: { code: true, label: true, isSensitive: true, isUnique: true } },
-            organisation: { select: { code: true, name: true, fullName: true } },
-            grantedBy: { select: { firstName: true, lastName: true, email: true } },
+            subrole: {
+              select: {
+                code: true,
+                label: true,
+                isSensitive: true,
+                isUnique: true,
+              },
+            },
+            organisation: {
+              select: { code: true, name: true, fullName: true },
+            },
+            grantedBy: {
+              select: { firstName: true, lastName: true, email: true },
+            },
           },
         },
       },
@@ -610,11 +711,21 @@ export class AccountsService {
   // Cycle de vie — jamais de suppression physique
   // ==========================================================
 
-  async suspend(id: string, reason: string, actor: AuthenticatedUser, ctx: RequestContext) {
-    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true, email: true, status: true } });
+  async suspend(
+    id: string,
+    reason: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, status: true },
+    });
     if (!user) throw new NotFoundException('Compte introuvable.');
     if (user.id === actor.userId) {
-      throw new BadRequestException('Vous ne pouvez pas suspendre votre propre compte.');
+      throw new BadRequestException(
+        'Vous ne pouvez pas suspendre votre propre compte.',
+      );
     }
 
     await this.prisma.$transaction([
@@ -645,7 +756,9 @@ export class AccountsService {
     });
     if (!user) throw new NotFoundException('Compte introuvable.');
     if (user.status !== 'SUSPENDU') {
-      throw new BadRequestException('Seul un compte suspendu peut être réactivé.');
+      throw new BadRequestException(
+        'Seul un compte suspendu peut être réactivé.',
+      );
     }
 
     await this.prisma.user.update({
@@ -667,8 +780,15 @@ export class AccountsService {
   }
 
   /** Réémet un mot de passe temporaire — invitation expirée, oubli, compromission. */
-  async resetTemporaryPassword(id: string, actor: AuthenticatedUser, ctx: RequestContext) {
-    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true, email: true, status: true } });
+  async resetTemporaryPassword(
+    id: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, status: true },
+    });
     if (!user) throw new NotFoundException('Compte introuvable.');
     if (user.status === 'ARCHIVE') {
       throw new BadRequestException('Compte archivé : réémission impossible.');
@@ -709,11 +829,21 @@ export class AccountsService {
     return { temporaryPassword, expiresInHours: ttlHours };
   }
 
-  async archive(id: string, reason: string, actor: AuthenticatedUser, ctx: RequestContext) {
-    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true, email: true } });
+  async archive(
+    id: string,
+    reason: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true },
+    });
     if (!user) throw new NotFoundException('Compte introuvable.');
     if (user.id === actor.userId) {
-      throw new BadRequestException('Vous ne pouvez pas archiver votre propre compte.');
+      throw new BadRequestException(
+        'Vous ne pouvez pas archiver votre propre compte.',
+      );
     }
 
     // Archivage, jamais suppression : il faut pouvoir répondre à
@@ -725,7 +855,11 @@ export class AccountsService {
       }),
       this.prisma.assignment.updateMany({
         where: { userId: id, status: 'ACTIVE' },
-        data: { status: 'REVOKED', revokedAt: new Date(), revokeReason: reason },
+        data: {
+          status: 'REVOKED',
+          revokedAt: new Date(),
+          revokeReason: reason,
+        },
       }),
       this.prisma.refreshToken.updateMany({
         where: { userId: id, revokedAt: null },
@@ -755,7 +889,10 @@ export class AccountsService {
     return this.prisma.user.findMany({
       where: {
         status: { in: ['ACTIF', 'INVITE'] },
-        OR: [{ lastLoginAt: null, createdAt: { lt: threshold } }, { lastLoginAt: { lt: threshold } }],
+        OR: [
+          { lastLoginAt: null, createdAt: { lt: threshold } },
+          { lastLoginAt: { lt: threshold } },
+        ],
       },
       orderBy: { lastLoginAt: 'asc' },
       select: {

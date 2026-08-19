@@ -60,6 +60,15 @@ export default function MgpEasHsPage() {
         { label: "Cockpit UGP", href: "/cockpit" },
         { label: "MGP · Canal EAS-HS confidentiel" },
       ]}
+      /* L'assistant est retiré de cet écran, et de lui seul.
+         Le corpus interdit formellement l'IA générative sur le canal
+         EAS/HS — c'est le seul endroit où il l'écrit deux fois. L'assistant
+         refuse déjà le sujet si on l'interroge, mais le refuser après
+         l'avoir proposé n'est pas la même chose que ne pas le proposer :
+         une personne qui vient signaler un fait de cette nature n'a pas à
+         voir, sur l'écran qui lui promet le cloisonnement, une invitation
+         à en parler à une machine. */
+      hideAssistant
     >
       <PageHeader
         eyebrow="UGP · CANAL EAS-HS CONFIDENTIEL · ACCÈS RESTREINT"

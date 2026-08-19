@@ -39,7 +39,9 @@ export function generateTemporaryPassword(): string {
 
   const chars = shuffle([...required, ...filler]);
 
-  return [chars.slice(0, 4).join(''), chars.slice(4, 8).join(''), chars.slice(8, 12).join('')].join(
-    '-',
-  );
+  return [
+    chars.slice(0, 4).join(''),
+    chars.slice(4, 8).join(''),
+    chars.slice(8, 12).join(''),
+  ].join('-');
 }

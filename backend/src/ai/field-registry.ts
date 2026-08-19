@@ -57,6 +57,18 @@ export interface FieldSpec {
   /** Étape du parcours qui le porte, pour situer l'écriture à l'écran */
   etape: string;
   /**
+   * Nom du champ tel qu'un humain le lit.
+   *
+   * Il vit ICI et nulle part ailleurs. Trois tables le portaient — le
+   * panneau de l'assistant, le plan du document, les intitulés d'étape —
+   * et six champs sur dix-huit s'étaient mis à diverger : l'assistant
+   * annonçait « Méthodes et outils écrit », l'étape s'intitulait
+   * « Méthodologie », et la pièce imprimait « Méthodologie ». Le registre
+   * fait autorité sur ce qu'un champ EST ; il fait donc autorité sur son
+   * nom.
+   */
+  libelle: string;
+  /**
    * Longueur maximale acceptée, en caractères.
    *
    * Ce n'est plus une contrainte rédactionnelle : les plafonds bornaient la
@@ -71,6 +83,7 @@ export interface FieldSpec {
 export const FIELDS: FieldSpec[] = [
   {
     cle: 'context',
+    libelle: 'Contexte',
     kind: 'texte',
     etape: 'Cadrage',
     max: 40000,
@@ -79,6 +92,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'justification',
+    libelle: 'Justification',
     kind: 'texte',
     etape: 'Cadrage',
     max: 30000,
@@ -87,6 +101,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'beneficiaries',
+    libelle: 'Bénéficiaires visés',
     kind: 'texte',
     etape: 'Cadrage',
     max: 16000,
@@ -95,6 +110,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'expectedResults',
+    libelle: 'Résultats attendus',
     kind: 'texte',
     etape: 'Objectifs & livrables',
     max: 24000,
@@ -103,6 +119,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'objectives',
+    libelle: 'Objectifs',
     kind: 'liste_objectifs',
     etape: 'Objectifs & livrables',
     description:
@@ -110,6 +127,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'deliverables',
+    libelle: 'Livrables attendus',
     kind: 'liste_livrables',
     etape: 'Objectifs & livrables',
     description:
@@ -117,6 +135,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'approach',
+    libelle: 'Approche',
     kind: 'texte',
     etape: 'Méthodologie',
     max: 30000,
@@ -124,6 +143,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'methodology',
+    libelle: 'Méthodologie',
     kind: 'texte',
     etape: 'Méthodologie',
     max: 30000,
@@ -132,6 +152,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'constraints',
+    libelle: 'Contraintes',
     kind: 'texte',
     etape: 'Méthodologie',
     max: 24000,
@@ -140,6 +161,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'expertise',
+    libelle: 'Expertise requise',
     kind: 'texte',
     etape: 'Calendrier & expertise',
     max: 24000,
@@ -150,12 +172,14 @@ export const FIELDS: FieldSpec[] = [
   // --- Calendrier ---
   {
     cle: 'startDate',
+    libelle: 'Démarrage souhaité',
     kind: 'date',
     etape: 'Calendrier & expertise',
     description: 'Démarrage souhaité, au format AAAA-MM-JJ.',
   },
   {
     cle: 'durationMonths',
+    libelle: 'Durée du marché',
     kind: 'entier',
     etape: 'Calendrier & expertise',
     description:
@@ -163,6 +187,7 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'effortDays',
+    libelle: 'Volume d’effort',
     kind: 'entier',
     etape: 'Calendrier & expertise',
     description:
@@ -176,6 +201,7 @@ export const FIELDS: FieldSpec[] = [
   // vérifie en outre le cumul de tous les TDR de cette ligne.
   {
     cle: 'budgetTotalUsd',
+    libelle: 'Budget total',
     kind: 'montant',
     etape: 'Budget',
     description:
@@ -183,18 +209,21 @@ export const FIELDS: FieldSpec[] = [
   },
   {
     cle: 'budgetIdaUsd',
+    libelle: 'Part IDA',
     kind: 'montant',
     etape: 'Budget',
     description: "Part financée par l'IDA, en USD.",
   },
   {
     cle: 'budgetAfdUsd',
+    libelle: 'Part AFD',
     kind: 'montant',
     etape: 'Budget',
     description: "Part financée par l'AFD, en USD.",
   },
   {
     cle: 'budgetGovUsd',
+    libelle: 'Part Gouvernement',
     kind: 'montant',
     etape: 'Budget',
     description: 'Part financée par le Gouvernement, en USD.',
@@ -203,6 +232,7 @@ export const FIELDS: FieldSpec[] = [
   // --- Institution ---
   {
     cle: 'beneficiaryOrganisation',
+    libelle: 'Maîtrise d’ouvrage bénéficiaire',
     kind: 'organisation',
     etape: 'Rattachement',
     description:

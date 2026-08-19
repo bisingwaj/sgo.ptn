@@ -25,7 +25,10 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
 function contextOf(req: Request): RequestContext {
-  return { ipAddress: req.ip ?? undefined, userAgent: req.get('user-agent') ?? undefined };
+  return {
+    ipAddress: req.ip ?? undefined,
+    userAgent: req.get('user-agent') ?? undefined,
+  };
 }
 
 /**
@@ -76,14 +79,17 @@ export class AccountsController {
   @Get('dormants')
   @ApiOperation({
     summary: 'Comptes inactifs depuis 90 jours',
-    description: 'Support de la revue périodique des habilitations exigée en audit.',
+    description:
+      'Support de la revue périodique des habilitations exigée en audit.',
   })
   dormants() {
     return this.accounts.dormantAccounts();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Fiche d’un compte et historique de ses habilitations' })
+  @ApiOperation({
+    summary: 'Fiche d’un compte et historique de ses habilitations',
+  })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.accounts.findOne(id);
   }
@@ -95,7 +101,10 @@ export class AccountsController {
     description:
       'Seule voie où la séparation des tâches s’évalue : elle se juge au regard des habilitations déjà détenues.',
   })
-  checkAssignment(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AddAssignmentDto) {
+  checkAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddAssignmentDto,
+  ) {
     return this.accounts.checkAssignmentGuardrails(id, dto);
   }
 
@@ -124,7 +133,13 @@ export class AccountsController {
     @CurrentUser() actor: AuthenticatedUser,
     @Req() req: Request,
   ) {
-    return this.accounts.revokeAssignment(id, assignmentId, dto.reason, actor, contextOf(req));
+    return this.accounts.revokeAssignment(
+      id,
+      assignmentId,
+      dto.reason,
+      actor,
+      contextOf(req),
+    );
   }
 
   @Post(':id/suspendre')
@@ -165,7 +180,8 @@ export class AccountsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Archiver un compte',
-    description: 'Aucune suppression physique : la piste d’audit doit rester reconstituable.',
+    description:
+      'Aucune suppression physique : la piste d’audit doit rester reconstituable.',
   })
   archive(
     @Param('id', ParseUUIDPipe) id: string,
