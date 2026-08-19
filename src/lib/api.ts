@@ -1098,3 +1098,86 @@ export const tdrApi = {
       groundedOn: string[];
     }>(`/tdr/${id}/assistance/livrables`),
 };
+
+// ============================================================
+// Marketplace — les avis publiés, et les offres du candidat
+// ============================================================
+
+/** Suites données à une offre, côté serveur. */
+export type SoumissionStatusApi =
+  | "BROUILLON"
+  | "DEPOSEE"
+  | "IRRECEVABLE"
+  | "RECEVABLE"
+  | "ATTRIBUTAIRE"
+  | "ECARTEE";
+
+/**
+ * Un avis d'appel d'offres.
+ *
+ * Aucun score de pertinence : l'écran en affichait un, présenté comme
+ * calculé depuis le KYC et l'historique du candidat. Rien de tout cela
+ * n'existe, et un nombre fabriqué orienterait une décision commerciale.
+ */
+export interface AvisApi {
+  id: string;
+  /** Référence de publication — AOI-2026-004 */
+  reference: string;
+  objet: string;
+  resume: string;
+  qualifications: string[];
+  publishedAt: string;
+  closingAt: string;
+  /** Référence du marché, reprise de son TDR */
+  marcheReference: string;
+  methodCode: string;
+  methodLabel: string;
+  estimatedUsd: number;
+  tdrTypeCode: string;
+  esCategory: string | null;
+  componentCode: string | null;
+  componentLabel: string | null;
+  ptbaCode: string | null;
+  /** Renseigné si votre organisation a déjà déposé sur cet avis */
+  maSoumission: SoumissionStatusApi | null;
+}
+
+export interface AvisDetailApi extends Omit<AvisApi, "maSoumission"> {
+  openingNote: string | null;
+  maSoumission: {
+    id: string;
+    reference: string;
+    status: SoumissionStatusApi;
+    montantUsd: number | null;
+    submittedAt: string | null;
+  } | null;
+}
+
+export interface MaSoumissionApi {
+  id: string;
+  reference: string;
+  status: SoumissionStatusApi;
+  montantUsd: number | null;
+  submittedAt: string | null;
+  avis: {
+    id: string;
+    reference: string;
+    objet: string;
+    closingAt: string;
+    methodCode: string;
+    marcheStatus: string;
+  };
+}
+
+export const marketplaceApi = {
+  /** Les avis ouverts. `clos` y ajoute ceux dont la date limite est passée. */
+  avis: (clos?: boolean) => api.get<AvisApi[]>(`/marketplace/avis${clos ? "?clos=1" : ""}`),
+  detail: (id: string) => api.get<AvisDetailApi>(`/marketplace/avis/${id}`),
+  /** Bornées à votre organisation : les offres concurrentes ne sortent jamais. */
+  mesSoumissions: () => api.get<MaSoumissionApi[]>("/marketplace/mes-soumissions"),
+  deposer: (avisId: string, corps: { montantUsd: number; note?: string }) =>
+    api.post<{ id: string; reference: string; status: SoumissionStatusApi; submittedAt: string }>(
+      `/marketplace/avis/${avisId}/soumission`,
+      corps,
+    ),
+};

@@ -1,0 +1,120 @@
+/* Mes offres -------------------------------------------------------------
+   Même facture que la liste des avis : deux colonnes, l'objet à gauche, le
+   montant et l'échéance à droite. Un candidat passe de l'une à l'autre, et
+   deux mises en page pour la même matière feraient chercher. */
+
+.etat {
+  padding: var(--ptn-space-06) var(--ptn-space-05);
+  font-size: 13px;
+  color: var(--cds-text-helper);
+  text-align: center;
+}
+
+.list {
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ptn-space-05);
+  padding: var(--ptn-space-04) var(--ptn-space-05);
+  border-bottom: 1px solid var(--cds-border-subtle);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+  min-width: 0;
+
+  strong {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cds-text-primary);
+  }
+
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--cds-text-secondary);
+    max-width: 68ch;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}
+
+.avis {
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ptn-space-02);
+  flex-shrink: 0;
+}
+
+.montant {
+  font-size: 14px;
+  color: var(--cds-text-primary);
+}
+
+.depose {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--cds-text-helper);
+  white-space: nowrap;
+}
+
+.lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--cds-link-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  font-size: 13px;
+  color: var(--cds-text-primary);
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  padding: 8px 14px;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+}
+
+/* Une somme d'offres n'est pas un chiffre d'affaires : le pied le dit. */
+.pied {
+  margin-top: var(--ptn-space-04);
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}
