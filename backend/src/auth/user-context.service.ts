@@ -14,7 +14,10 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 export class UserContextService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async resolve(userId: string, assignmentId: string): Promise<AuthenticatedUser> {
+  async resolve(
+    userId: string,
+    assignmentId: string,
+  ): Promise<AuthenticatedUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -56,7 +59,9 @@ export class UserContextService {
     });
 
     if (!assignment || assignment.userId !== userId) {
-      throw new UnauthorizedException('Affectation introuvable pour ce compte.');
+      throw new UnauthorizedException(
+        'Affectation introuvable pour ce compte.',
+      );
     }
     if (assignment.status !== 'ACTIVE') {
       throw new UnauthorizedException('Affectation révoquée ou suspendue.');
@@ -66,7 +71,9 @@ export class UserContextService {
     // la fin de son mandat est une non-conformité.
     const now = new Date();
     if (assignment.validFrom > now) {
-      throw new UnauthorizedException('Affectation pas encore entrée en vigueur.');
+      throw new UnauthorizedException(
+        'Affectation pas encore entrée en vigueur.',
+      );
     }
     if (assignment.validUntil && assignment.validUntil < now) {
       throw new UnauthorizedException('Affectation expirée.');
@@ -102,7 +109,9 @@ export class UserContextService {
     subrole: { permissions: Array<{ permissionCode: string }> };
     permissions: Array<{ permissionCode: string; granted: boolean }>;
   }): string[] {
-    const effective = new Set(assignment.subrole.permissions.map((p) => p.permissionCode));
+    const effective = new Set(
+      assignment.subrole.permissions.map((p) => p.permissionCode),
+    );
     for (const override of assignment.permissions) {
       if (override.granted) effective.add(override.permissionCode);
       else effective.delete(override.permissionCode);

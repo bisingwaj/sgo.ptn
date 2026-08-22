@@ -1,0 +1,136 @@
+# PTN-RDC · Contrôle à chaque poussée
+#
+# Ce qui ferme la porte à une régression, et rien de plus : typecheck,
+# lint, construction. Les deux côtés en parallèle — ils ne dépendent pas
+# l'un de l'autre, et les faire à la suite doublerait l'attente sans rien
+# apprendre.
+#
+# LE LINT N'EST PAS BLOQUANT SUR L'HÉRITÉ. Le dépôt porte une cinquantaine
+# de manquements dans ses écrans anciens ; échouer dessus rendrait le
+# contrôle inutile dès le premier jour. Ce qui échoue, c'est le TYPECHECK
+# et la CONSTRUCTION — deux choses qu'aucun code juste ne casse.
+
+name: Contrôle
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # Une nouvelle poussée annule le contrôle en cours sur la même branche :
+  # personne n'attend le résultat d'un commit déjà remplacé.
+  group: controle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  interface:
+    name: Interface
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typage
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint src --max-warnings 9999
+        continue-on-error: true
+
+      - name: Construction
+        run: npm run build
+        env:
+          # Une adresse quelconque suffit : la construction inscrit la
+          # variable dans le code sans l'appeler. C'est la construction de
+          # PRODUCTION qui portera la vraie.
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+
+  serveur:
+    name: Serveur
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+        working-directory: backend
+
+      # Le client Prisma se régénère AVANT le typage : le code importe ses
+      # types, et sans lui rien ne compile. C'est le piège consigné au
+      # dépôt — une migration ne régénère pas le client.
+      - name: Client Prisma
+        run: npx prisma generate
+        working-directory: backend
+
+      - name: Typage
+        run: npx tsc --noEmit -p tsconfig.json
+        working-directory: backend
+
+      - name: Lint
+        run: npx eslint src --max-warnings 9999
+        working-directory: backend
+        continue-on-error: true
+
+      - name: Construction
+        run: npm run build
+        working-directory: backend
+
+  migrations:
+    name: Migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ptn
+          POSTGRES_PASSWORD: controle
+          POSTGRES_DB: ptn_controle
+        options: >-
+          --health-cmd "pg_isready -U ptn"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ['5432:5432']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+        working-directory: backend
+
+      # Les migrations s'appliquent sur une base VIERGE, dans l'ordre, avec
+      # la commande de production. C'est le seul moyen de savoir qu'un
+      # déploiement passera : en développement elles s'appliquent une à une
+      # sur une base qui a déjà tout, ce qui ne prouve rien.
+      - name: Application depuis une base vierge
+        run: npx prisma migrate deploy
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ptn:controle@localhost:5432/ptn_controle?schema=public
+
+      # Le schéma et les migrations doivent dire la même chose. S'ils
+      # divergent, la production s'écarte de ce que le code attend — et
+      # cela ne se voit qu'au premier appel qui échoue.
+      - name: Le schéma correspond-il aux migrations ?
+        run: npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma --shadow-database-url "$DATABASE_URL" --exit-code
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ptn:controle@localhost:5432/ptn_controle?schema=public

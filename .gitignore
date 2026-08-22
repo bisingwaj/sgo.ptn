@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Réglages de permissions propres à la session Claude Code
 .claude/settings.json
+
+# Secrets de production — jamais commités
+.env.prod
+sauvegardes/

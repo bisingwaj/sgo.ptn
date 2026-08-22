@@ -1,0 +1,131 @@
+# PTN-RDC · Déploiement sur le VPS
+#
+# Trois temps : construire les images, les pousser au registre de GitHub,
+# demander au serveur de les tirer. Le serveur ne compile rien — il a deux
+# cœurs et fait déjà tourner le call-center des urgences ; une construction
+# Next y prendrait tout, et pendant ce temps le PBX ralentirait.
+#
+# DÉCLENCHEMENT MANUEL, ET C'EST VOULU. Une mise en production ne se
+# déclenche pas parce que quelqu'un a poussé sur `main` : elle se décide.
+# Le jour où le rythme le justifiera, ajouter `push: branches: [main]` sera
+# une ligne — l'inverse coûte un incident.
+
+name: Déploiement
+
+on:
+  workflow_dispatch:
+    inputs:
+      raison:
+        description: 'Ce que cette mise en production apporte'
+        required: true
+        type: string
+
+concurrency:
+  # Deux déploiements simultanés se disputeraient le `compose up` : le
+  # second gagnerait, le premier laisserait des images orphelines.
+  group: deploiement
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  images:
+    name: Construire et publier
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Ouverture du registre
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image de l'API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}-api:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository }}-api:latest
+          # Le cache vit dans le registre : sans lui, chaque déploiement
+          # réinstalle toutes les dépendances.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image de l'interface
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.PUBLIC_API_URL }}
+            NEXT_PUBLIC_SESSION_IDLE_MINUTES=${{ vars.PUBLIC_SESSION_IDLE_MINUTES || '30' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}-web:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository }}-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  serveur:
+    name: Mettre en service
+    needs: images
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Clé de déploiement
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploiement
+          chmod 600 ~/.ssh/id_deploiement
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Tirer les images et relancer
+        run: |
+          ssh -i ~/.ssh/id_deploiement -o BatchMode=yes \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s <<'DISTANT'
+          set -euo pipefail
+          cd /opt/ugptn/sgo
+
+          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+
+          # `pull` avant `up` : les images arrivent pendant que l'ancienne
+          # version sert encore. L'interruption se réduit au redémarrage.
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+          # Les migrations s'appliquent au démarrage de l'API, par
+          # `migrate deploy`. On attend que le point de santé réponde
+          # avant de déclarer la mise en service faite.
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4200/api/health >/dev/null 2>&1; then
+              echo "API en service"
+              break
+            fi
+            [ "$i" = "30" ] && { echo "l'API n'a pas répondu"; docker compose -f docker-compose.prod.yml logs --tail 60 api; exit 1; }
+            sleep 4
+          done
+
+          # Les images remplacées occupent le disque : 96 Go, mais deux
+          # images Next par déploiement les remplissent en un trimestre.
+          docker image prune -f --filter "until=168h"
+          DISTANT
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ce qui a été mis en service
+        run: |
+          echo "### Déploiement" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Raison** : ${{ inputs.raison }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version** : \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Par** : @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

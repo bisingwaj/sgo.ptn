@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 // Ordre volontaire : Carbon d'abord, Tailwind ensuite.
 // À spécificité égale, la dernière règle l'emporte — les utilitaires
 // Tailwind peuvent donc surcharger un défaut Carbon, jamais l'inverse.
@@ -14,16 +14,37 @@ import { TranslationProvider } from "@/components/translation/TranslationWidget"
 import { CommandPaletteProvider } from "@/components/chrome/CommandPalette";
 import { QueryProvider } from "@/lib/api/QueryProvider";
 
-const ibmSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+/**
+ * Les fontes viennent du dépôt, non de Google.
+ *
+ * `next/font/google` les TÉLÉCHARGE À LA CONSTRUCTION. La construction
+ * échouait donc sans accès à fonts.googleapis.com — constaté en
+ * fabriquant l'image — et elle aurait continué d'échouer sur tout
+ * réseau qui filtre Google, ce qui n'est pas une hypothèse d'école pour un
+ * déploiement destiné à Kinshasa. Une mise en production ne doit pas
+ * dépendre d'un tiers joignable.
+ *
+ * Les fichiers viennent de `@ibm/plex-sans` et `@ibm/plex-mono`, déjà
+ * présents en dépendance de Carbon, et sont copiés dans le dépôt avec leur
+ * licence OFL — que la redistribution impose, comme pour les TTF du
+ * composeur de documents.
+ */
+const ibmSans = localFont({
+  src: [
+    { path: "./fonts/IBMPlexSans-Light.woff2", weight: "300", style: "normal" },
+    { path: "./fonts/IBMPlexSans-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/IBMPlexSans-Medium.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/IBMPlexSans-SemiBold.woff2", weight: "600", style: "normal" },
+  ],
   variable: "--font-ibm-plex-sans",
   display: "swap",
 });
 
-const ibmMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
+const ibmMono = localFont({
+  src: [
+    { path: "./fonts/IBMPlexMono-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/IBMPlexMono-Medium.woff2", weight: "500", style: "normal" },
+  ],
   variable: "--font-ibm-plex-mono",
   display: "swap",
 });

@@ -1,0 +1,45 @@
+# PTN-RDC · Bloc à ajouter au Caddyfile du VPS
+#
+#   Fichier cible : /etc/caddy/Caddyfile  (à la suite des blocs existants)
+#   Puis          : caddy validate --config /etc/caddy/Caddyfile
+#                   systemctl reload caddy      ← reload, jamais restart
+#
+# `reload` recharge la configuration sans fermer les connexions en cours.
+# `restart` couperait le PBX et le CRM des urgences le temps du
+# redémarrage — quelques secondes, mais sur un service d'urgence.
+
+ugpt-api.urgences-rdc.com {
+	encode zstd gzip
+
+	# Le flux d'évènements de l'assistant précède la règle générale.
+	#
+	# L'assistant du dossier et celui du tableau de bord répondent en
+	# text/event-stream : chaque fragment doit partir immédiatement. Sans
+	# `flush_interval -1`, Caddy tamponne et la réponse arrive d'un bloc —
+	# l'effet recherché disparaît, et l'écran paraît figé pendant les dix à
+	# vingt secondes que met le modèle.
+	@flux {
+		path /api/tdr/*/agent
+		path /api/tdr/*/assistance/champ/flux
+		path /api/assistant/question
+	}
+	reverse_proxy @flux 127.0.0.1:4200 {
+		flush_interval -1
+	}
+
+	reverse_proxy 127.0.0.1:4200
+
+	header {
+		# L'API pose déjà ses en-têtes par helmet. Caddy ajoute HSTS au
+		# niveau du domaine, qui est le sien à porter : lui seul sait que
+		# la connexion est en TLS.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Les téléversements de pièces jointes sont plafonnés à 10 Mo côté
+	# application ; Caddy refuse au-delà sans mobiliser l'API.
+	request_body {
+		max_size 12MB
+	}
+}

@@ -1,5 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService, type RequestContext } from './auth.service';
 import {
@@ -28,7 +37,22 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Connexion par adresse électronique et mot de passe' })
+  /**
+   * Borne resserrée, et distincte du plafond général.
+   *
+   * Le verrouillage après trois échecs protège UN compte. Il ne protège pas
+   * la plateforme de qui essaie un mot de passe répandu sur mille adresses :
+   * chaque compte ne voit alors qu'un seul échec, et aucun ne se verrouille.
+   * Dix tentatives par minute et cent par heure, comptées par adresse IP,
+   * ferment cette porte sans gêner qui se trompe deux fois de suite.
+   */
+  @Throttle({
+    court: { ttl: 60_000, limit: 10 },
+    long: { ttl: 3_600_000, limit: 100 },
+  })
+  @ApiOperation({
+    summary: 'Connexion par adresse électronique et mot de passe',
+  })
   login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.auth.login(dto.email, dto.password, contextOf(req), dto.family);
   }
@@ -36,7 +60,10 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Renouveler le jeton d’accès (rotation du jeton de rafraîchissement)' })
+  @ApiOperation({
+    summary:
+      'Renouveler le jeton d’accès (rotation du jeton de rafraîchissement)',
+  })
   refresh(@Body() dto: RefreshDto, @Req() req: Request) {
     return this.auth.refresh(dto.refreshToken, contextOf(req));
   }
@@ -77,7 +104,12 @@ export class AuthController {
     @CurrentUser('userId') userId: string,
     @Req() req: Request,
   ): Promise<void> {
-    await this.auth.changePassword(userId, dto.currentPassword, dto.newPassword, contextOf(req));
+    await this.auth.changePassword(
+      userId,
+      dto.currentPassword,
+      dto.newPassword,
+      contextOf(req),
+    );
   }
 
   @Post('engagements')

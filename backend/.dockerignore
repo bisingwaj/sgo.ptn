@@ -1,0 +1,19 @@
+# Ce qui ne doit jamais entrer dans une image
+.git
+node_modules
+dist
+generated
+
+# Secrets. Le fichier .env vit sur le serveur, en 600, et le conteneur le
+# lit par `env_file` — jamais par une couche d'image, qui se lit avec
+# `docker history` par quiconque a l'image.
+.env
+.env.*
+!.env.example
+
+.vscode
+.claude
+test
+coverage
+*.md
+!README.md

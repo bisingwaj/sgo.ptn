@@ -1,0 +1,143 @@
+# PTN-RDC · Assemblage de production
+#
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# LA CONFIGURATION VIT DANS `.env`, à côté de ce fichier, en droits 600.
+# Ce nom-là et pas un autre : Compose le lit de lui-même pour résoudre les
+# variables ci-dessous. Un `.env.prod` obligerait à passer `--env-file` à
+# chaque commande, et cet oubli-là ne se voit qu'à l'erreur suivante.
+# Le modèle à recopier est `.env.prod.example`.
+#
+# CE QUE CET ASSEMBLAGE N'EXPOSE PAS. Aucun port n'est publié sur
+# l'extérieur : le proxy du serveur — Caddy, déjà en place et déjà porteur
+# des certificats — atteint l'API et l'interface par la boucle locale. La
+# base de données n'est joignable que depuis le réseau interne : elle n'a
+# aucune raison de répondre à Internet, et une base qui écoute est une base
+# qu'on finit par trouver.
+#
+# LES PORTS SONT DES VARIABLES. 4200 et 4300 par défaut, choisis pour ne
+# pas heurter le call-center qui occupe déjà 4100 sur cette machine — mais
+# `API_BIND_PORT` et `WEB_BIND_PORT` les déplacent sans toucher à ce
+# fichier. Motif repris du call-center, où il a déjà servi.
+
+name: ptn-rdc
+
+services:
+  # ------------------------------------------------------------------
+  # La base
+  # ------------------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    container_name: ptn_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?renseignez POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?renseignez POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ptn_rdc}
+      # L'encodage et le tri sont fixés à la création : une base créée en C
+      # trierait « Étoile » après « Zaïre », ce qui se voit dans chaque
+      # liste triée par intitulé.
+      LANG: fr_FR.UTF-8
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [interne]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-ptn_rdc}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Une base qu'on n'arrête pas proprement se répare au démarrage
+    # suivant ; le délai lui laisse le temps d'écrire ses journaux.
+    stop_grace_period: 30s
+
+  # ------------------------------------------------------------------
+  # L'API
+  # ------------------------------------------------------------------
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY:-ptn/sgo}-api:${TAG:-latest}
+    container_name: ptn_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+      BACKENDPORT: ${API_BIND_PORT:-4200}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ptn_rdc}?schema=public
+    # `migrate deploy`, et jamais `migrate dev` : la seconde peut proposer
+    # de réinitialiser la base, ce qu'aucun script ne doit pouvoir faire
+    # ici. Elle n'exige pas non plus le droit CREATEDB.
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/src/main"
+    ports:
+      # Sur la boucle locale seulement : Caddy est sur la même machine.
+      - '127.0.0.1:${API_BIND_PORT:-4200}:${API_BIND_PORT:-4200}'
+    networks: [interne]
+
+  # ------------------------------------------------------------------
+  # L'interface
+  # ------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Inscrites dans le code à la compilation : changer d'API impose de
+        # reconstruire. C'est le prix de leur disponibilité au navigateur.
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:?renseignez PUBLIC_API_URL}
+        NEXT_PUBLIC_SESSION_IDLE_MINUTES: ${PUBLIC_SESSION_IDLE_MINUTES:-30}
+    image: ghcr.io/${GITHUB_REPOSITORY:-ptn/sgo}-web:${TAG:-latest}
+    container_name: ptn_web
+    restart: unless-stopped
+    depends_on: [api]
+    # L'interface n'est PAS construite par défaut : elle est publiée sur
+    # Vercel, et le navigateur appelle l'API directement — Vercel ne sert
+    # que les fichiers de la page, il n'est jamais intermédiaire.
+    #
+    # `--profile interface` la démarre pour un hébergement complet ici, ou
+    # pour éprouver l'ensemble sans dépendre de Vercel. Motif repris du
+    # call-center, qui est dans la même situation sur cette machine.
+    profiles: ['interface']
+    ports:
+      - '127.0.0.1:${WEB_BIND_PORT:-4300}:3000'
+    networks: [interne]
+
+  # ------------------------------------------------------------------
+  # La sauvegarde
+  # ------------------------------------------------------------------
+  #
+  # Elle n'est pas un supplément. Les pièces jointes d'un dossier vivent EN
+  # OCTETS DANS LA BASE — choix assumé pour qu'un dossier se reconstitue
+  # entier depuis une sauvegarde. Sans sauvegarde, ce choix devient une
+  # fragilité au lieu d'une garantie.
+  sauvegarde:
+    image: postgres:17-alpine
+    container_name: ptn_sauvegarde
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./sauvegardes:/sauvegardes
+    networks: [interne]
+    entrypoint: >
+      sh -c "while true; do
+        h=$$(date +%Y-%m-%d_%H%M);
+        pg_dump -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB:-ptn_rdc} -Fc
+          -f /sauvegardes/ptn_$$h.dump && echo \"sauvegarde ptn_$$h.dump\";
+        find /sauvegardes -name 'ptn_*.dump' -mtime +14 -delete;
+        sleep 86400;
+      done"
+
+volumes:
+  pgdata:
+
+networks:
+  interne:
+    driver: bridge

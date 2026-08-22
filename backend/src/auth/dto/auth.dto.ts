@@ -21,7 +21,8 @@ import {
  * violences sexuelles : le seuil de 8 caractères usuel n'est pas
  * proportionné à l'enjeu.
  */
-export const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/;
+export const PASSWORD_PATTERN =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/;
 export const PASSWORD_MESSAGE =
   'Le mot de passe doit contenir au moins 12 caractères, dont une minuscule, une majuscule, un chiffre et un caractère spécial.';
 
@@ -88,12 +89,16 @@ export class SwitchAssignmentDto {
 export class SignEngagementsDto {
   @ApiProperty({ description: 'Code de Conduite UGP-PTN' })
   @IsBoolean()
-  @Equals(true, { message: 'La signature du Code de Conduite est obligatoire.' })
+  @Equals(true, {
+    message: 'La signature du Code de Conduite est obligatoire.',
+  })
   codeOfConduct!: boolean;
 
   @ApiProperty({ description: 'Déclaration de conflits d’intérêts' })
   @IsBoolean()
-  @Equals(true, { message: 'La déclaration de conflits d’intérêts est obligatoire.' })
+  @Equals(true, {
+    message: 'La déclaration de conflits d’intérêts est obligatoire.',
+  })
   coi!: boolean;
 
   @ApiProperty({ description: 'Confidentialité et protection des données' })

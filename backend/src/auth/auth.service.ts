@@ -11,7 +11,11 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { UserContextService } from './user-context.service';
-import { familyLabel, familyOfProfile, profilesOfFamily } from '../referentiel/families';
+import {
+  familyLabel,
+  familyOfProfile,
+  profilesOfFamily,
+} from '../referentiel/families';
 import type { ProfileFamily } from '../../generated/prisma/enums';
 import type {
   AccessTokenPayload,
@@ -89,6 +93,31 @@ export class AuthService {
       throw invalid();
     }
 
+    // LE MOT DE PASSE SE VÉRIFIE AVANT TOUT DIAGNOSTIC DE COMPTE.
+    //
+    // Ces contrôles précédaient la comparaison, et c'était une fuite : qui
+    // soumettait une adresse avec un mot de passe quelconque lisait
+    // « Compte suspendu » là où une adresse inconnue rendait « Identifiants
+    // invalides ». Il suffisait de comparer les deux réponses pour énumérer
+    // les comptes de la plateforme, verrouillage compris — lequel se
+    // provoque en trois essais.
+    //
+    // La comparaison bcrypt s'exécute donc toujours, même sur un compte
+    // suspendu : son coût est aussi ce qui égalise le temps de réponse.
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      await this.registerFailedAttempt(
+        user.id,
+        user.failedLoginAttempts,
+        normalized,
+        ctx,
+      );
+      throw invalid();
+    }
+
+    // À partir d'ici, l'appelant a prouvé qu'il détient le mot de passe :
+    // lui dire pourquoi son compte ne s'ouvre pas ne renseigne plus un
+    // tiers, et lui évite d'appeler l'administrateur pour rien.
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       throw new ForbiddenException(
         `Compte temporairement verrouillé après plusieurs échecs. Réessayez après ${user.lockedUntil.toLocaleTimeString('fr-FR')}.`,
@@ -96,16 +125,14 @@ export class AuthService {
     }
 
     if (user.status === 'ARCHIVE' || user.status === 'EXPIRE') {
-      throw new ForbiddenException('Ce compte n’est plus actif. Contactez l’administrateur.');
+      throw new ForbiddenException(
+        'Ce compte n’est plus actif. Contactez l’administrateur.',
+      );
     }
     if (user.status === 'SUSPENDU') {
-      throw new ForbiddenException('Compte suspendu. Contactez l’administrateur de la plateforme.');
-    }
-
-    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-    if (!passwordMatches) {
-      await this.registerFailedAttempt(user.id, user.failedLoginAttempts, normalized, ctx);
-      throw invalid();
+      throw new ForbiddenException(
+        'Compte suspendu. Contactez l’administrateur de la plateforme.',
+      );
     }
 
     // Un compte INVITE dont le mot de passe temporaire a expiré ne peut
@@ -119,7 +146,10 @@ export class AuthService {
       invite.tempPasswordExpiresAt &&
       invite.tempPasswordExpiresAt < new Date()
     ) {
-      await this.prisma.user.update({ where: { id: user.id }, data: { status: 'EXPIRE' } });
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { status: 'EXPIRE' },
+      });
       throw new ForbiddenException(
         'Mot de passe temporaire expiré. Demandez à l’administrateur d’en réémettre un.',
       );
@@ -129,11 +159,20 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        lastLoginAt: new Date(),
+      },
     });
 
     const context = await this.userContext.resolve(user.id, assignment.id);
-    const tokens = await this.issueTokens(user.id, assignment.id, user.email, ctx);
+    const tokens = await this.issueTokens(
+      user.id,
+      assignment.id,
+      user.email,
+      ctx,
+    );
 
     await this.audit.record({
       actorId: user.id,
@@ -141,7 +180,10 @@ export class AuthService {
       action: 'auth.login',
       entityType: 'User',
       entityId: user.id,
-      payload: { subrole: context.subroleCode, organisation: context.organisationCode },
+      payload: {
+        subrole: context.subroleCode,
+        organisation: context.organisationCode,
+      },
       ...ctx,
     });
 
@@ -167,7 +209,9 @@ export class AuthService {
       data: {
         failedLoginAttempts: attempts,
         lockedUntil:
-          attempts >= max ? new Date(Date.now() + lockoutMinutes * 60_000) : null,
+          attempts >= max
+            ? new Date(Date.now() + lockoutMinutes * 60_000)
+            : null,
       },
     });
 
@@ -188,7 +232,10 @@ export class AuthService {
    * peut être cadre UGP et membre du CTP, ou partenaire et membre de
    * gouvernance — la famille lève l'ambiguïté.
    */
-  private async resolvePrimaryAssignment(userId: string, family?: ProfileFamily) {
+  private async resolvePrimaryAssignment(
+    userId: string,
+    family?: ProfileFamily,
+  ) {
     const now = new Date();
     const assignments = await this.prisma.assignment.findMany({
       where: {
@@ -214,7 +261,9 @@ export class AuthService {
 
     // Le mot de passe a déjà été vérifié : nommer les familles réellement
     // détenues aide la personne sans rien révéler à un tiers.
-    const held = [...new Set(assignments.map((a) => familyOfProfile(a.profile)))]
+    const held = [
+      ...new Set(assignments.map((a) => familyOfProfile(a.profile))),
+    ]
       .filter((f): f is ProfileFamily => Boolean(f))
       .map((f) => `« ${familyLabel(f)} »`)
       .join(', ');
@@ -224,7 +273,9 @@ export class AuthService {
     );
   }
 
-  async listAssignments(userId: string): Promise<LoginResult['availableAssignments']> {
+  async listAssignments(
+    userId: string,
+  ): Promise<LoginResult['availableAssignments']> {
     const now = new Date();
     const assignments = await this.prisma.assignment.findMany({
       where: {
@@ -269,7 +320,8 @@ export class AuthService {
     ctx: RequestContext,
     replacesTokenId?: string,
   ): Promise<AuthTokens> {
-    const accessExpiration = this.config.get<string>('JWT_ACCESS_EXPIRATION') ?? '15m';
+    const accessExpiration =
+      this.config.get<string>('JWT_ACCESS_EXPIRATION') ?? '15m';
 
     // La durée du jeton de rafraîchissement EST le délai d'inactivité :
     // il n'est renouvelé qu'à l'occasion d'une action de la personne, donc
@@ -281,7 +333,11 @@ export class AuthService {
       this.config.get<string>('JWT_REFRESH_EXPIRATION') ??
       '30m';
 
-    const accessPayload: AccessTokenPayload = { sub: userId, email, aid: assignmentId };
+    const accessPayload: AccessTokenPayload = {
+      sub: userId,
+      email,
+      aid: assignmentId,
+    };
     const accessToken = await this.jwt.signAsync(accessPayload, {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: accessExpiration as JwtSignOptions['expiresIn'],
@@ -300,7 +356,9 @@ export class AuthService {
         userId,
         tokenHash: AuthService.hashToken(refreshToken),
         activeAssignmentId: assignmentId,
-        expiresAt: new Date(Date.now() + AuthService.durationToMs(refreshExpiration)),
+        expiresAt: new Date(
+          Date.now() + AuthService.durationToMs(refreshExpiration),
+        ),
         userAgent: ctx.userAgent ?? null,
         ipAddress: ctx.ipAddress ?? null,
       },
@@ -322,7 +380,8 @@ export class AuthService {
     if (!match) return 7 * 24 * 60 * 60 * 1000;
     const value = Number(match[1]);
     const unit = match[2];
-    const factor = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] ?? 86_400_000;
+    const factor =
+      { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] ?? 86_400_000;
     return value * factor;
   }
 
@@ -343,10 +402,14 @@ export class AuthService {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
     } catch {
-      throw new UnauthorizedException('Jeton de rafraîchissement invalide ou expiré.');
+      throw new UnauthorizedException(
+        'Jeton de rafraîchissement invalide ou expiré.',
+      );
     }
 
-    const stored = await this.prisma.refreshToken.findUnique({ where: { id: payload.jti } });
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { id: payload.jti },
+    });
     if (!stored || stored.tokenHash !== AuthService.hashToken(token)) {
       throw new UnauthorizedException('Jeton de rafraîchissement inconnu.');
     }
@@ -388,7 +451,9 @@ export class AuthService {
         const graceMs = AuthService.durationToMs(
           this.config.get<string>('REFRESH_ROTATION_GRACE') ?? '60s',
         );
-        const rotatedAgo = stored.revokedAt ? Date.now() - stored.revokedAt.getTime() : Infinity;
+        const rotatedAgo = stored.revokedAt
+          ? Date.now() - stored.revokedAt.getTime()
+          : Infinity;
 
         if (rotatedAgo <= graceMs) {
           const successor = await this.prisma.refreshToken.findUnique({
@@ -396,7 +461,9 @@ export class AuthService {
           });
 
           const successorUntouched =
-            successor && !successor.revokedAt && successor.expiresAt > new Date();
+            successor &&
+            !successor.revokedAt &&
+            successor.expiresAt > new Date();
 
           if (successorUntouched) {
             const owner = await this.prisma.user.findUniqueOrThrow({
@@ -438,7 +505,11 @@ export class AuthService {
         await this.audit.record({
           actorId: stored.userId,
           action: 'auth.refresh.reuse_detected',
-          payload: { tokenId: stored.id, replacedBy: stored.replacedById, rotatedAgoMs: rotatedAgo },
+          payload: {
+            tokenId: stored.id,
+            replacedBy: stored.replacedById,
+            rotatedAgoMs: rotatedAgo,
+          },
           ...ctx,
         });
         throw new UnauthorizedException(
@@ -465,13 +536,24 @@ export class AuthService {
     }
 
     const assignmentId =
-      stored.activeAssignmentId ?? (await this.resolvePrimaryAssignment(stored.userId)).id;
+      stored.activeAssignmentId ??
+      (await this.resolvePrimaryAssignment(stored.userId)).id;
 
     // La rotation révoque l'ancien jeton et l'enchaîne au nouveau.
-    return this.issueTokens(stored.userId, assignmentId, user.email, ctx, stored.id);
+    return this.issueTokens(
+      stored.userId,
+      assignmentId,
+      user.email,
+      ctx,
+      stored.id,
+    );
   }
 
-  async logout(token: string, userId: string, ctx: RequestContext): Promise<void> {
+  async logout(
+    token: string,
+    userId: string,
+    ctx: RequestContext,
+  ): Promise<void> {
     const hash = AuthService.hashToken(token);
     await this.prisma.refreshToken.updateMany({
       where: { userId, tokenHash: hash, revokedAt: null },
@@ -502,11 +584,16 @@ export class AuthService {
       select: { id: true, email: true, passwordHash: true, status: true },
     });
 
-    if (!user.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    if (
+      !user.passwordHash ||
+      !(await bcrypt.compare(currentPassword, user.passwordHash))
+    ) {
       throw new UnauthorizedException('Mot de passe actuel incorrect.');
     }
     if (await bcrypt.compare(newPassword, user.passwordHash)) {
-      throw new BadRequestException('Le nouveau mot de passe doit différer de l’actuel.');
+      throw new BadRequestException(
+        'Le nouveau mot de passe doit différer de l’actuel.',
+      );
     }
 
     const rounds = Number(this.config.get('BCRYPT_ROUNDS') ?? 12);
@@ -603,9 +690,14 @@ export class AuthService {
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(data.phone !== undefined ? { phone: data.phone.trim() || null } : {}),
+        ...(data.phone !== undefined
+          ? { phone: data.phone.trim() || null }
+          : {}),
         ...(data.preferredLanguage
-          ? { preferredLanguage: data.preferredLanguage as 'FR' | 'EN' | 'LN' | 'SW' | 'TS' | 'KK' }
+          ? {
+              preferredLanguage: data.preferredLanguage as
+                'FR' | 'EN' | 'LN' | 'SW' | 'TS' | 'KK',
+            }
           : {}),
       },
       select: { phone: true, preferredLanguage: true },
@@ -633,7 +725,12 @@ export class AuthService {
     ctx: RequestContext,
   ): Promise<LoginResult> {
     const context = await this.userContext.resolve(userId, assignmentId);
-    const tokens = await this.issueTokens(userId, assignmentId, context.email, ctx);
+    const tokens = await this.issueTokens(
+      userId,
+      assignmentId,
+      context.email,
+      ctx,
+    );
 
     await this.audit.record({
       actorId: userId,
@@ -641,7 +738,10 @@ export class AuthService {
       action: 'auth.assignment.switched',
       entityType: 'Assignment',
       entityId: assignmentId,
-      payload: { subrole: context.subroleCode, organisation: context.organisationCode },
+      payload: {
+        subrole: context.subroleCode,
+        organisation: context.organisationCode,
+      },
       ...ctx,
     });
 

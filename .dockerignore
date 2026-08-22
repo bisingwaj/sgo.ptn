@@ -1,0 +1,18 @@
+# Ce qui ne doit jamais entrer dans une image
+.git
+.github
+node_modules
+.next
+backend
+*.md
+!README.md
+
+# Secrets : présents localement, absents de l'image. Ils arrivent par
+# l'environnement du conteneur, jamais par une couche.
+.env
+.env.*
+!.env.example
+
+.vscode
+.claude
+coverage
