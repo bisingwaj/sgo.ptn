@@ -1474,26 +1474,54 @@ function ReviewStep({
 
   // Le contrôle est fait par le serveur : les règles ne sont pas dupliquées
   // ici, où elles dériveraient.
-  useEffect(() => {
+  const relireCompletude = useCallback(async () => {
     if (!state.tdrId) return;
-    tdrApi
-      .completeness(state.tdrId)
-      .then((r) => {
-        setWarnings(r.warnings);
-        if (JSON.stringify(r.blockers) !== JSON.stringify(state.blockers)) {
-          set({ ...state, blockers: r.blockers });
-        }
-      })
-      .catch(() => undefined);
+    try {
+      const r = await tdrApi.completeness(state.tdrId);
+      setWarnings(r.warnings);
+      if (JSON.stringify(r.blockers) !== JSON.stringify(state.blockers)) {
+        set({ ...state, blockers: r.blockers });
+      }
+    } catch {
+      // Un contrôle indisponible ne doit pas effacer le dernier connu.
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tdrId, state.consentMep, state.consentRgpd]);
+  }, [state.tdrId]);
 
-  // On transmet l'intention, pas l'horodatage : c'est le serveur qui date
-  // l'attestation. Une date issue du navigateur se règle depuis l'horloge
-  // du poste, et un engagement de conformité ne s'antidate pas.
+  // À l'ouverture de l'étape seulement. Le contrôle qui suit une case cochée
+  // est déclenché par `toggleConsent`, APRÈS l'enregistrement — voir ci-dessous.
+  //
+  // L'appel est enveloppé dans une closure asynchrone : rendre la fonction
+  // directement à l'effet ferait poser un état dans son corps, ce qui
+  // déclenche un rendu en cascade et que le dépôt interdit.
+  useEffect(() => {
+    void (async () => {
+      await relireCompletude();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.tdrId]);
+
+  /**
+   * Coche un engagement.
+   *
+   * L'ORDRE EST LE POINT. Le contrôle de complétude se déclenchait sur le
+   * changement d'état, donc AVANT que l'enregistrement n'ait abouti : il
+   * interrogeait un serveur qui n'avait pas encore la case, rendait le
+   * blocage « les engagements ne sont pas confirmés », et plus rien ne le
+   * relisait ensuite. La case restait cochée à l'écran, le message restait
+   * affiché, et la transmission demeurait impossible.
+   *
+   * On enregistre d'abord, on relit ensuite. La case bascule tout de suite
+   * pour que le geste réponde, mais le verdict attend l'écriture.
+   *
+   * On transmet l'intention, pas l'horodatage : c'est le serveur qui date
+   * l'attestation. Une date issue du navigateur se règle depuis l'horloge
+   * du poste, et un engagement de conformité ne s'antidate pas.
+   */
   const toggleConsent = async (field: "consentMep" | "consentRgpd", value: boolean) => {
     set({ ...state, [field]: value });
     await persist(state, { [field]: value });
+    await relireCompletude();
   };
 
   return (
