@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Les MODÈLES, eux, sont versionnés : sans eux, personne ne sait ce que
+# la production attend, et un secret manquant ne se voit qu'au démarrage.
+!.env.example
+!.env.prod.example
 
 # vercel
 .vercel
