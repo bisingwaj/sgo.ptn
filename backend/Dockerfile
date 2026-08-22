@@ -49,6 +49,13 @@ COPY --from=build --chown=node:node /app/package.json ./package.json
 # s'exécute au démarrage, et il lui faut le dossier des migrations.
 COPY --from=build --chown=node:node /app/prisma ./prisma
 
+# La configuration de production, en JavaScript simple. Le `prisma.config.ts`
+# du dépôt demanderait un chargeur TypeScript et `dotenv`, dont l'image n'a
+# ni l'un ni l'autre — les variables viennent de l'environnement du
+# conteneur. Sans ce fichier, `migrate deploy` s'arrête et le conteneur
+# redémarre en boucle.
+COPY --from=build --chown=node:node /app/prisma.config.prod.js ./prisma.config.js
+
 # Les fontes du composeur de documents. Sans elles, le PDF se compose
 # quand même — il retombe sur les polices intégrées de pdfkit — mais il
 # cesse de ressembler à une pièce imprimée.
