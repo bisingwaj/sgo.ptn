@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Modal } from "@carbon/react";
 import { Wizard, type WizardStep } from "@/components/wizard/Wizard";
 import { Field, Textarea, Select, Note, CheckRow, Segmented } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -45,6 +46,7 @@ import {
   // l'emporte et TypeScript refuse la balise.
   Document as IconeDocument,
   Locked,
+  TrashCan,
   WarningAltFilled,
 } from "@carbon/icons-react";
 import { EtapeType } from "./etapes/EtapeType";
@@ -342,6 +344,35 @@ function Parcours() {
    * s'afficherait sous une autre.
    */
   const tdrIdCourant = etatCourant?.tdrId ?? null;
+
+  /**
+   * Se défaire du brouillon en cours.
+   *
+   * « Annuler et quitter » n'annule rien : le dossier reste au registre.
+   * C'est le bon comportement pour qui reviendra le finir, et le mauvais
+   * pour qui vient d'en ouvrir un par erreur — d'où les brouillons qui
+   * s'accumulent sans que personne n'ait voulu les garder. La sortie
+   * définitive se prend donc au même endroit que la sortie provisoire.
+   *
+   * Sans identifiant, rien n'a encore été écrit : il n'y a rien à
+   * supprimer, et le bouton ne s'affiche pas.
+   */
+  const [abandonDemande, setAbandonDemande] = useState(false);
+  const [abandonEnCours, setAbandonEnCours] = useState(false);
+  const [abandonRefus, setAbandonRefus] = useState<string | null>(null);
+
+  const abandonner = async () => {
+    if (!tdrIdCourant) return;
+    setAbandonEnCours(true);
+    setAbandonRefus(null);
+    try {
+      await tdrApi.remove(tdrIdCourant);
+      router.push("/tdr");
+    } catch (e) {
+      setAbandonRefus(e instanceof Error ? e.message : "Suppression impossible.");
+      setAbandonEnCours(false);
+    }
+  };
   const activiteCourante = etatCourant?.ptbaActivityId ?? "";
 
   useEffect(() => {
@@ -892,6 +923,7 @@ function Parcours() {
 
 
   return (
+    <>
     <Wizard<State>
       eyebrow="RÉDACTION · TERMES DE RÉFÉRENCE"
       title={resume ? `Reprise de ${resume.reference}` : "Nouveau TDR"}
@@ -916,6 +948,18 @@ function Parcours() {
         }
       }
       cancelHref="/tdr"
+      cancelExtra={
+        tdrIdCourant ? (
+          <button
+            type="button"
+            className={styles.lienAbandon}
+            onClick={() => setAbandonDemande(true)}
+          >
+            <TrashCan size={14} aria-hidden />
+            Supprimer ce brouillon
+          </button>
+        ) : null
+      }
       finishLabel="Transmettre à l’UGP"
       asideOpen={assistantOuvert}
       aside={
@@ -952,6 +996,38 @@ function Parcours() {
         }
       }}
     />
+
+    {/* ---------- Abandon du brouillon ---------- */}
+    <Modal
+      open={abandonDemande}
+      danger
+      modalHeading="Supprimer définitivement ce brouillon ?"
+      modalLabel={etatCourant?.reference}
+      primaryButtonText={abandonEnCours ? "Suppression…" : "Supprimer le brouillon"}
+      secondaryButtonText="Continuer la rédaction"
+      primaryButtonDisabled={abandonEnCours}
+      onRequestClose={() => {
+        setAbandonDemande(false);
+        setAbandonRefus(null);
+      }}
+      onRequestSubmit={() => void abandonner()}
+    >
+      <p className="text-body text-secondary mb-4">
+        Tout ce que porte ce dossier — objectifs, livrables, clauses, pièces versées —
+        est perdu. Il n’y a pas de corbeille.
+      </p>
+      <p className="text-body text-secondary">
+        La référence <span className="ptn-mono">{etatCourant?.reference}</span> reste
+        consommée : une séquence ne se rembobine pas. La suppression est inscrite au
+        journal d’audit.
+      </p>
+      {abandonRefus && (
+        <p className="text-body mt-4" style={{ color: "var(--cds-text-error)" }} role="alert">
+          {abandonRefus}
+        </p>
+      )}
+    </Modal>
+    </>
   );
 }
 

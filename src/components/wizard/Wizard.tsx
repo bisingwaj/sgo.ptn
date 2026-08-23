@@ -66,6 +66,15 @@ export interface WizardProps<T = unknown> {
   steps: WizardStep<T>[];
   initialState: T;
   cancelHref?: string;
+  /**
+   * Une commande de plus au pied, à côté d'« Annuler et quitter ».
+   *
+   * « Annuler » n'annule rien : le brouillon reste. C'est voulu — on
+   * revient finir un dossier — mais celui qu'on ne veut plus se dispose
+   * ici, là où l'on cherche à partir. Le parcours qui l'ouvre décide de
+   * ce que « se défaire » veut dire chez lui : le socle n'en sait rien.
+   */
+  cancelExtra?: ReactNode;
   finishLabel?: string;
   onFinish?: (state: T) => Promise<void> | void;
   onDraftChange?: (state: T, currentStep: number) => void;
@@ -104,6 +113,7 @@ export function Wizard<T>({
   steps: rawSteps,
   initialState,
   cancelHref = "/login",
+  cancelExtra,
   finishLabel = "Accéder à mon tableau de bord",
   aside,
   asideOpen = false,
@@ -314,6 +324,7 @@ export function Wizard<T>({
           <Link href={cancelHref} className={styles.cancelLink}>
             Annuler et quitter
           </Link>
+          {cancelExtra}
           {(draftChip ?? Boolean(onDraftChange)) && (
             <span className={`${styles.draft} ptn-mono`}>● Brouillon enregistré</span>
           )}

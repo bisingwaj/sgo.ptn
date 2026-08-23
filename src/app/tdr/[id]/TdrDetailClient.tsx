@@ -102,7 +102,12 @@ export function TdrDetailClient({ id }: { id: string }) {
     );
   }
 
-  const estAuteur = Boolean(user);
+  // Être connecté ne fait pas de vous l'auteur. La comparaison portait sur
+  // la seule présence d'une session : « Supprimer » s'affichait à tous les
+  // lecteurs du dossier, et le serveur répondait « Seul l'auteur d'un
+  // brouillon peut le supprimer » après la confirmation. Un bouton qui
+  // promet ce qu'il n'obtient pas use la confiance à chaque usage.
+  const estAuteur = Boolean(user) && user?.userId === tdr.authorId;
   const reprenable = ["BROUILLON", "RETOURNE"].includes(tdr.status);
 
   return (

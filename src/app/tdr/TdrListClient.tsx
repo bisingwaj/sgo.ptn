@@ -18,7 +18,8 @@ import { Shell } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
 import { tdrApi, type TdrListItem, type TdrStatusApi } from "@/lib/api";
-import { Add, Document, Edit, View, WarningAltFilled } from "@carbon/icons-react";
+import { Modal } from "@carbon/react";
+import { Add, Document, Edit, TrashCan, View, WarningAltFilled } from "@carbon/icons-react";
 import styles from "@/styles/ugp-shared.module.scss";
 import liste from "./tdr-liste.module.scss";
 
@@ -54,13 +55,24 @@ const jour = (iso: string) =>
   new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 
 export function TdrListClient() {
-  const { can, loading: authLoading } = useAuth();
+  const { can, user, loading: authLoading } = useAuth();
 
   const [items, setItems] = useState<TdrListItem[]>([]);
   const [filtre, setFiltre] = useState<TdrStatusApi | "tous">("tous");
   const [recherche, setRecherche] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Le brouillon dont on demande la suppression.
+   *
+   * La suppression existait, mais seulement sur l'écran de détail : il
+   * fallait ouvrir le dossier pour s'en défaire. C'est ici qu'on voit ses
+   * brouillons, donc ici qu'on trie.
+   */
+  const [aSupprimer, setASupprimer] = useState<TdrListItem | null>(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+  const [refusSuppression, setRefusSuppression] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     setLoading(true);
@@ -78,6 +90,33 @@ export function TdrListClient() {
     if (authLoading) return;
     void charger();
   }, [authLoading, charger]);
+
+  const supprimer = async () => {
+    if (!aSupprimer) return;
+    setSuppressionEnCours(true);
+    setRefusSuppression(null);
+    try {
+      await tdrApi.remove(aSupprimer.id);
+      setASupprimer(null);
+      await charger();
+    } catch (e) {
+      setRefusSuppression(e instanceof Error ? e.message : "Suppression impossible.");
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  };
+
+  /**
+   * Qui peut effacer ce brouillon.
+   *
+   * Le serveur réserve la suppression à l'AUTEUR, et à lui seul — pas au
+   * responsable de composante, pas à la coordination : un dossier qu'on
+   * n'a pas écrit se retourne à son auteur, il ne s'efface pas dans son
+   * dos. La condition est reproduite ici pour ne pas afficher un bouton
+   * qui finirait en 403.
+   */
+  const effacable = (t: TdrListItem) =>
+    t.status === "BROUILLON" && can("tdr:author") && t.authorId === user?.userId;
 
   // Le filtre par statut et la recherche s'appliquent côté écran : la liste
   // d'un exercice tient en mémoire, et un aller-retour réseau par frappe
@@ -247,15 +286,32 @@ export function TdrListClient() {
                           dossier transmis ne se consulte plus qu'en lecture.
                           Le libellé dit lequel des deux, pour qu'on ne
                           découvre pas la différence après le clic. */}
-                      {["BROUILLON", "RETOURNE"].includes(t.status) && can("tdr:author") ? (
-                        <Link href={`/tdr/nouveau?id=${t.id}`} className={liste.action}>
-                          <Edit size={14} aria-hidden /> Reprendre
-                        </Link>
-                      ) : (
-                        <Link href={`/tdr/${t.id}`} className={liste.action}>
-                          <View size={14} aria-hidden /> Ouvrir
-                        </Link>
-                      )}
+                      <div className={liste.actions}>
+                        {["BROUILLON", "RETOURNE"].includes(t.status) && can("tdr:author") ? (
+                          <Link href={`/tdr/nouveau?id=${t.id}`} className={liste.action}>
+                            <Edit size={14} aria-hidden /> Reprendre
+                          </Link>
+                        ) : (
+                          <Link href={`/tdr/${t.id}`} className={liste.action}>
+                            <View size={14} aria-hidden /> Ouvrir
+                          </Link>
+                        )}
+                        {effacable(t) && (
+                          <button
+                            type="button"
+                            className={liste.actionDanger}
+                            onClick={() => {
+                              setASupprimer(t);
+                              setRefusSuppression(null);
+                            }}
+                          >
+                            <TrashCan size={14} aria-hidden />
+                            <span className="sr-only">
+                              Supprimer le brouillon {t.reference}
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -264,6 +320,37 @@ export function TdrListClient() {
           </table>
         </div>
       </div>
+
+      {/* ---------- Suppression d’un brouillon ---------- */}
+      <Modal
+        open={aSupprimer !== null}
+        danger
+        modalHeading="Supprimer définitivement ce brouillon ?"
+        modalLabel={aSupprimer?.reference}
+        primaryButtonText={suppressionEnCours ? "Suppression…" : "Supprimer le brouillon"}
+        secondaryButtonText="Conserver"
+        primaryButtonDisabled={suppressionEnCours}
+        onRequestClose={() => {
+          setASupprimer(null);
+          setRefusSuppression(null);
+        }}
+        onRequestSubmit={() => void supprimer()}
+      >
+        <p className="text-body text-secondary mb-4">
+          <strong>{aSupprimer?.title}</strong> et tout ce qu’il porte — objectifs,
+          livrables, clauses, pièces versées — sont perdus. Il n’y a pas de corbeille.
+        </p>
+        <p className="text-body text-secondary">
+          La référence <span className="ptn-mono">{aSupprimer?.reference}</span> reste
+          consommée : une séquence ne se rembobine pas, et le prochain dossier prendra
+          le numéro suivant. La suppression est inscrite au journal d’audit.
+        </p>
+        {refusSuppression && (
+          <p className={liste.refus} role="alert">
+            {refusSuppression}
+          </p>
+        )}
+      </Modal>
     </Shell>
   );
 }

@@ -933,6 +933,13 @@ export interface TdrApi {
   reference: string;
   title: string;
   status: TdrStatusApi;
+  /**
+   * L'auteur du dossier. Le serveur le sert depuis toujours ; le type ne
+   * le déclarait pas, si bien que l'écran de détail tenait pour auteur
+   * QUICONQUE était connecté. Le bouton « Supprimer » s'affichait alors à
+   * tout le monde, pour échouer en 403 au clic.
+   */
+  authorId: string;
   origin: string;
   tdrTypeCode: string;
   tdrType?: { code: string; name: string; requiresPges: boolean; stepCount: number };
@@ -980,6 +987,8 @@ export interface TdrListItem {
   reference: string;
   title: string;
   status: TdrStatusApi;
+  /** Voir `TdrApi.authorId` : seul l'auteur supprime son brouillon. */
+  authorId: string;
   origin: string;
   tdrTypeCode: string;
   budgetTotalUsd: string | null;

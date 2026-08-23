@@ -879,3 +879,29 @@
     color: var(--cds-link-primary-hover);
   }
 }
+
+/* Se défaire du brouillon, au pied du parcours.
+   Un lien et non un bouton plein : il voisine « Annuler et quitter », et
+   deux boutons côte à côte au pied donneraient à l'abandon le même poids
+   qu'à la sortie provisoire. La couleur ne vient qu'au survol. */
+.lienAbandon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--cds-support-error);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-support-error);
+    outline-offset: 2px;
+  }
+}
