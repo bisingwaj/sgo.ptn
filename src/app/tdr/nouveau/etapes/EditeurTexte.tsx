@@ -65,14 +65,42 @@ export function EditeurTexte({
   const zone = useRef<HTMLTextAreaElement>(null);
   const [menu, setMenu] = useState(false);
 
-  // La hauteur suit le contenu. Mesurée après chaque frappe plutôt que
-  // calculée depuis le nombre de lignes : les retours à la ligne
-  // automatiques ne se comptent pas.
+  /**
+   * La hauteur suit le contenu, JUSQU'À UN PLAFOND.
+   *
+   * Elle le suivait sans limite. Mesuré à l'étape 14, à 150 % de zoom :
+   * un texte de douze lignes portait l'éditeur à 1248 px dans une fenêtre
+   * de 504, et le contenu de l'étape à 2133 px. Les cases à cocher
+   * placées dessous — trois postes au minimum, règle de conformité —
+   * se trouvaient à plus de TROIS ÉCRANS du haut, après une longue
+   * étendue blanche où rien n'indique qu'il reste quelque chose à faire.
+   * On croit la page vide.
+   *
+   * Le plafond suit la fenêtre plutôt qu'un nombre de pixels : à 125 ou
+   * 150 % de zoom, une valeur fixe redeviendrait démesurée. Au-delà, le
+   * texte défile DANS le champ — c'est ce que fait n'importe quel
+   * éditeur, et cela garde le reste de l'étape à portée.
+   *
+   * Recalculé au redimensionnement : changer de zoom en cours de
+   * rédaction laisserait sinon une hauteur calculée pour l'autre.
+   */
   useEffect(() => {
     const el = zone.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+
+    const ajuster = () => {
+      // Une mesure fiable exige de rendre la hauteur au contenu d'abord :
+      // `scrollHeight` d'un champ déjà contraint vaut sa contrainte.
+      el.style.height = "auto";
+      const plafond = Math.max(220, Math.round(window.innerHeight * 0.55));
+      const voulue = el.scrollHeight;
+      el.style.height = `${Math.min(voulue, plafond)}px`;
+      el.style.overflowY = voulue > plafond ? "auto" : "hidden";
+    };
+
+    ajuster();
+    window.addEventListener("resize", ajuster);
+    return () => window.removeEventListener("resize", ajuster);
   }, [valeur]);
 
   const mots = valeur.trim() ? valeur.trim().split(/\s+/).length : 0;

@@ -11,7 +11,7 @@
  * - Support clavier complet
  */
 
-import { useEffect, useId, useState, useMemo, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -147,6 +147,21 @@ export function Wizard<T>({
 
   // Filet : la liste peut raccourcir sous l'étape courante.
   const stepSafe = Math.min(step, Math.max(steps.length - 1, 0));
+
+  /**
+   * Chaque étape s'ouvre à son début.
+   *
+   * Le navigateur conserve la position de défilement quand le contenu
+   * change : on quittait une étape par son bas, et la suivante s'ouvrait
+   * au même endroit — mesuré à la transition 13 → 14, où l'étape
+   * s'ouvrait 75 px sous son titre. La question de l'étape passait sous
+   * le bandeau, et l'on tombait au milieu d'un champ de saisie sans savoir
+   * ce qui était demandé.
+   */
+  const corps = useRef<HTMLElement>(null);
+  useEffect(() => {
+    corps.current?.scrollTo({ top: 0 });
+  }, [stepSafe]);
 
   const setState = (next: T) => {
     setStateInternal(next);
@@ -301,7 +316,7 @@ export function Wizard<T>({
         </nav>
 
         {/* ===== Body ===== */}
-        <main className={styles.body}>
+        <main className={styles.body} ref={corps}>
           <div className={styles.bodyHead}>
             <h2 className={styles.bodyTitle}>{currentStep.label}</h2>
             {currentStep.sub && <p className={styles.bodySub}>{currentStep.sub}</p>}
