@@ -264,9 +264,17 @@ export function PtbaRegistryClient() {
         }
         actions={
           peutEcrire && editable ? (
-            <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="md">
-              Ajouter une activité
-            </Button>
+            <>
+              {/* L'allocation précède l'activité : sans elle, « Ajouter » mène
+                  à cinq composantes désactivées. Les deux commandes sont donc
+                  côte à côte, dans cet ordre. */}
+              <Button as={Link} href="/ptba/allocations" kind="tertiary" size="md">
+                Allocations
+              </Button>
+              <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="md">
+                Ajouter une activité
+              </Button>
+            </>
           ) : undefined
         }
       />

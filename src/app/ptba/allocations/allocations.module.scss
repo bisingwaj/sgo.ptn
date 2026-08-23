@@ -1,0 +1,156 @@
+/* Allocation annuelle par composante --------------------------------------
+   Une ligne par composante, jamais un tableau de cinq champs : une
+   allocation est une décision, pas une saisie de masse. On en arrête une,
+   on la relit, on passe à la suivante. */
+
+.etat {
+  padding: var(--ptn-space-06) var(--ptn-space-05);
+  font-size: 13px;
+  color: var(--cds-text-helper);
+  text-align: center;
+}
+
+.liste {
+  list-style: none;
+}
+
+.ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ptn-space-05);
+  padding: var(--ptn-space-05);
+  border-bottom: 1px solid var(--cds-border-subtle);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.gauche {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-02);
+  min-width: 0;
+}
+
+.tete {
+  display: flex;
+  align-items: center;
+  gap: var(--ptn-space-02);
+  font-size: 13px;
+}
+
+.pastille {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.intitule {
+  color: var(--cds-text-primary);
+  font-weight: 500;
+}
+
+.detail {
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+}
+
+/* Les bornes du serveur, dites avant la saisie plutôt qu'au refus. */
+.bornes {
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}
+
+.droite {
+  flex-shrink: 0;
+}
+
+.saisie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ptn-space-03);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ptn-space-02);
+
+    span {
+      font-size: 12px;
+      color: var(--cds-text-secondary);
+    }
+  }
+
+  input {
+    font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--cds-text-primary);
+    background: var(--cds-field);
+    border: none;
+    border-bottom: 1px solid var(--cds-border-strong);
+    padding: 8px 12px;
+    min-width: 15rem;
+
+    &:focus {
+      outline: 2px solid var(--ptn-accent);
+      outline-offset: -2px;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+    }
+  }
+}
+
+.boutons {
+  display: flex;
+  gap: var(--ptn-space-02);
+}
+
+.refus {
+  flex-basis: 100%;
+  margin-top: var(--ptn-space-03);
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--cds-text-on-color);
+  background: var(--ptn-accent);
+  border: none;
+  padding: 9px 14px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { background: var(--ptn-accent-hover); }
+  &:disabled { opacity: 0.5; cursor: progress; }
+}
+
+.btnGhost,
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--cds-text-primary);
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  padding: 8px 14px;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover:not(:disabled) { background: var(--cds-layer-hover); }
+  &:disabled { opacity: 0.5; }
+}
+
+/* Une allocation ouvre un droit de dépense : le pied le rappelle. */
+.pied {
+  margin-top: var(--ptn-space-04);
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}

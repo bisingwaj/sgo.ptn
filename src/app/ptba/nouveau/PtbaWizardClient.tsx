@@ -19,6 +19,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Button,
   InlineNotification,
@@ -525,6 +526,34 @@ export function PtbaWizardClient() {
               Une composante sans allocation, ou dont le solde est épuisé, n’accepte aucune
               activité tant que son allocation n’a pas été arrêtée.
             </p>
+
+            {/* L'IMPASSE, ET SON ISSUE.
+
+                Quand AUCUNE composante n'est dotée — le cas d'une base
+                neuve — les cinq tuiles sont désactivées et l'écran n'offre
+                rien. Chaque tuile disait bien « aucune allocation arrêtée »,
+                mais personne ne savait où l'arrêter : l'écran d'allocation
+                n'existait pas, et le point d'entrée serveur n'était appelé
+                par rien. */}
+            {allocations.length > 0 && allocations.every((r) => r.allocationUsd === null) && (
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                className="mt-4 max-w-none"
+                title="Aucune composante n’est dotée sur cet exercice"
+                subtitle="Une activité ne s’inscrit au plan que dans la limite de l’allocation de sa composante. Tant qu’aucune n’est arrêtée, ce parcours ne peut pas aboutir."
+              />
+            )}
+
+            {allocations.length > 0 && allocations.every((r) => r.allocationUsd === null) && (
+              /* Le lien vit hors de la notification : `subtitle` n'accepte
+                 qu'une chaîne dans cette version de Carbon, et une issue
+                 qu'on ne peut pas cliquer n'en est pas une. */
+              <Link href="/ptba/allocations" className="text-body text-link underline">
+                Arrêter les allocations de l’exercice
+              </Link>
+            )}
           </Question>
         ),
       },
