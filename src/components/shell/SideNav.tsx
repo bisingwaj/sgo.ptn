@@ -9,8 +9,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useProfile } from "@/components/profile/ProfileContext";
 import { useOrganisation } from "@/components/profile/OrganisationContext";
-import { useTranslations } from "next-intl";
-import { SelecteurLangue } from "@/components/translation/SelecteurLangue";
 import { useUser } from "@/components/profile/UserContext";
 import { useAuth } from "@/components/auth/AuthContext";
 import type { ProfileKey } from "@/lib/profiles";
@@ -102,41 +100,41 @@ const PEES = "Environnemental et Social · Plan d'Engagement Environnemental et 
 const SBP = "Subventions Basées sur la Performance";
 const KYC = "Know Your Customer — vérification d'identité de l'entreprise";
 
-function navFor(profile: ProfileKey, t: (cle: string) => string): NavGroup[] {
+function navFor(profile: ProfileKey): NavGroup[] {
   switch (profile) {
     case "ugp":
       return [
         {
           items: [
-            { label: t("module.cockpit"), href: "/cockpit", permission: "referentiel:read", icon: <Dashboard size={16} />, hint: UGP },
+            { label: "Cockpit UGP", href: "/cockpit", permission: "referentiel:read", icon: <Dashboard size={16} />, hint: UGP },
           ],
         },
         {
-          title: t("groupe.cyclePassation"),
+          title: "Cycle de passation",
           items: [
-            { label: t("module.ptba"), href: "/ptba", permission: "ptba:read", icon: <ChartLineSmooth size={16} />, hint: PTBA },
-            { label: t("module.ppm"), href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, count: "78", hint: PPM },
-            { label: t("module.tdr"), href: "/tdr", permission: "tdr:read", icon: <Document size={16} />, hint: TDR },
-            { label: t("module.ano"), href: "/ano", permission: "ano:read", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
-            { label: t("module.commissions"), href: "/commissions", permission: "commission:read", icon: <Events size={16} /> },
-            { label: t("module.contrats"), href: "/contrats", permission: "contrat:read", icon: <Folders size={16} /> },
+            { label: "PTBA", href: "/ptba", permission: "ptba:read", icon: <ChartLineSmooth size={16} />, hint: PTBA },
+            { label: "PPM", href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, count: "78", hint: PPM },
+            { label: "TDR", href: "/tdr", permission: "tdr:read", icon: <Document size={16} />, hint: TDR },
+            { label: "Inbox ANO", href: "/ano", permission: "ano:read", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
+            { label: "Commissions", href: "/commissions", permission: "commission:read", icon: <Events size={16} /> },
+            { label: "Contrats", href: "/contrats", permission: "contrat:read", icon: <Folders size={16} /> },
           ],
         },
         {
-          title: t("groupe.sauvegardesMgp"),
+          title: "Sauvegardes & MGP",
           items: [
-            { label: t("module.es"), href: "/es", permission: "es:read", icon: <Earth size={16} />, hint: PEES },
+            { label: "E&S / PEES", href: "/es", permission: "es:read", icon: <Earth size={16} />, hint: PEES },
             { label: "MGP", href: "/mgp-admin", permission: "mgp:read", icon: <Voicemail size={16} />, count: "14", hint: MGP },
-            { label: t("module.easHs"), href: "/mgp-eas-hs", permission: "easHs:read", icon: <Locked size={16} />, hint: EAS_HS },
+            { label: "EAS/HS confidentiel", href: "/mgp-eas-hs", permission: "easHs:read", icon: <Locked size={16} />, hint: EAS_HS },
           ],
         },
         {
-          title: t("groupe.pilotage"),
+          title: "Pilotage",
           items: [
-            { label: t("module.cadreResultats"), href: "/cadre-resultats", permission: "indicateur:read", icon: <Activity size={16} /> },
-            { label: t("module.sbp"), href: "/sbp-admin", permission: "sbp:read", icon: <Idea size={16} />, hint: SBP },
-            { label: t("module.auditInterne"), href: "/audit-interne", permission: "audit:trail_read", icon: <WatsonHealthMagnify size={16} /> },
-            { label: t("module.fiduciaire"), href: "/fiduciaire", permission: "fiduciaire:read", icon: <Money size={16} /> },
+            { label: "Cadre de résultats", href: "/cadre-resultats", permission: "indicateur:read", icon: <Activity size={16} /> },
+            { label: "SBP", href: "/sbp-admin", permission: "sbp:read", icon: <Idea size={16} />, hint: SBP },
+            { label: "Audit interne", href: "/audit-interne", permission: "audit:trail_read", icon: <WatsonHealthMagnify size={16} /> },
+            { label: "Fiduciaire", href: "/fiduciaire", permission: "fiduciaire:read", icon: <Money size={16} /> },
           ],
         },
       ];
@@ -168,7 +166,7 @@ function navFor(profile: ProfileKey, t: (cle: string) => string): NavGroup[] {
           ],
         },
         {
-          title: t("groupe.collaboration"),
+          title: "Collaboration",
           items: [
             { label: "Messages", href: "/partenaire/messages", icon: <Voicemail size={16} />, count: "1" },
             { label: "Notifications", href: "/partenaire/notifications", icon: <Notification size={16} />, count: "3" },
@@ -190,7 +188,7 @@ function navFor(profile: ProfileKey, t: (cle: string) => string): NavGroup[] {
         {
           items: [
             { label: "Dashboard", href: "/bailleur", icon: <Dashboard size={16} /> },
-            { label: t("module.ano"), href: "/bailleur/ano", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
+            { label: "Inbox ANO", href: "/bailleur/ano", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
             { label: "Portfolio", href: "/bailleur/portfolio", icon: <Catalog size={16} /> },
             { label: "Conditionnalités", href: "/bailleur/conditions", icon: <Document size={16} /> },
             { label: "Décaissements", href: "/bailleur/decaissements", icon: <Money size={16} /> },
@@ -202,8 +200,8 @@ function navFor(profile: ProfileKey, t: (cle: string) => string): NavGroup[] {
       return [
         {
           items: [
-            { label: t("module.marketplace"), href: "/soumissionnaire", icon: <Catalog size={16} />, count: "14" },
-            { label: t("module.mesSoumissions"), href: "/soumissionnaire/soumissions", icon: <Document size={16} />, count: "6" },
+            { label: "Marketplace", href: "/soumissionnaire", icon: <Catalog size={16} />, count: "14" },
+            { label: "Mes soumissions", href: "/soumissionnaire/soumissions", icon: <Document size={16} />, count: "6" },
             { label: "Mes contrats", href: "/soumissionnaire/contrats", icon: <Folders size={16} />, count: "3" },
             { label: "Paiements", href: "/soumissionnaire/paiements", icon: <Money size={16} /> },
             { label: "KYC entreprise", href: "/soumissionnaire/kyc", icon: <TaskApproved size={16} />, hint: KYC },
@@ -258,7 +256,6 @@ export function SideNav({ collapsed = false }: SideNavProps) {
   const { org } = useOrganisation();
   const { user } = useUser();
   const { can } = useAuth();
-  const t = useTranslations("coque");
 
   /**
    * Repli EFFECTIF, et non repli commandé.
@@ -279,7 +276,7 @@ export function SideNav({ collapsed = false }: SideNavProps) {
   // L'entrée Administration n'apparaît que pour les habilitations qui la
   // portent — le sous-rôle UGP « IT » (présentation UGPTN § 6.1, poste n°18). En mode
   // démonstration, aucune session n'est ouverte : elle reste masquée.
-  const groups = [...navFor(profile, t)];
+  const groups = [...navFor(profile)];
 
   // Chaque entrée n'apparaît qu'avec la permission correspondante. Les
   // comptes relèvent du sous-rôle IT ; le référentiel de passation relève
@@ -287,17 +284,17 @@ export function SideNav({ collapsed = false }: SideNavProps) {
   // groupe reste invisible pour qui ne détient ni l'un ni l'autre.
   const adminItems: NavItem[] = [];
   if (can("admin:users")) {
-    adminItems.push({ label: t("module.comptes"), href: "/admin/comptes", icon: <UserMultiple size={16} /> });
+    adminItems.push({ label: "Comptes", href: "/admin/comptes", icon: <UserMultiple size={16} /> });
   }
   if (can("referentiel:passation") || can("referentiel:clauses")) {
     adminItems.push({
-      label: t("module.referentiel"),
+      label: "Référentiel",
       href: "/admin/referentiel",
       icon: <Catalog size={16} />,
     });
   }
   if (adminItems.length > 0) {
-    groups.push({ title: t("groupe.administration"), items: adminItems });
+    groups.push({ title: "Administration", items: adminItems });
   }
 
   /**
@@ -369,7 +366,7 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                       label={item.label}
                       hint={
                         verrouille
-                          ? t("verrouille.infobulle")
+                          ? `Votre habilitation ne donne pas accès à ce module. Demandez-le à un administrateur si vos fonctions le justifient.`
                           : item.hint
                       }
                       // Repliée, l'infobulle rend l'intitulé — elle est donc
@@ -395,7 +392,7 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                           aria-disabled="true"
                           role="link"
                           tabIndex={0}
-                          aria-label={t("verrouille.aria", { module: item.label })}
+                          aria-label={`${item.label} — habilitation requise`}
                         >
                           <span className={styles.itemIcon} aria-hidden>
                             {item.icon}
@@ -447,11 +444,6 @@ export function SideNav({ collapsed = false }: SideNavProps) {
             <span className={styles.itemLabel}>{themeLabel}</span>
           </button>
         </Tooltip>
-        {/* La langue rejoint le thème, et pour la même raison : c'est un
-            réglage de confort, pas une action sur le dossier en cours.
-            Repliée, la colonne n'a que 56 px — le sélecteur s'y réduit à
-            son pictogramme. */}
-        <SelecteurLangue compact={rail} />
         <span className={`ptn-mono ${styles.ver}`}>v 3.0.0</span>
       </footer>
     </aside>
