@@ -259,7 +259,7 @@ function Parcours() {
     if (authLoading || !user) return;
     Promise.all([
       tdrReferentielApi.types(),
-      ptbaApi.activities(new Date().getFullYear()),
+      exerciceOuvert().then((annee) => ptbaApi.activities(annee)),
       referentielApi.provinces(),
       referentielApi.organisations(),
       referentielApi.composantes(),
@@ -1597,6 +1597,28 @@ function ReviewStep({
  * Le fil de l'assistant doit survivre au changement d'étape : une
  * proposition faite au contexte se relit depuis l'écran des livrables.
  */
+/**
+ * L'exercice budgétaire à proposer : le plus récent qui n'est pas clos.
+ *
+ * L'horloge du poste servait de référence. Elle a le défaut de changer
+ * seule : au 1er janvier, elle désigne un exercice que le COPIL n'a pas
+ * encore ouvert, le serveur répond « Aucun exercice PTBA 2027 », et le
+ * chargement du parcours ÉCHOUE EN ENTIER — pas seulement le rattachement
+ * au plan. La rédaction de TDR s'arrêtait donc d'elle-même à une date
+ * connue d'avance, sur un message qui n'en disait pas la cause.
+ *
+ * L'exercice ouvert est une donnée du serveur, pas une déduction de date.
+ */
+async function exerciceOuvert(): Promise<number> {
+  const exercices = await ptbaApi.years();
+  const ouvert = [...exercices]
+    .sort((a, b) => b.year - a.year)
+    .find((e) => e.status !== "CLOS");
+  // Aucun exercice du tout : on retombe sur l'année civile, dont le refus
+  // sera intercepté comme n'importe quelle indisponibilité.
+  return (ouvert ?? exercices[0])?.year ?? new Date().getFullYear();
+}
+
 export function TdrCreationClient() {
   return (
     <AssistantProvider>

@@ -16,7 +16,9 @@
  */
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Note } from "@/components/wizard/WizardFields";
+import { useAuth } from "@/components/auth/AuthContext";
 import type { ComponentApi, PtbaActivityApi, TdrTypeApi } from "@/lib/api";
 import { withComposedTitle, type State } from "../etat";
 import { ListeSelection, Repere } from "./LigneSelection";
@@ -65,6 +67,8 @@ export function EtapeRattachement({
     : activities;
 
   const choisie = activities.find((a) => a.id === state.ptbaActivityId);
+  const { can } = useAuth();
+  const peutInscrire = can("ptba:write");
   const composanteDeduite = choisie
     ? components.find((c) => c.code === choisie.componentCode)
     : undefined;
@@ -93,6 +97,20 @@ export function EtapeRattachement({
           Un TDR se rattache obligatoirement à une ligne du PTBA : sans elle, il n’y a pas
           d’enveloppe, donc pas de marché possible. L’activité doit être inscrite au plan
           avant que ce dossier puisse avancer.
+          {/* L'issue, là où l'on se bloque — mais seulement à qui peut la
+              prendre : proposer d'inscrire une activité à qui n'en a pas le
+              droit ne fait que déplacer le refus d'un écran. */}
+          {peutInscrire ? (
+            <>
+              {" "}
+              <Link href="/ptba/nouveau" className={styles.lienNote}>
+                Inscrire une activité au plan
+              </Link>
+              .
+            </>
+          ) : (
+            " Demandez son inscription au responsable de la composante concernée ou à la coordination."
+          )}
         </Note>
       ) : (
         <>

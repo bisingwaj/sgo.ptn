@@ -868,3 +868,14 @@
   color: var(--cds-text-helper, #6f6f6f);
   margin: var(--ptn-space-02) 0 var(--ptn-space-03) 30px;
 }
+
+/* Le lien d'issue d'une note : dans le fil du texte, pas un bouton. Un
+   bouton ferait croire à l'action de l'étape en cours ; c'est un renvoi. */
+.lienNote {
+  color: var(--cds-link-primary);
+  text-decoration: underline;
+
+  &:hover {
+    color: var(--cds-link-primary-hover);
+  }
+}
