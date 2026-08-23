@@ -288,3 +288,40 @@
     transition: none;
   }
 }
+
+/* Un module verrouillé ---------------------------------------------------
+   Visible, et non masqué. Une entrée qui disparaît laisse croire que le
+   module n'existe pas : l'agent qui en aurait besoin ne sait même pas quoi
+   demander. Verrouillée, il lit le nom et va chercher l'habilitation.
+
+   Assez éteinte pour qu'on comprenne sans essayer, assez lisible pour
+   qu'on lise le nom — ces usagers travaillent à 125-150 % de zoom. */
+
+.itemVerrouille {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+
+  /* Aucun effet au survol : la moindre réaction laisse espérer un clic. */
+  &:hover {
+    background: transparent;
+  }
+
+  .itemIcon {
+    opacity: 0.5;
+  }
+
+  /* Le focus reste visible : l'entrée se prend encore au clavier, et c'est
+     ainsi que l'infobulle explicative se lit sans souris. */
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: -2px;
+  }
+}
+
+/* Le cadenas prend la place du compteur, jamais les deux : un module fermé
+   n'a pas à annoncer neuf éléments qu'on ne verra pas. */
+.itemCadenas {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--cds-text-disabled);
+}

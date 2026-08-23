@@ -44,6 +44,19 @@ import type { ReactNode } from "react";
 interface NavItem {
   label: string;
   href: string;
+  /**
+   * Permission qui ouvre ce module.
+   *
+   * Absente, l'entrée est ouverte à tous ceux qui voient déjà ce profil.
+   * Présente et non détenue, l'entrée se VERROUILLE : elle reste visible,
+   * mais ne se clique plus, et l'infobulle dit pourquoi.
+   *
+   * Visible et verrouillée, plutôt que masquée. Une entrée qui disparaît
+   * laisse croire que le module n'existe pas, et l'agent qui en a besoin ne
+   * sait même pas quoi demander. Verrouillée, il lit le nom du module et le
+   * rôle qui le détient : il peut aller le demander.
+   */
+  permission?: string;
   icon: ReactNode;
   count?: string;
   /**
@@ -93,35 +106,35 @@ function navFor(profile: ProfileKey): NavGroup[] {
       return [
         {
           items: [
-            { label: "Cockpit UGP", href: "/cockpit", icon: <Dashboard size={16} />, hint: UGP },
+            { label: "Cockpit UGP", href: "/cockpit", permission: "referentiel:read", icon: <Dashboard size={16} />, hint: UGP },
           ],
         },
         {
           title: "Cycle de passation",
           items: [
-            { label: "PTBA", href: "/ptba", icon: <ChartLineSmooth size={16} />, hint: PTBA },
-            { label: "PPM", href: "/ppm", icon: <Notebook size={16} />, count: "78", hint: PPM },
-            { label: "TDR", href: "/tdr", icon: <Document size={16} />, hint: TDR },
-            { label: "Inbox ANO", href: "/ano", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
-            { label: "Commissions", href: "/commissions", icon: <Events size={16} /> },
-            { label: "Contrats", href: "/contrats", icon: <Folders size={16} /> },
+            { label: "PTBA", href: "/ptba", permission: "ptba:read", icon: <ChartLineSmooth size={16} />, hint: PTBA },
+            { label: "PPM", href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, count: "78", hint: PPM },
+            { label: "TDR", href: "/tdr", permission: "tdr:read", icon: <Document size={16} />, hint: TDR },
+            { label: "Inbox ANO", href: "/ano", permission: "ano:read", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
+            { label: "Commissions", href: "/commissions", permission: "commission:read", icon: <Events size={16} /> },
+            { label: "Contrats", href: "/contrats", permission: "contrat:read", icon: <Folders size={16} /> },
           ],
         },
         {
           title: "Sauvegardes & MGP",
           items: [
-            { label: "E&S / PEES", href: "/es", icon: <Earth size={16} />, hint: PEES },
-            { label: "MGP", href: "/mgp-admin", icon: <Voicemail size={16} />, count: "14", hint: MGP },
-            { label: "EAS/HS confidentiel", href: "/mgp-eas-hs", icon: <Locked size={16} />, hint: EAS_HS },
+            { label: "E&S / PEES", href: "/es", permission: "es:read", icon: <Earth size={16} />, hint: PEES },
+            { label: "MGP", href: "/mgp-admin", permission: "mgp:read", icon: <Voicemail size={16} />, count: "14", hint: MGP },
+            { label: "EAS/HS confidentiel", href: "/mgp-eas-hs", permission: "easHs:read", icon: <Locked size={16} />, hint: EAS_HS },
           ],
         },
         {
           title: "Pilotage",
           items: [
-            { label: "Cadre de résultats", href: "/cadre-resultats", icon: <Activity size={16} /> },
-            { label: "SBP", href: "/sbp-admin", icon: <Idea size={16} />, hint: SBP },
-            { label: "Audit interne", href: "/audit-interne", icon: <WatsonHealthMagnify size={16} /> },
-            { label: "Fiduciaire", href: "/fiduciaire", icon: <Money size={16} /> },
+            { label: "Cadre de résultats", href: "/cadre-resultats", permission: "indicateur:read", icon: <Activity size={16} /> },
+            { label: "SBP", href: "/sbp-admin", permission: "sbp:read", icon: <Idea size={16} />, hint: SBP },
+            { label: "Audit interne", href: "/audit-interne", permission: "audit:trail_read", icon: <WatsonHealthMagnify size={16} /> },
+            { label: "Fiduciaire", href: "/fiduciaire", permission: "fiduciaire:read", icon: <Money size={16} /> },
           ],
         },
       ];
@@ -333,6 +346,14 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                 const active =
                   pathname === item.href ||
                   (item.href !== "/" && pathname.startsWith(item.href + "/"));
+                // Le module est-il ouvert à cette personne ?
+                //
+                // Sans session — écrans de démonstration — rien n'est
+                // verrouillé : il n'y a personne à qui refuser quoi que ce
+                // soit, et tout griser ferait croire à une panne.
+                const verrouille =
+                  Boolean(user) && Boolean(item.permission) && !can(item.permission as string);
+
                 return (
                   <li key={item.href + item.label}>
                     {/* L'intitulé disparaît une fois la colonne repliée.
@@ -343,28 +364,57 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                         c'est le même nombre, pas une donnée reconstituée. */}
                     <Tooltip
                       label={item.label}
-                      hint={item.hint}
+                      hint={
+                        verrouille
+                          ? `Votre habilitation ne donne pas accès à ce module. Demandez-le à un administrateur si vos fonctions le justifient.`
+                          : item.hint
+                      }
                       // Repliée, l'infobulle rend l'intitulé — elle est donc
                       // toujours utile. Déployée, l'intitulé est déjà là et
                       // seul le développé du sigle justifie encore la bulle.
-                      disabled={!rail && !item.hint}
+                      // Verrouillée, la bulle est la SEULE explication : elle
+                      // ne se désactive donc jamais dans ce cas.
+                      disabled={!verrouille && !rail && !item.hint}
                       trailing={
                         item.count && (
                           <span className={`${styles.tipCount} ptn-mono`}>{item.count}</span>
                         )
                       }
                     >
-                      <Link
-                        href={item.href}
-                        aria-label={rail ? item.label : undefined}
-                        className={`${styles.item} ${active ? styles.itemActive : ""}`}
-                      >
-                        <span className={styles.itemIcon} aria-hidden>
-                          {item.icon}
+                      {verrouille ? (
+                        /* Un <span>, non un <Link> désactivé : un lien reste
+                           navigable au clavier et ouvrirait un écran qui
+                           refuserait aussitôt. `aria-disabled` le dit au
+                           lecteur d'écran, `tabIndex` le retire du parcours,
+                           mais il garde le focus par la bulle. */
+                        <span
+                          className={`${styles.item} ${styles.itemVerrouille}`}
+                          aria-disabled="true"
+                          role="link"
+                          tabIndex={0}
+                          aria-label={`${item.label} — habilitation requise`}
+                        >
+                          <span className={styles.itemIcon} aria-hidden>
+                            {item.icon}
+                          </span>
+                          <span className={styles.itemLabel}>{item.label}</span>
+                          <Locked size={12} className={styles.itemCadenas} aria-hidden />
                         </span>
-                        <span className={styles.itemLabel}>{item.label}</span>
-                        {item.count && <span className={`${styles.itemCount} ptn-mono`}>{item.count}</span>}
-                      </Link>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          aria-label={rail ? item.label : undefined}
+                          className={`${styles.item} ${active ? styles.itemActive : ""}`}
+                        >
+                          <span className={styles.itemIcon} aria-hidden>
+                            {item.icon}
+                          </span>
+                          <span className={styles.itemLabel}>{item.label}</span>
+                          {item.count && (
+                            <span className={`${styles.itemCount} ptn-mono`}>{item.count}</span>
+                          )}
+                        </Link>
+                      )}
                     </Tooltip>
                   </li>
                 );

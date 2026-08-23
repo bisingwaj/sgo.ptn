@@ -211,6 +211,43 @@ export interface SubroleDef {
 /** Socle commun à toute personne connectée. */
 const BASE = ['referentiel:read'];
 
+/**
+ * Ce qu'un Coordonnateur NE PEUT PAS détenir, quoi qu'il arrive.
+ *
+ * Le Coordonnateur dirige l'unité : il lui faut tout ce qui relève du
+ * travail de l'UGPTN. Ces cinq familles n'en relèvent pas — elles
+ * appartiennent à d'AUTRES INSTITUTIONS, et les lui donner ne l'aiderait
+ * pas, cela viderait un contrôle de son objet.
+ *
+ *  `ano:decide`   au bailleur. L'UGPTN demande la non-objection, elle ne
+ *                 se la donne pas. Un coordonnateur qui décide de son
+ *                 propre ANO rend la procédure décorative.
+ *  `easHs:*`      au pool VBG habilité. Le canal des signalements
+ *                 d'exploitation et d'abus sexuels est cloisonné : c'est
+ *                 la seule protection réelle d'une personne qui signale
+ *                 quelqu'un de sa hiérarchie.
+ *  `audit:*`      à l'audit externe, indépendant par définition.
+ *  `soumission:write`,
+ *  `marketplace:read`
+ *                 au candidat. L'acheteur ne concourt pas à ses marchés.
+ *  `commission:sit`,
+ *  `commission:preside`
+ *                 il CONSTITUE les commissions ; y siéger reviendrait à
+ *                 évaluer les offres qu'il attribuera lui-même.
+ */
+const HORS_UGPTN = [
+  'ano:decide',
+  'easHs:read',
+  'easHs:process',
+  'audit:plan',
+  'audit:read_all',
+  'audit:finding_write',
+  'soumission:write',
+  'marketplace:read',
+  'commission:sit',
+  'commission:preside',
+];
+
 /** Lecture transverse du cycle de passation. */
 const LECTURE_PASSATION = [
   'ptba:read',
@@ -248,29 +285,27 @@ export const SUBROLES: SubroleDef[] = [
     profile: 'UGP',
     isUnique: true,
     incompatibleWith: ['UGP_AUDITEUR_INTERNE'],
-    permissions: [
-      ...BASE,
-      ...LECTURE_PASSATION,
-      'ptba:validate',
-      'ppm:validate',
-      'tdr:validate',
-      'ano:submit',
-      'dao:publish',
-      'commission:constitute',
-      'contrat:sign',
-      'fiduciaire:read',
-      'fiduciaire:approve_wa',
-      'rfi:produce',
-      'es:read',
-      'es:validate',
-      'mgp:read',
-      'mgp:stats',
-      'indicateur:read',
-      'sbp:read',
-      'audit:trail_read',
-      'gouvernance:copil',
-      'gouvernance:ctp',
-    ],
+    /**
+     * TOUT CE QUI RELÈVE DE L'UGPTN, sans exception.
+     *
+     * Il ne détenait que 27 permissions sur 62 : un valideur, non un
+     * opérateur — il arrêtait le PTBA sans pouvoir en saisir une ligne, et
+     * validait un TDR sans pouvoir en ouvrir un. Cela se défend sur le
+     * papier ; à l'usage, cela le bloquait sur des écrans dont il dirige
+     * pourtant le travail.
+     *
+     * La liste est donc calculée, non énumérée : toutes les permissions du
+     * catalogue, moins celles qui appartiennent à une autre institution.
+     * Une permission ajoutée demain lui échoit sans que personne y pense —
+     * ce qui est le comportement voulu pour celui qui dirige l'unité.
+     *
+     * La séparation qui compte reste tenue, et elle est ailleurs : voir
+     * HORS_UGPTN, et `incompatibleWith` qui lui interdit toujours de
+     * cumuler l'audit interne.
+     */
+    permissions: PERMISSIONS.map((p) => p.code).filter(
+      (code) => !HORS_UGPTN.includes(code),
+    ),
   },
   {
     code: 'UGP_COORDONNATEUR_ADJOINT',
