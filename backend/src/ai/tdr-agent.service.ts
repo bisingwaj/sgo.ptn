@@ -229,8 +229,8 @@ export class TdrAgentService {
     if (apresDeuxPoints.startsWith('[')) {
       return apresDeuxPoints
         .replace(/[[\]{}"]/g, '')
-        .replace(/title\s*:/g, '')
-        .replace(/(criteria|format|deadline)\s*:/g, '— ')
+        .replace(/\btitle\s*:/g, '')
+        .replace(/\b(criteria|format|deadline)\s*:/g, '— ')
         .replace(/,\s*/g, '\n')
         .trim();
     }

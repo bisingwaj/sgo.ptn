@@ -29,9 +29,9 @@ jobs:
     name: Interface
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -57,9 +57,9 @@ jobs:
     name: Serveur
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -105,9 +105,9 @@ jobs:
           --health-retries 5
         ports: ['5432:5432']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -129,8 +129,16 @@ jobs:
       # Le schéma et les migrations doivent dire la même chose. S'ils
       # divergent, la production s'écarte de ce que le code attend — et
       # cela ne se voit qu'au premier appel qui échoue.
+      #
+      # La comparaison part de la BASE QUI VIENT D'ÊTRE MIGRÉE, non d'un
+      # rejeu dans une base fantôme : c'est l'état réellement obtenu qui
+      # nous intéresse, et cela évite d'avoir à en provisionner une seconde.
+      #
+      # `--exit-code` rend 2 si une différence subsiste, ce qui fait échouer
+      # l'étape. Les options `--to-schema-datamodel` et `--shadow-database-url`
+      # de Prisma 6 n'existent plus en 7 — c'est ce qui cassait ce contrôle.
       - name: Le schéma correspond-il aux migrations ?
-        run: npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma --shadow-database-url "$DATABASE_URL" --exit-code
+        run: npx prisma migrate diff --from-config-datasource --to-schema ./prisma/schema.prisma --exit-code
         working-directory: backend
         env:
           DATABASE_URL: postgresql://ptn:controle@localhost:5432/ptn_controle?schema=public
