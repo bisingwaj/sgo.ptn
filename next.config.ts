@@ -1,4 +1,5 @@
 import path from "path";
+import createNextIntlPlugin from "next-intl/plugin";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -29,4 +30,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 };
 
-export default nextConfig;
+/**
+ * Le greffon i18n branche `src/i18n/request.ts` sur chaque rendu serveur.
+ *
+ * Pas de routage par l'adresse : la langue vit dans un cookie, et les
+ * soixante-neuf routes restent inchangées.
+ */
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withNextIntl(nextConfig);

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 // Ordre volontaire : Carbon d'abord, Tailwind ensuite.
 // À spécificité égale, la dernière règle l'emporte — les utilitaires
 // Tailwind peuvent donc surcharger un défaut Carbon, jamais l'inverse.
@@ -55,22 +57,36 @@ export const metadata: Metadata = {
     "Projet de Transformation Numérique de la République Démocratique du Congo · P180495 · IDA + AFD",
 };
 
-export default function RootLayout({
+/**
+ * La mise en page est ASYNCHRONE : la langue se lit dans un cookie, donc au
+ * serveur, avant tout rendu. Sans cela, la page paraîtrait d'abord en
+ * français puis basculerait — ce clignotement se voit, et sur une
+ * connexion lente il dure.
+ */
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const t = await getTranslations("commun");
+
   return (
     <html
-      lang="fr"
+      // L'attribut suit la langue active : il commande la césure, les
+      // guillemets, et ce qu'annonce un lecteur d'écran. Figé à « fr », un
+      // texte anglais serait lu avec l'accent français.
+      lang={locale}
       data-carbon-theme="g10"
       data-profile="ugp"
       className={`${ibmSans.variable} ${ibmMono.variable}`}
     >
       <body>
         <a href="#ptn-main" className="ptn-skip-link">
-          Aller au contenu principal
+          {t("allerAuContenu")}
         </a>
+        <NextIntlClientProvider messages={messages}>
         <QueryProvider>
           <ProfileProvider>
             <AuthProvider>
@@ -86,6 +102,7 @@ export default function RootLayout({
             </AuthProvider>
           </ProfileProvider>
         </QueryProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

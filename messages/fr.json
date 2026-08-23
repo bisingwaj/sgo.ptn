@@ -1,0 +1,92 @@
+{
+  "commun": {
+    "chargement": "Chargement…",
+    "fermer": "Fermer",
+    "annuler": "Annuler",
+    "retour": "Retour",
+    "continuer": "Continuer",
+    "enregistrer": "Enregistrer",
+    "rechercher": "Rechercher",
+    "aucunResultat": "Aucun résultat",
+    "allerAuContenu": "Aller au contenu principal"
+  },
+
+  "langue": {
+    "selecteur": "Langue",
+    "active": "Langue active : {langue}. Changer de langue.",
+    "changer": "Changer de langue",
+    "faitFoi": "Le français fait foi. Les pièces produites — TDR, avis, documents — restent rédigées dans la langue de leur auteur et ne sont pas traduites."
+  },
+
+  "coque": {
+    "groupe": {
+      "cyclePassation": "Cycle de passation",
+      "sauvegardesMgp": "Sauvegardes & MGP",
+      "pilotage": "Pilotage",
+      "collaboration": "Collaboration",
+      "administration": "Administration"
+    },
+    "module": {
+      "cockpit": "Cockpit UGP",
+      "ptba": "PTBA",
+      "ppm": "PPM",
+      "tdr": "TDR",
+      "ano": "Inbox ANO",
+      "commissions": "Commissions",
+      "contrats": "Contrats",
+      "es": "E&S / PEES",
+      "mgp": "MGP",
+      "easHs": "EAS/HS confidentiel",
+      "cadreResultats": "Cadre de résultats",
+      "sbp": "SBP",
+      "auditInterne": "Audit interne",
+      "fiduciaire": "Fiduciaire",
+      "tableauDeBord": "Tableau de bord",
+      "mesInitiatives": "Mes initiatives",
+      "documents": "Documents",
+      "echeances": "Échéances",
+      "marketplace": "Marketplace",
+      "mesSoumissions": "Mes soumissions",
+      "comptes": "Comptes",
+      "referentiel": "Référentiel"
+    },
+    "verrouille": {
+      "infobulle": "Votre habilitation ne donne pas accès à ce module. Demandez-le à un administrateur si vos fonctions le justifient.",
+      "aria": "{module} — habilitation requise"
+    }
+  },
+
+  "connexion": {
+    "titre": "Plateforme de gouvernance",
+    "sousTitre": "Projet de Transformation Numérique de la République Démocratique du Congo",
+    "vousIntervenezEnTantQue": "Vous intervenez en tant que",
+    "adresse": "Adresse électronique",
+    "motDePasse": "Mot de passe",
+    "seConnecter": "Se connecter",
+    "connexionEnCours": "Connexion…",
+    "impossible": "Connexion impossible",
+    "adresseRequise": "Saisissez votre adresse électronique.",
+    "motDePasseRequis": "Saisissez votre mot de passe.",
+    "motDePasseOublie": "Mot de passe oublié",
+    "famille": {
+      "ugpGouv": "UGP / Gouvernement",
+      "ugpGouvSous": "MPTN, UGP, ministères et agences bénéficiaires, gouvernance COPIL / CTP",
+      "bailleurs": "Bailleurs",
+      "bailleursSous": "Banque mondiale (IDA) et Agence Française de Développement",
+      "beneficiaires": "Bénéficiaires et soumissionnaires",
+      "beneficiairesSous": "Partenaires institutionnels, entreprises candidates, EESU, hubs et startups",
+      "controle": "Contrôle et vérification",
+      "controleSous": "Audit externe, TPM, Cour des Comptes, IGF, ACE"
+    },
+    "pied": {
+      "plainte": "Déposer une plainte",
+      "documentation": "Documentation MEP",
+      "mentions": "Mentions légales"
+    },
+    "chiffres": {
+      "enveloppe": "Enveloppe du projet",
+      "couverture": "Couverture nationale",
+      "achevement": "Achèvement technique"
+    }
+  }
+}
