@@ -31,6 +31,7 @@ import {
   Notebook,
   Notification,
   TaskApproved,
+  TaskView,
   Time,
   UserMultiple,
   Voicemail,
@@ -93,6 +94,8 @@ const UGP = "Unité de Gestion du Projet";
 const PTBA = "Plan de Travail et Budget Annuel";
 const PPM = "Plan de Passation des Marchés";
 const TDR = "Termes de Référence";
+const INSTRUCTION =
+  "Les dossiers transmis à l’UGP : prendre en revue, retourner à l’auteur, valider";
 const ANO = "Avis de Non-Objection — accord préalable du bailleur";
 const MGP = "Mécanisme de Gestion des Plaintes";
 const EAS_HS = "Exploitation et Abus Sexuels / Harcèlement Sexuel — canal cloisonné";
@@ -115,6 +118,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
             { label: "PTBA", href: "/ptba", permission: "ptba:read", icon: <ChartLineSmooth size={16} />, hint: PTBA },
             { label: "PPM", href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, count: "78", hint: PPM },
             { label: "TDR", href: "/tdr", permission: "tdr:read", icon: <Document size={16} />, hint: TDR },
+            { label: "Instruction TDR", href: "/tdr/revue", permission: "tdr:review", icon: <TaskView size={16} />, hint: INSTRUCTION },
             { label: "Inbox ANO", href: "/ano", permission: "ano:read", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
             { label: "Commissions", href: "/commissions", permission: "commission:read", icon: <Events size={16} /> },
             { label: "Contrats", href: "/contrats", permission: "contrat:read", icon: <Folders size={16} /> },

@@ -19,7 +19,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
 import { tdrApi, type TdrListItem, type TdrStatusApi } from "@/lib/api";
 import { Modal } from "@carbon/react";
-import { Add, Document, Edit, TrashCan, View, WarningAltFilled } from "@carbon/icons-react";
+import { Add, Document, Edit, TaskView, TrashCan, View, WarningAltFilled } from "@carbon/icons-react";
 import styles from "@/styles/ugp-shared.module.scss";
 import liste from "./tdr-liste.module.scss";
 
@@ -161,12 +161,23 @@ export function TdrListClient() {
           </>
         }
         actions={
-          can("tdr:author") ? (
-            <Link href="/tdr/nouveau" className="demoBtnPrimary">
-              <Add size={14} aria-hidden />
-              <span>Rédiger un TDR</span>
-            </Link>
-          ) : undefined
+          <>
+            {/* La file d'instruction avant la rédaction : celui qui porte
+                les deux habilitations a plus souvent des dossiers à
+                trancher qu'un TDR à écrire. */}
+            {can("tdr:review") && (
+              <Link href="/tdr/revue" className="demoBtnSecondary">
+                <TaskView size={14} aria-hidden />
+                <span>À instruire</span>
+              </Link>
+            )}
+            {can("tdr:author") && (
+              <Link href="/tdr/nouveau" className="demoBtnPrimary">
+                <Add size={14} aria-hidden />
+                <span>Rédiger un TDR</span>
+              </Link>
+            )}
+          </>
         }
       />
 

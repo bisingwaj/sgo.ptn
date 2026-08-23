@@ -167,7 +167,7 @@ function SituationLigne({
             « Déjà engagé · 1 autre dossier » affichant 0 USD se lit comme une
             contradiction. Le nombre est dit en toutes lettres plus bas. */}
         <Chiffre
-          cle="Déjà engagé par d’autres"
+          cle="Engagé par des dossiers transmis"
           valeur={formatUsd(engagedUsd)}
           repere={engagedUsd > 0 ? "bg-strong" : undefined}
         />
@@ -186,9 +186,8 @@ function SituationLigne({
       <p className="text-caption text-secondary max-w-[68ch]">
         {otherCount === 0
           ? "Aucun autre dossier ne vise cette ligne du plan."
-          : `${otherCount} autre${otherCount > 1 ? "s" : ""} dossier${otherCount > 1 ? "s" : ""} vise${otherCount > 1 ? "nt" : ""} cette ligne. `}
-        {otherCount > 0 &&
-          "Les brouillons y comptent dès qu’ils portent un montant : une enveloppe se réserve quand un dossier la vise, sans quoi deux rédacteurs la dépenseraient deux fois. Les dossiers refusés et archivés la libèrent."}
+          : `${otherCount} autre${otherCount > 1 ? "s" : ""} dossier${otherCount > 1 ? "s" : ""} transmis vise${otherCount > 1 ? "nt" : ""} cette ligne. `}
+        {"Seuls les dossiers TRANSMIS entament l’enveloppe. Les brouillons — le vôtre comme ceux des autres — n’y comptent pas : rien n’est engagé tant qu’un dossier n’a pas quitté la main de son auteur. Le contrôle se fait à la transmission. Les dossiers refusés et archivés libèrent ce qu’ils avaient pris."}
       </p>
 
       {resteApres < 0 && (

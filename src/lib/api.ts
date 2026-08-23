@@ -1109,6 +1109,51 @@ export const tdrApi = {
 };
 
 // ============================================================
+// Instruction des dossiers transmis — la revue de l'UGP
+// ============================================================
+
+/**
+ * Une ligne de la file d'instruction.
+ *
+ * Le serveur ne sert que des données : montants en unités entières, dates
+ * ISO, statuts en codes. Les libellés et les formats sont l'affaire de
+ * l'écran.
+ */
+export interface DossierAInstruire {
+  id: string;
+  reference: string;
+  title: string;
+  status: TdrStatusApi;
+  submittedAt: string | null;
+  methodCode: string | null;
+  reviewType: "PRIOR" | "POST" | null;
+  budgetTotalUsd: number | null;
+  organisation: string | null;
+  ptbaCode: string | null;
+  componentCode: string | null;
+  marche: { id: string; status: string } | null;
+}
+
+/**
+ * Les actes de la revue.
+ *
+ * Ils existaient côté serveur depuis leur écriture, et aucun écran ne les
+ * appelait : un TDR pouvait être transmis, et plus rien après. La chaîne
+ * s'arrêtait là.
+ */
+export const passationApi = {
+  aInstruire: () => api.get<DossierAInstruire[]>("/passation/a-instruire"),
+  ouvrirRevue: (id: string) =>
+    api.post<{ id: string; reference: string; status: string }>(`/tdr/${id}/revue`),
+  retourner: (id: string, motif: string) =>
+    api.post<{ id: string; reference: string; status: string }>(`/tdr/${id}/retourner`, {
+      motif,
+    }),
+  valider: (id: string) =>
+    api.post<{ id: string; reference: string; marcheId: string }>(`/tdr/${id}/valider`),
+};
+
+// ============================================================
 // Marketplace — les avis publiés, et les offres du candidat
 // ============================================================
 

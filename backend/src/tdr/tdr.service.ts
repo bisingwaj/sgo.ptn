@@ -339,16 +339,41 @@ export class TdrService {
    * diverger, et c'est le pire endroit pour cela — un auteur verrait un
    * disponible que le serveur ne reconnaîtrait pas.
    *
-   * Les brouillons des autres comptent : une enveloppe se réserve dès qu'un
-   * dossier la vise, sans quoi deux rédacteurs la dépenseraient deux fois.
-   * Les dossiers refusés et archivés la libèrent.
+   * LA RÉSERVATION COMMENCE À LA TRANSMISSION, PAS À LA PREMIÈRE FRAPPE.
+   *
+   * Les brouillons comptaient, au motif que deux rédacteurs dépenseraient
+   * autrement la même enveloppe deux fois. Le motif se trompe de moment :
+   * un brouillon n'engage personne — nul ne l'a relu, son auteur peut
+   * l'effacer, et il peut n'être qu'un essai.
+   *
+   * Le coût s'est vérifié en base : la ligne A2.3.1, dotée de 8,70 M USD,
+   * portait 12 brouillons cumulant 48,50 M. Le disponible affiché tombait
+   * à −39,80 M et PLUS AUCUN dossier ne pouvait y être transmis. Des
+   * essais abandonnés fermaient une ligne du plan à tout le monde.
+   *
+   * Comptent donc les dossiers qui ont quitté la main de leur auteur :
+   * SOUMIS_UGP, REVUE_UGP, VALIDE_UGP, ANO_EN_COURS, ANO_OBTENU — et
+   * RETOURNE, qui est reparti en correction mais reste attendu, sa ligne
+   * ne devant pas lui être prise pendant qu'il se corrige.
+   *
+   * Ne comptent pas : BROUILLON, qui n'engage rien, ANO_REFUSE et ARCHIVE,
+   * qui libèrent.
    */
   private async engagementAutresDossiers(ptbaActivityId: string, exceptTdrId: string) {
     const autres = await this.prisma.tdr.aggregate({
       where: {
         ptbaActivityId,
         id: { not: exceptTdrId },
-        status: { notIn: ['ANO_REFUSE', 'ARCHIVE'] },
+        status: {
+          in: [
+            'SOUMIS_UGP',
+            'REVUE_UGP',
+            'RETOURNE',
+            'VALIDE_UGP',
+            'ANO_EN_COURS',
+            'ANO_OBTENU',
+          ],
+        },
       },
       _sum: { budgetTotalUsd: true },
       _count: true,
@@ -442,9 +467,10 @@ export class TdrService {
     // cran plus haut, où la somme des activités est bornée par la dotation
     // de la composante.
     //
-    // Les brouillons des autres sont comptés : une enveloppe se réserve dès
-    // qu'un dossier la vise, sans quoi deux rédacteurs la dépenseraient
-    // deux fois. Les dossiers refusés et archivés la libèrent.
+    // Seuls les dossiers TRANSMIS sont comptés — voir
+    // `engagementAutresDossiers`. Les brouillons des autres n'entament
+    // rien : le contrôle porte ici, au moment de la transmission, qui est
+    // précisément celui où l'enveloppe se prend.
     if (tdr.ptbaActivity && tdr.budgetTotalUsd) {
       const envelope = Number(tdr.ptbaActivity.envelopeUsd);
       const budget = Number(tdr.budgetTotalUsd);
@@ -586,6 +612,14 @@ export class TdrService {
     if (!isPrivileged && tdr.organisationId !== actor.organisationId) {
       throw new ForbiddenException('Ce TDR ne relève pas de votre organisation.');
     }
+    // La liste masque les brouillons d'autrui ; l'adresse directe le doit
+    // aussi, sans quoi la règle ne tiendrait qu'à l'absence de lien.
+    if (tdr.status === 'BROUILLON' && tdr.authorId !== actor.userId) {
+      throw new ForbiddenException(
+        'Ce dossier est encore en rédaction. Un brouillon n’est lisible que par son auteur, ' +
+          'jusqu’à sa transmission à l’UGP.',
+      );
+    }
     return tdr;
   }
 
@@ -645,6 +679,20 @@ export class TdrService {
     return this.prisma.tdr.findMany({
       where: {
         ...(isPrivileged ? {} : { organisationId: actor.organisationId }),
+        // UN BROUILLON N'APPARTIENT QU'À SON AUTEUR.
+        //
+        // Le cloisonnement ne portait que sur l'organisation. Toute l'UGP
+        // formant une seule organisation, chaque agent voyait les
+        // brouillons de tous les autres — mesuré : 23 brouillons d'autrui
+        // sur 34 dossiers visibles. Un texte inachevé n'est pas un
+        // document de travail commun : personne ne l'a relu, personne ne
+        // s'en est porté garant, et son auteur peut encore l'effacer.
+        //
+        // La transmission change cela, et c'est bien son rôle : à partir
+        // de SOUMIS_UGP le dossier devient l'affaire de l'organisation.
+        // Les relecteurs eux-mêmes n'y échappent pas — instruire un
+        // dossier suppose qu'il ait été transmis.
+        OR: [{ status: { not: 'BROUILLON' } }, { authorId: actor.userId }],
         ...(filters.status ? { status: filters.status as never } : {}),
       },
       orderBy: { updatedAt: 'desc' },
