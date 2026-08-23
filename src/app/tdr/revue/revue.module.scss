@@ -39,6 +39,11 @@
   color: var(--cds-text-secondary);
 }
 
+.tonAlerte {
+  background: var(--cds-support-error);
+  color: var(--cds-text-inverse);
+}
+
 /* Les décisions d'une ligne. En colonne : « Retourner » et « Valider »
    côte à côte se choisiraient par la position plutôt que par le libellé. */
 .actions {

@@ -1151,7 +1151,67 @@ export const passationApi = {
     }),
   valider: (id: string) =>
     api.post<{ id: string; reference: string; marcheId: string }>(`/tdr/${id}/valider`),
+
+  /**
+   * La demande de non-objection.
+   *
+   * Elle porte sur le MARCHÉ, non sur le TDR : c'est le dossier d'appel
+   * d'offres qui part au bailleur. Aucun corps de requête — le bailleur
+   * saisi se déduit de la ventilation du financement, côté serveur.
+   */
+  demanderAno: (marcheId: string) =>
+    api.post<{ id: string; reference: string; donor: string; decision: string }>(
+      `/marches/${marcheId}/ano`,
+    ),
+
+  anosEnCours: () => api.get<AnoEnCours[]>("/anos/en-cours"),
+
+  deciderAno: (anoId: string, decision: AnoDecisionApi, motif?: string) =>
+    api.post<{ id: string; reference: string; decision: AnoDecisionApi }>(
+      `/anos/${anoId}/decision`,
+      { decision, ...(motif ? { motif } : {}) },
+    ),
+
+  publier: (marcheId: string, avis: AvisAPublier) =>
+    api.post<{ id: string; reference: string; cloture: string }>(
+      `/marches/${marcheId}/publier`,
+      avis,
+    ),
 };
+
+export type AnoDecisionApi = "NON_OBJECTION" | "REFUS" | "DEMANDE_MODIFICATION";
+
+/** Une demande en attente, vue du bailleur qui doit trancher. */
+export interface AnoEnCours {
+  id: string;
+  reference: string;
+  objet: string;
+  objetRef: string;
+  donor: string;
+  submittedAt: string;
+  /** Fin du délai de service : 14 jours BM, 21 jours AFD. */
+  dueAt: string;
+  delaiJours: number;
+  marcheId: string | null;
+  methodCode: string | null;
+  reviewType: "PRIOR" | "POST" | null;
+  tdrId: string | null;
+  title: string | null;
+  budgetTotalUsd: number | null;
+  budgetIdaUsd: number | null;
+  budgetAfdUsd: number | null;
+  ptbaCode: string | null;
+  componentCode: string | null;
+  organisation: string | null;
+}
+
+/** Ce qu'un avis dit au candidat. Le reste vient du marché. */
+export interface AvisAPublier {
+  objet?: string;
+  resume: string;
+  qualifications?: string[];
+  joursDeDepot?: number;
+}
 
 // ============================================================
 // Marketplace — les avis publiés, et les offres du candidat

@@ -1,292 +1,181 @@
-// ANO inbox
+/* Les avis de non-objection.
+   Les teintes de délai sont universelles : ce qu'un dossier attend ne
+   dépend pas de qui le regarde. */
 
-.toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ptn-space-02);
-  padding: var(--ptn-space-03) var(--ptn-space-04);
-  background: var(--cds-layer);
-  border: 1px solid var(--cds-border-subtle);
-  border-bottom: 0;
-  margin-bottom: 0;
+.lien {
+  color: var(--cds-text-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-.pills {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.pillLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.16px;
-  color: var(--cds-text-helper);
-  margin-right: 4px;
-}
-
-.pill {
-  background: transparent;
-  border: 1px solid var(--cds-border-subtle);
-  padding: 4px 10px;
-  font: inherit;
+.sousTitre {
+  margin-top: 2px;
   font-size: 12px;
   color: var(--cds-text-secondary);
-  cursor: pointer;
-  transition: all var(--ptn-motion-fast-02);
-
-  &:hover {
-    background: var(--cds-layer-hover);
-  }
 }
 
-.pillActive {
-  background: var(--ptn-accent);
-  color: #ffffff;
-  border-color: var(--ptn-accent);
-}
-
-// ===== List =====
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.item {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--ptn-space-04);
-  padding: var(--ptn-space-03) var(--ptn-space-04);
-  border-bottom: 1px solid var(--cds-border-subtle);
-  cursor: pointer;
-  transition: background var(--ptn-motion-fast-02);
-
-  &:hover {
-    background: var(--cds-layer-hover);
-  }
-
-  &:last-child {
-    border-bottom: 0;
-  }
-}
-
-.itemUrgent {
-  background: var(--ptn-status-danger-surface);
-
-  &:hover {
-    filter: brightness(0.97);
-  }
-}
-
-.itemDone {
-  opacity: 0.7;
-}
-
-.itemMain {
+/* Le financement se lit en colonne : « IDA 6.90 M » puis « AFD 1.80 M »
+   sur une même ligne se confondraient avec un seul montant. */
+.financement {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  gap: 2px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.itemHead {
+.delai {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tonAttente {
+  background: var(--cds-support-warning);
+  color: var(--cds-text-inverse);
+}
+
+.tonAlerte {
+  background: var(--cds-support-error);
+  color: var(--cds-text-inverse);
+}
+
+.tonNeutre {
+  background: var(--cds-layer-accent);
+  color: var(--cds-text-secondary);
+}
+
+.actionForte {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 11px;
-  color: var(--cds-text-helper);
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ptn-accent);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
 }
 
-.itemTitle {
+.alerte,
+.info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
   font-size: 14px;
   color: var(--cds-text-primary);
-  font-weight: 500;
 }
 
-.itemDesc {
+.alerte {
+  border-left: 3px solid var(--cds-support-error);
+  background: var(--cds-notification-background-error);
+}
+
+.info {
+  border-left: 3px solid var(--cds-support-info);
+  background: var(--cds-notification-background-info);
+}
+
+.vide {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--cds-text-secondary);
+}
+
+.videDetail {
+  margin-top: 8px;
+  margin-inline: auto;
+  max-width: 60ch;
+  font-size: 12px;
+}
+
+.pied {
+  margin-top: 16px;
+  max-width: 78ch;
   font-size: 12px;
   color: var(--cds-text-secondary);
-  line-height: 1.55;
 }
 
-.itemMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--ptn-space-03);
-  flex-shrink: 0;
-}
-
-.itemAmount {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--cds-text-primary);
-  min-width: 90px;
-  text-align: right;
-}
-
-.itemDelay {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--cds-text-secondary);
-  min-width: 100px;
-}
-
-.itemDelayUrgent {
-  color: var(--ptn-status-danger);
-  font-weight: 500;
-}
-
-.itemSla {
-  font-size: 10px;
-  color: var(--cds-text-helper);
-}
-
-.itemArrow {
-  color: var(--cds-text-helper);
-}
-
-// ===== Drawer =====
-.drawerContent {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ptn-space-05);
-}
-
-.drawerDesc {
-  font-size: 13px;
-  color: var(--cds-text-secondary);
-  line-height: 1.55;
-  margin: 0;
-}
-
-.drawerKv {
+/* Les trois suites possibles. Chacune porte son effet : un menu déroulant
+   les mettrait sur le même plan et cacherait ce qu'elles engagent. */
+.suites {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  background: var(--cds-border-subtle);
-  border: 1px solid var(--cds-border-subtle);
 }
 
-.kvRow {
+.suite {
   display: flex;
-  justify-content: space-between;
-  padding: 8px var(--ptn-space-03);
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--cds-border-subtle);
   background: var(--cds-layer);
-  font-size: 12px;
-
-  span {
-    color: var(--cds-text-secondary);
-  }
-
-  strong {
-    color: var(--cds-text-primary);
-    font-weight: 500;
-  }
-}
-
-.timeline {
-  h4 {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.32px;
-    font-weight: 500;
-    color: var(--cds-text-secondary);
-    margin: 0 0 var(--ptn-space-03);
-  }
-
-  ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--ptn-space-02);
-  }
-
-  li {
-    display: grid;
-    grid-template-columns: 24px 1fr;
-    gap: var(--ptn-space-03);
-    align-items: flex-start;
-    padding: var(--ptn-space-02) 0;
-
-    > div {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-
-      strong {
-        font-size: 13px;
-        color: var(--cds-text-primary);
-      }
-
-      span {
-        font-size: 11px;
-        color: var(--cds-text-helper);
-      }
-    }
-  }
-}
-
-.timelineDot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-top: 4px;
-  background: var(--cds-border-subtle);
-}
-
-.timelineDone .timelineDot {
-  background: var(--ptn-status-success);
-}
-
-.timelineCurrent .timelineDot {
-  background: var(--ptn-accent);
-  box-shadow: 0 0 0 4px var(--ptn-accent-surface);
-}
-
-.timelineFuture .timelineDot {
-  background: var(--cds-layer);
-  border: 1px dashed var(--cds-border-strong);
-}
-
-.btnPrimary,
-.btnGhost {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 var(--ptn-space-03);
-  font: inherit;
-  font-size: 13px;
   cursor: pointer;
-  transition: background var(--ptn-motion-fast-02);
-}
-
-.btnPrimary {
-  background: var(--ptn-accent);
-  color: #ffffff;
-  border: 0;
-
-  &:hover {
-    background: var(--ptn-accent-hover);
-  }
-}
-
-.btnGhost {
-  background: transparent;
-  color: var(--cds-text-primary);
-  border: 1px solid var(--cds-border-strong);
 
   &:hover {
     background: var(--cds-layer-hover);
   }
+}
+
+.suiteRetenue {
+  border-color: var(--ptn-accent);
+  box-shadow: inset 3px 0 0 var(--ptn-accent);
+}
+
+/* La commande native reste dans le flux d'accessibilité : masquée à l'œil,
+   jamais à la navigation au clavier ni au lecteur d'écran. */
+.suiteInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.suiteInput:focus-visible + .suiteTitre {
+  outline: 2px solid var(--ptn-accent);
+  outline-offset: 2px;
+}
+
+.suiteTitre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+
+.suiteEffet {
+  max-width: 62ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--cds-text-secondary);
+}
+
+.refus {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--cds-text-error);
 }

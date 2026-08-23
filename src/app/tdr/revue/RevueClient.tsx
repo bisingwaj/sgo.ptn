@@ -10,8 +10,15 @@
  * « Transmis », « En revue » et « Retournés » du registre restaient vides
  * non par défaut d'affichage, mais parce que rien ne pouvait y arriver.
  *
- * Cet écran couvre les trois premiers actes, ceux de l'UGP. La suite —
- * demande d'ANO, décision du bailleur, publication — reste à ouvrir.
+ * Cet écran porte les CINQ actes de l'UGP sur un dossier transmis :
+ * prendre en revue, retourner à l'auteur, valider — puis, une fois le
+ * marché né, demander la non-objection et publier l'avis. Le sixième acte,
+ * la décision elle-même, n'appartient pas à l'UGP : il se rend sur
+ * `/ano`, et par le bailleur seul.
+ *
+ * Un dossier ne quitte donc la file qu'une fois son avis publié. Il en
+ * sortait auparavant à l'obtention de la non-objection — c'est-à-dire au
+ * moment précis où quelqu'un devait agir dessus.
  *
  * CE QU'IL NE FAIT PAS. Il n'instruit pas : il enregistre une décision déjà
  * prise. Le dossier se lit sur `/tdr/[id]`, et le lien y mène depuis chaque
@@ -21,12 +28,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Modal, TextArea } from "@carbon/react";
+import { Modal, NumberInput, TextArea } from "@carbon/react";
 import { Shell } from "@/components/shell/Shell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
 import { passationApi, type DossierAInstruire, type TdrStatusApi } from "@/lib/api";
-import { ArrowRight, Undo, CheckmarkOutline, View, WarningAltFilled } from "@carbon/icons-react";
+import {
+  ArrowRight,
+  Undo,
+  CheckmarkOutline,
+  Send,
+  Bullhorn,
+  View,
+  WarningAltFilled,
+} from "@carbon/icons-react";
 import styles from "@/styles/ugp-shared.module.scss";
 import vue from "./revue.module.scss";
 
@@ -39,8 +54,10 @@ import vue from "./revue.module.scss";
 const ATTENTE: Partial<Record<TdrStatusApi, { label: string; ton: string }>> = {
   SOUMIS_UGP: { label: "À prendre en revue", ton: vue.tonAttente },
   REVUE_UGP: { label: "En revue — à trancher", ton: vue.tonAttente },
-  VALIDE_UGP: { label: "Validé · marché ouvert", ton: vue.tonOk },
-  ANO_EN_COURS: { label: "ANO demandé au bailleur", ton: vue.tonNeutre },
+  VALIDE_UGP: { label: "Validé · ANO à demander", ton: vue.tonAttente },
+  ANO_EN_COURS: { label: "Chez le bailleur", ton: vue.tonNeutre },
+  ANO_OBTENU: { label: "Non-objection obtenue · avis à publier", ton: vue.tonOk },
+  ANO_REFUSE: { label: "Non-objection refusée", ton: vue.tonAlerte },
 };
 
 const money = (usd: number | null) => (usd === null ? "—" : `${(usd / 1e6).toFixed(2)} M`);
@@ -59,7 +76,13 @@ export function RevueClient() {
   /** L'acte en cours, et le dossier qu'il vise. */
   const [aRetourner, setARetourner] = useState<DossierAInstruire | null>(null);
   const [aValider, setAValider] = useState<DossierAInstruire | null>(null);
+  const [aDemanderAno, setADemanderAno] = useState<DossierAInstruire | null>(null);
+  const [aPublier, setAPublier] = useState<DossierAInstruire | null>(null);
   const [motif, setMotif] = useState("");
+
+  /** L'avis, tel qu'un candidat le lira. Le reste vient du marché. */
+  const [resume, setResume] = useState("");
+  const [jours, setJours] = useState(30);
   const [occupe, setOccupe] = useState<string | null>(null);
   const [refus, setRefus] = useState<string | null>(null);
 
@@ -96,7 +119,10 @@ export function RevueClient() {
       await acte();
       setARetourner(null);
       setAValider(null);
+      setADemanderAno(null);
+      setAPublier(null);
       setMotif("");
+      setResume("");
       await charger();
     } catch (e) {
       setRefus(e instanceof Error ? e.message : "L’acte n’a pas abouti.");
@@ -107,6 +133,8 @@ export function RevueClient() {
 
   const peutInstruire = can("tdr:review");
   const peutValider = can("tdr:validate");
+  const peutDemanderAno = can("ano:submit");
+  const peutPublier = can("dao:publish");
 
   return (
     <Shell crumbs={[{ label: "TDR", href: "/tdr" }, { label: "Instruction" }]}>
@@ -249,9 +277,51 @@ export function RevueClient() {
                             <CheckmarkOutline size={14} aria-hidden /> Valider
                           </button>
                         )}
+                        {/* Une fois le marché né, deux actes restent à
+                            l'UGP : demander la non-objection, puis publier
+                            l'avis. Entre les deux, la décision appartient
+                            au bailleur et rien ne s'offre ici. */}
+                        {d.status === "VALIDE_UGP" && d.marche && peutDemanderAno && (
+                          <button
+                            type="button"
+                            className={vue.actionForte}
+                            disabled={enCours}
+                            onClick={() => {
+                              setADemanderAno(d);
+                              setRefus(null);
+                            }}
+                          >
+                            <Send size={14} aria-hidden /> Demander l’ANO
+                          </button>
+                        )}
+                        {d.status === "ANO_EN_COURS" && (
+                          <span className={vue.sousTitre}>
+                            Décision attendue du bailleur — rien à faire ici
+                          </span>
+                        )}
+                        {d.status === "ANO_OBTENU" && d.marche && peutPublier && (
+                          <button
+                            type="button"
+                            className={vue.actionForte}
+                            disabled={enCours}
+                            onClick={() => {
+                              setAPublier(d);
+                              setResume("");
+                              setJours(30);
+                              setRefus(null);
+                            }}
+                          >
+                            <Bullhorn size={14} aria-hidden /> Publier l’avis
+                          </button>
+                        )}
+                        {d.status === "ANO_REFUSE" && (
+                          <span className={vue.sousTitre}>
+                            Refus motivé — le dossier se reprend avec l’auteur
+                          </span>
+                        )}
                         {d.marche && (
                           <span className={vue.sousTitre}>
-                            Marché ouvert · {d.marche.status}
+                            Marché {d.marche.status.toLowerCase().replace(/_/g, " ")}
                           </span>
                         )}
                       </div>
@@ -327,6 +397,95 @@ export function RevueClient() {
           Le dossier ne revient plus en rédaction : après validation, une correction passe par
           le retrait du marché. La décision est inscrite au journal d’audit avec son auteur.
         </p>
+        {refus && (
+          <p className={vue.refus} role="alert">
+            {refus}
+          </p>
+        )}
+      </Modal>
+
+      {/* ---------- Demande de non-objection ---------- */}
+      <Modal
+        open={aDemanderAno !== null}
+        modalHeading="Soumettre ce dossier à non-objection ?"
+        modalLabel={aDemanderAno?.reference}
+        primaryButtonText={occupe ? "Envoi…" : "Déposer la demande"}
+        secondaryButtonText="Annuler"
+        primaryButtonDisabled={Boolean(occupe)}
+        onRequestClose={() => {
+          setADemanderAno(null);
+          setRefus(null);
+        }}
+        onRequestSubmit={() =>
+          aDemanderAno?.marche &&
+          void agir(aDemanderAno.id, () =>
+            passationApi.demanderAno(aDemanderAno.marche!.id),
+          )
+        }
+      >
+        <p className="text-body text-secondary mb-4">
+          <strong>{aDemanderAno?.title}</strong> part au bailleur.{" "}
+          <strong>L’UGPTN demande, elle ne décide pas</strong> : la non-objection est la
+          prérogative du bailleur, et personne ici ne peut la rendre à sa place.
+        </p>
+        <p className="text-body text-secondary">
+          Le bailleur saisi se déduit de la ventilation du financement inscrite au dossier —
+          IDA, AFD, ou les deux en cofinancement. Le délai de service court à compter du dépôt :
+          quatorze jours pour la Banque mondiale, vingt et un pour l’AFD.
+        </p>
+        {refus && (
+          <p className={vue.refus} role="alert">
+            {refus}
+          </p>
+        )}
+      </Modal>
+
+      {/* ---------- Publication de l'avis ---------- */}
+      <Modal
+        open={aPublier !== null}
+        modalHeading="Publier l’avis d’appel d’offres ?"
+        modalLabel={aPublier?.reference}
+        primaryButtonText={occupe ? "Publication…" : "Publier l’avis"}
+        secondaryButtonText="Annuler"
+        primaryButtonDisabled={Boolean(occupe) || resume.trim().length < 20}
+        onRequestClose={() => {
+          setAPublier(null);
+          setRefus(null);
+        }}
+        onRequestSubmit={() =>
+          aPublier?.marche &&
+          void agir(aPublier.id, () =>
+            passationApi.publier(aPublier.marche!.id, {
+              resume: resume.trim(),
+              joursDeDepot: jours,
+            }),
+          )
+        }
+      >
+        <p className="text-body text-secondary mb-4">
+          L’avis paraît au marketplace, où les entreprises inscrites déposent leur offre.{" "}
+          <strong>Un marché ne se publie qu’une fois</strong> : deux avis pour un même marché
+          laisseraient un candidat sans savoir auquel répondre.
+        </p>
+        <TextArea
+          id="avis-resume"
+          labelText="Ce que le candidat lit en premier"
+          helperText="L’objet du marché en quelques phrases, dans les termes d’une entreprise qui décide si elle concourt. Vingt caractères au minimum."
+          rows={4}
+          value={resume}
+          onChange={(e) => setResume(e.target.value)}
+        />
+        <div className="mt-4">
+          <NumberInput
+            id="avis-jours"
+            label="Délai de dépôt, en jours"
+            helperText="Sept jours au minimum : en deçà, un dossier ne se constitue pas. Cent vingt au plus."
+            min={7}
+            max={120}
+            value={jours}
+            onChange={(_e, { value }) => setJours(Number(value) || 30)}
+          />
+        </div>
         {refus && (
           <p className={vue.refus} role="alert">
             {refus}

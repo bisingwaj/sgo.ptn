@@ -454,6 +454,25 @@ export class TdrService {
     if (!tdr.budgetTotalUsd || Number(tdr.budgetTotalUsd) <= 0) {
       blockers.push('Le budget n’est pas renseigné.');
     }
+    // CE QUI SE DÉCOUVRAIT TROP TARD. La méthode de passation se déduit
+    // de la catégorie du type et du montant, à la transmission. Quatre
+    // types du référentiel ne portent AUCUNE catégorie — mission
+    // internationale, communication, atelier, formation : la déduction
+    // rend alors `null`, le dossier part quand même, et la validation le
+    // refuse cinq jours plus tard, sur un message qui ne dit pas pourquoi.
+    //
+    // L'auteur l'apprend ici, avant de transmettre. Ce n'est pas un
+    // blocage : un atelier se commande légitimement sans être un marché,
+    // et un don SBP n'en est jamais un.
+    if (!tdr.tdrType.procurementCategory) {
+      warnings.push(
+        `Le type « ${tdr.tdrType.name} » n’est rattaché à aucune catégorie de passation : ` +
+          'aucune méthode ne peut en être déduite, et ce dossier ne donnera pas naissance à un marché. ' +
+          'S’il doit en produire un, reprenez-le sous un type qui porte une catégorie — services consultants, ' +
+          'fournitures, travaux ou services non-consultants.',
+      );
+    }
+
     if (!tdr.consentMepAt || !tdr.consentRgpdAt) {
       blockers.push('Les engagements de conformité au MEP et de protection des données ne sont pas confirmés.');
     }

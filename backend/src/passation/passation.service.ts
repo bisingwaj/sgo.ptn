@@ -98,8 +98,19 @@ export class PassationService {
   async aInstruire() {
     const lignes = await this.prisma.tdr.findMany({
       where: {
+        // ANO_OBTENU y figure désormais : la non-objection obtenue n'est
+        // pas la fin du chemin, c'est le moment de publier l'avis. Sans
+        // cette ligne, le dossier disparaissait de la file au moment
+        // précis où quelqu'un devait agir dessus.
         status: {
-          in: ['SOUMIS_UGP', 'REVUE_UGP', 'VALIDE_UGP', 'ANO_EN_COURS'],
+          in: [
+            'SOUMIS_UGP',
+            'REVUE_UGP',
+            'VALIDE_UGP',
+            'ANO_EN_COURS',
+            'ANO_OBTENU',
+            'ANO_REFUSE',
+          ],
         },
       },
       select: {
@@ -210,9 +221,21 @@ export class PassationService {
         'la validation',
       );
     }
-    if (!tdr.procurementMethodCode || !tdr.budgetTotalUsd) {
+    // Le refus disait « n'a ni méthode ni enveloppe » sans distinguer les
+    // deux cas, dont un seul se corrige. Chacun nomme désormais sa cause,
+    // et dit quoi faire.
+    if (!tdr.budgetTotalUsd || Number(tdr.budgetTotalUsd) <= 0) {
       throw new BadRequestException(
-        `${tdr.reference} n’a ni méthode de passation ni enveloppe : un marché ne peut pas en naître.`,
+        `${tdr.reference} ne porte aucune enveloppe : un marché ne peut pas en naître. ` +
+          'Retournez le dossier à son auteur pour qu’il en chiffre le budget.',
+      );
+    }
+    if (!tdr.procurementMethodCode) {
+      throw new BadRequestException(
+        `Aucune méthode de passation n’a pu être déduite pour ${tdr.reference}. ` +
+          'Son type n’est rattaché à aucune catégorie de passation — c’est le cas des ateliers, ' +
+          'des formations et des dons SBP, qui ne donnent pas lieu à un marché. ' +
+          'Si celui-ci doit en produire un, il doit être repris sous un type qui porte une catégorie.',
       );
     }
 
@@ -247,6 +270,31 @@ export class PassationService {
    * compter d'ici : 14 jours pour la Banque mondiale, 21 pour l'AFD sur
    * les activités cofinancées.
    */
+  /**
+   * Quel bailleur est saisi de la non-objection.
+   *
+   * ELLE SE DÉDUISAIT DU TYPE DE REVUE : `reviewType === 'PRIOR'` donnait
+   * la Banque mondiale, tout le reste l'AFD. Les deux notions n'ont rien
+   * à voir. La revue préalable ou postérieure est une règle de SEUIL, la
+   * même pour les deux bailleurs ; qui finance relève de la ventilation
+   * arrêtée au plan. Un marché financé par l'IDA sous le seuil de revue
+   * préalable partait ainsi à l'AFD, qui n'a rien à y dire.
+   *
+   * La ventilation du dossier tranche. Cofinancement : les deux sont
+   * saisis, comme le veut le montage IDA 79 % / AFD 21 %.
+   */
+  private static bailleurSaisi(ida: unknown, afd: unknown): string {
+    // Les montants arrivent en Decimal ; `Number` sur `null` vaut 0, d'où
+    // la coalescence explicite plutôt qu'un transtypage.
+    const partIda = Number(ida ?? 0);
+    const partAfd = Number(afd ?? 0);
+    if (partIda > 0 && partAfd > 0) return 'Banque mondiale et AFD';
+    if (partAfd > 0) return 'AFD';
+    // Sans ventilation lisible, l'IDA porte 79 % du financement : c'est
+    // l'hypothèse la moins fausse, et le dépôt reste rectifiable.
+    return 'Banque mondiale';
+  }
+
   async demanderAno(
     marcheId: string,
     actor: AuthenticatedUser,
@@ -260,6 +308,8 @@ export class PassationService {
         status: true,
         reviewType: true,
         tdrId: true,
+        // La ventilation du dossier désigne le bailleur à saisir.
+        tdr: { select: { budgetIdaUsd: true, budgetAfdUsd: true } },
       },
     });
     if (!marche) throw new NotFoundException('Marché introuvable.');
@@ -297,7 +347,10 @@ export class PassationService {
           objet: 'DAO',
           objetId: marche.id,
           objetRef: marche.reference,
-          donor: marche.reviewType === 'PRIOR' ? 'Banque mondiale' : 'AFD',
+          donor: PassationService.bailleurSaisi(
+            marche.tdr?.budgetIdaUsd,
+            marche.tdr?.budgetAfdUsd,
+          ),
           decision: 'EN_COURS',
           submittedById: actor.userId,
         },
@@ -318,19 +371,88 @@ export class PassationService {
     return ano;
   }
 
-  /** Les demandes de non-objection en attente, pour le bailleur. */
+  /**
+   * Les demandes de non-objection en attente, pour le bailleur.
+   *
+   * ELLE NE DISAIT QUE DES RÉFÉRENCES. Un relecteur de la Banque ou de
+   * l'AFD y lisait « ANO-DAO-2026-001 · PTN-2026-014 » et rien de plus :
+   * ni l'objet du marché, ni son montant, ni depuis quand il attend. On ne
+   * décide pas là-dessus, on va chercher ailleurs — et l'écran ne sert
+   * alors qu'à savoir qu'il y a quelque chose à faire.
+   *
+   * L'objet visé n'a pas de clé étrangère, à dessein : la référence doit
+   * survivre à la disparition de ce qu'elle désigne. La jointure se fait
+   * donc à la main, et un objet effacé laisse simplement ses champs vides.
+   *
+   * LE DÉLAI DE SERVICE EST CALCULÉ, NON STOCKÉ : 14 jours pour la Banque
+   * mondiale, 21 pour l'AFD, comptés depuis le dépôt. Le stocker le
+   * figerait au moment du dépôt, alors que la règle peut changer.
+   */
   async anosEnCours() {
-    return this.prisma.ano.findMany({
+    const anos = await this.prisma.ano.findMany({
       where: { decision: 'EN_COURS' },
       select: {
         id: true,
         reference: true,
         objet: true,
+        objetId: true,
         objetRef: true,
         donor: true,
         submittedAt: true,
       },
       orderBy: { submittedAt: 'asc' },
+    });
+    if (anos.length === 0) return [];
+
+    const marches = await this.prisma.marche.findMany({
+      where: { id: { in: anos.map((a) => a.objetId) } },
+      select: {
+        id: true,
+        reference: true,
+        methodCode: true,
+        reviewType: true,
+        status: true,
+        tdr: {
+          select: {
+            id: true,
+            title: true,
+            budgetTotalUsd: true,
+            budgetIdaUsd: true,
+            budgetAfdUsd: true,
+            ptbaActivity: { select: { code: true, componentCode: true } },
+            organisation: { select: { name: true } },
+          },
+        },
+      },
+    });
+    const parId = new Map(marches.map((m) => [m.id, m]));
+
+    return anos.map((a) => {
+      const m = parId.get(a.objetId);
+      const jours = a.donor.includes('AFD') && !a.donor.includes('mondiale') ? 21 : 14;
+      const echeance = new Date(a.submittedAt.getTime() + jours * 86_400_000);
+      return {
+        id: a.id,
+        reference: a.reference,
+        objet: a.objet,
+        objetRef: a.objetRef,
+        donor: a.donor,
+        submittedAt: a.submittedAt,
+        /** Fin du délai de service. Le retard se lit de l'écran, pas d'un calcul de tête. */
+        dueAt: echeance,
+        delaiJours: jours,
+        marcheId: m?.id ?? null,
+        methodCode: m?.methodCode ?? null,
+        reviewType: m?.reviewType ?? null,
+        tdrId: m?.tdr?.id ?? null,
+        title: m?.tdr?.title ?? null,
+        budgetTotalUsd: m?.tdr?.budgetTotalUsd ? Number(m.tdr.budgetTotalUsd) : null,
+        budgetIdaUsd: m?.tdr?.budgetIdaUsd ? Number(m.tdr.budgetIdaUsd) : null,
+        budgetAfdUsd: m?.tdr?.budgetAfdUsd ? Number(m.tdr.budgetAfdUsd) : null,
+        ptbaCode: m?.tdr?.ptbaActivity?.code ?? null,
+        componentCode: m?.tdr?.ptbaActivity?.componentCode ?? null,
+        organisation: m?.tdr?.organisation?.name ?? null,
+      };
     });
   }
 
