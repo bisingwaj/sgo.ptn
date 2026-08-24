@@ -116,10 +116,19 @@ function navFor(profile: ProfileKey): NavGroup[] {
           ],
         },
         {
-          title: "Cycle de passation",
+          /* Le plan annuel n'est PAS une étape du cycle de passation : il en
+             est la précondition. Sans exercice ouvert et doté, ni TDR ni
+             marché n'existent. Le ranger entre PPM et TDR le donnait pour un
+             pair de ce qu'il conditionne. */
+          title: "Programmation budgétaire",
           items: [
             { label: "PTBA", href: "/ptba", permission: "ptba:read", icon: <ChartLineSmooth size={16} />, hint: PTBA },
             { label: "Exercices", href: "/ptba/exercices", permission: "ptba:read", icon: <Calendar size={16} />, hint: EXERCICES },
+          ],
+        },
+        {
+          title: "Cycle de passation",
+          items: [
             { label: "PPM", href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, hint: PPM },
             { label: "TDR", href: "/tdr", permission: "tdr:read", icon: <Document size={16} />, hint: TDR },
             { label: "Instruction TDR", href: "/tdr/revue", permission: "tdr:review", icon: <TaskView size={16} />, hint: INSTRUCTION },

@@ -550,7 +550,10 @@ export function PtbaWizardClient() {
               /* Le lien vit hors de la notification : `subtitle` n'accepte
                  qu'une chaîne dans cette version de Carbon, et une issue
                  qu'on ne peut pas cliquer n'en est pas une. */
-              <Link href="/ptba/allocations" className="text-body text-link underline">
+              <Link
+                href={year ? `/ptba/exercices/${year.year}` : "/ptba/exercices"}
+                className="text-body text-link underline"
+              >
                 Arrêter les allocations de l’exercice
               </Link>
             )}
@@ -1103,7 +1106,7 @@ export function PtbaWizardClient() {
         },
       },
     ];
-  }, [allocations, provinces, optionsProvinces, erreurFinale]);
+  }, [allocations, provinces, optionsProvinces, erreurFinale, year]);
 
   /* ---------------- Garde-fous d'accès ---------------- */
 

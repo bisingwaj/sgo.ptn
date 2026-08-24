@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { Shell } from "@/components/shell/Shell";
-import { AllocationsClient } from "./AllocationsClient";
+import { AllocationsRedirect } from "./AllocationsRedirect";
 
-export const metadata = { title: "Allocation annuelle · PTBA · PTN-RDC" };
+export const metadata: Metadata = {
+  title: "Allocation annuelle · PTBA · PTN-RDC",
+};
 
+/**
+ * Ancienne route de l'écran d'allocation, conservée en redirection : les
+ * allocations vivent maintenant sur `/ptba/exercices/[year]`, où l'année
+ * est explicite. Voir `AllocationsRedirect`.
+ */
 export default function AllocationsPage() {
   return (
     <Shell
@@ -11,7 +19,7 @@ export default function AllocationsPage() {
         { label: "Allocation annuelle" },
       ]}
     >
-      <AllocationsClient />
+      <AllocationsRedirect />
     </Shell>
   );
 }

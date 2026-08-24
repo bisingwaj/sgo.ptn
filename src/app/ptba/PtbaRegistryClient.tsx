@@ -270,15 +270,26 @@ export function PtbaRegistryClient() {
                   allocation, « Ajouter » mène à cinq composantes
                   désactivées ; sans exercice, il n'y a rien du tout.
 
-                  « Exercices » et « Allocations » restent offerts quand le
-                  plan n'est plus modifiable : c'est de là qu'on ouvre
-                  l'exercice suivant. */}
+                  « Exercices » reste offert quand le plan n'est plus
+                  modifiable : c'est de là qu'on ouvre l'exercice suivant.
+
+                  « Allocations » porte l'année AFFICHÉE, et non plus une
+                  route qui devinait la sienne. Le registre laisse changer
+                  d'exercice par son sélecteur : sans l'année dans le lien,
+                  on partait doter une autre année que celle sous les yeux. */}
               <Button as={Link} href="/ptba/exercices" kind="ghost" size="md">
                 Exercices
               </Button>
-              <Button as={Link} href="/ptba/allocations" kind="tertiary" size="md">
-                Allocations
-              </Button>
+              {year && (
+                <Button
+                  as={Link}
+                  href={`/ptba/exercices/${year.year}`}
+                  kind="tertiary"
+                  size="md"
+                >
+                  Allocations {year.year}
+                </Button>
+              )}
               {editable && (
                 <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="md">
                   Ajouter une activité

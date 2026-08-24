@@ -1,56 +1,77 @@
 "use client";
 
 /**
- * Les exercices budgétaires — les ouvrir, les arrêter.
+ * Les exercices budgétaires — la liste, et l'ouverture d'un exercice.
  *
- * DEUX ACTES QUI N'AVAIENT AUCUN ÉCRAN.
+ * L'ACTE QUI N'AVAIT AUCUN ÉCRAN. Le PTBA savait lire ses exercices, y
+ * allouer, y inscrire des activités et les valider — mais rien ne
+ * permettait d'en OUVRIR un. Celui de 2026 venait du peuplement de la base,
+ * et l'arrivée de 2027 aurait demandé une intervention en base de données.
  *
- * OUVRIR. Le PTBA savait lire ses exercices, y allouer, y inscrire des
- * activités et les valider — mais rien ne permettait d'en ouvrir un. Celui
- * de 2026 venait du peuplement de la base, et l'arrivée de 2027 aurait
- * demandé une intervention en base de données.
+ * CET ÉCRAN NE FAIT PLUS QUE LISTER ET OUVRIR. Il portait aussi l'arrêté du
+ * plan et un lien « Allocations ». Ce lien était faux : il pointait
+ * `/ptba/allocations` sans année, alors que la cible choisissait elle-même
+ * son exercice. Cliquer sur la ligne 2026 menait aux allocations de 2027
+ * sans que rien ne le dise. Le défaut restait invisible tant qu'un seul
+ * exercice existait — c'est-à-dire jusqu'au premier usage du bouton que cet
+ * écran venait précisément d'ajouter.
  *
- * ARRÊTER. `POST /ptba/exercices/:year/valider` existait, réservé au
- * Coordonnateur, et le client d'API l'exposait déjà : aucun bouton ne
- * l'appelait. Le plan restait donc indéfiniment en préparation, et rien
- * n'était jamais opposable.
+ * L'arrêté et les allocations vivent désormais dans `[year]/`. Une
+ * allocation n'est pas un écran, c'est une propriété d'un exercice : la
+ * question « quelle année ? » ne se pose plus, elle est dans l'URL.
  *
  * L'EXERCICE NAÎT VIDE. Ni allocation ni activité : une dotation est une
  * décision du COPIL, et recopier celles de l'année précédente les ferait
- * passer pour reconduites alors que personne ne les a arrêtées. L'écran le
- * dit, et renvoie vers les allocations — sans elles, l'exercice neuf
- * n'accepte aucune activité.
+ * passer pour reconduites alors que personne ne les a arrêtées.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Modal, TextInput } from "@carbon/react";
+import {
+  Button,
+  DataTableSkeleton,
+  InlineNotification,
+  Modal,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tag,
+  TextInput,
+} from "@carbon/react";
+import { Add } from "@carbon/icons-react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
-import { Note } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import { ptbaApi, type PtbaYearApi } from "@/lib/api";
-import { Add, ArrowRight, CheckmarkOutline } from "@carbon/icons-react";
-import styles from "./exercices.module.scss";
 
 /** Ce qu'un état veut dire pour qui lit, et non pour la base. */
-const ETAT: Record<PtbaYearApi["status"], { label: string; ton: string; sens: string }> = {
+export const ETAT: Record<
+  PtbaYearApi["status"],
+  { label: string; tone: "gray" | "green" | "cool-gray"; sens: string }
+> = {
   BROUILLON: {
     label: "En préparation",
-    ton: styles.tonAttente,
+    tone: "gray",
     sens: "Le plan se construit. Il n’est pas encore opposable.",
   },
   VALIDE: {
-    label: "Validé par le COPIL",
-    ton: styles.tonOk,
-    sens: "Le plan est arrêté et opposable.",
+    label: "Validé — opposable",
+    tone: "green",
+    sens: "Le plan est arrêté et opposable devant le bailleur.",
   },
   CLOS: {
     label: "Clos",
-    ton: styles.tonNeutre,
+    tone: "cool-gray",
     sens: "L’exercice est terminé. Plus rien ne s’y inscrit.",
   },
 };
+
+/** Bornes du projet — MEP du 23 juin 2025. */
+const PREMIER_EXERCICE = 2025;
+const DERNIER_EXERCICE = 2029;
 
 export function ExercicesClient() {
   const { can, loading: authLoading } = useAuth();
@@ -61,7 +82,6 @@ export function ExercicesClient() {
   const [ouvrir, setOuvrir] = useState(false);
   const [annee, setAnnee] = useState("");
   const [intitule, setIntitule] = useState("");
-  const [aValider, setAValider] = useState<PtbaYearApi | null>(null);
   const [occupe, setOccupe] = useState(false);
   const [refus, setRefus] = useState<string | null>(null);
 
@@ -76,39 +96,61 @@ export function ExercicesClient() {
 
   useEffect(() => {
     if (authLoading) return;
+    let annule = false;
+    // L'appel est enveloppé plutôt que direct : tout `setState` doit tomber
+    // après un `await`, jamais dans le corps synchrone de l'effet.
     void (async () => {
-      await charger();
+      if (!annule) await charger();
     })();
+    return () => {
+      annule = true;
+    };
   }, [authLoading, charger]);
 
   const peutOuvrir = can("ptba:write");
-  const peutValider = can("ptba:validate");
 
-  const agir = async (acte: () => Promise<unknown>) => {
+  const ouvrirExercice = async () => {
     setOccupe(true);
     setRefus(null);
     try {
-      await acte();
+      await ptbaApi.openYear(Number(annee.trim()), intitule.trim() || undefined);
       setOuvrir(false);
-      setAValider(null);
       setAnnee("");
       setIntitule("");
       await charger();
     } catch (e) {
-      setRefus(e instanceof Error ? e.message : "L’opération n’a pas abouti.");
+      setRefus(e instanceof Error ? e.message : "L’exercice n’a pas été ouvert.");
     } finally {
       setOccupe(false);
     }
   };
 
-  // L'année suivante du plus récent exercice : c'est celle qu'on vient
-  // ouvrir neuf fois sur dix, et la proposer évite une frappe.
+  // L'année suivant le plus récent exercice : c'est celle qu'on vient ouvrir
+  // neuf fois sur dix, et la proposer évite une frappe.
   const proposee =
     exercices && exercices.length > 0
       ? String(Math.max(...exercices.map((e) => e.year)) + 1)
-      : "";
+      : String(PREMIER_EXERCICE);
 
-  const anneeValide = /^\d{4}$/.test(annee.trim());
+  const saisie = Number(annee.trim());
+  const anneeValide =
+    /^\d{4}$/.test(annee.trim()) &&
+    saisie >= PREMIER_EXERCICE &&
+    saisie <= DERNIER_EXERCICE &&
+    !(exercices ?? []).some((e) => e.year === saisie);
+
+  // Dire pourquoi le bouton est éteint, plutôt que de le laisser inerte :
+  // les bornes du projet sont opposées côté serveur, les découvrir au refus
+  // fait recommencer la saisie.
+  const motifRefusSaisie = (() => {
+    if (annee.trim() === "") return null;
+    if (!/^\d{4}$/.test(annee.trim())) return "Une année s’écrit en quatre chiffres.";
+    if (saisie < PREMIER_EXERCICE || saisie > DERNIER_EXERCICE)
+      return `Le projet couvre ${PREMIER_EXERCICE} à ${DERNIER_EXERCICE} (MEP du 23 juin 2025).`;
+    if ((exercices ?? []).some((e) => e.year === saisie))
+      return `L’exercice ${saisie} est déjà ouvert.`;
+    return null;
+  })();
 
   return (
     <>
@@ -117,102 +159,145 @@ export function ExercicesClient() {
         title="Les exercices"
         subtitle="La vie du plan annuel : ouvrir l’exercice, le doter, l’arrêter. Un exercice neuf ne porte ni allocation ni activité — les dotations relèvent du COPIL et ne se reconduisent pas d’elles-mêmes."
         actions={
-          peutOuvrir ? (
-            <button
-              type="button"
-              className="demoBtnPrimary"
-              onClick={() => {
-                setAnnee(proposee);
-                setIntitule("");
-                setRefus(null);
-                setOuvrir(true);
-              }}
-            >
-              <Add size={14} aria-hidden />
-              <span>Ouvrir un exercice</span>
-            </button>
-          ) : undefined
+          <>
+            <Button as={Link} href="/ptba" kind="ghost" size="md">
+              Le registre
+            </Button>
+            {peutOuvrir && (
+              <Button
+                renderIcon={Add}
+                size="md"
+                onClick={() => {
+                  setAnnee(proposee);
+                  setIntitule("");
+                  setRefus(null);
+                  setOuvrir(true);
+                }}
+              >
+                Ouvrir un exercice
+              </Button>
+            )}
+          </>
         }
       />
 
       {erreur && (
-        <Note tone="danger" title="Chargement impossible">
-          {erreur}
-        </Note>
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title="Chargement impossible"
+          subtitle={erreur}
+          className="mb-6 max-w-none"
+        />
       )}
 
       {!authLoading && !peutOuvrir && (
-        <Note tone="info" title="Consultation seule">
-          Ouvrir un exercice relève de la coordination, des responsables de composante et du
-          RAF. L’arrêter relève du seul Coordonnateur.
-        </Note>
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title="Consultation seule"
+          subtitle="Ouvrir un exercice relève de la coordination, des responsables de composante et du RAF. L’arrêter relève du seul Coordonnateur."
+          className="mb-6 max-w-none"
+        />
       )}
 
-      <Card noPadding>
-        {exercices === null && !erreur ? (
-          <p className={styles.etat}>Chargement des exercices…</p>
-        ) : (exercices ?? []).length === 0 ? (
-          <div className={styles.vide}>
-            <p>Aucun exercice budgétaire n’est ouvert.</p>
-            <p className={styles.videDetail}>
-              Sans exercice, le plan n’a pas de cadre : ni allocation, ni activité, ni TDR
-              possible. Ouvrez le premier.
-            </p>
-          </div>
-        ) : (
-          <ul className={styles.liste}>
-            {(exercices ?? []).map((e) => {
-              const etat = ETAT[e.status];
-              const activites = e._count?.activities ?? 0;
+      {exercices === null && !erreur ? (
+        <DataTableSkeleton columnCount={4} rowCount={3} showHeader={false} showToolbar={false} />
+      ) : (
+        <TableContainer
+          title="Exercices budgétaires"
+          description="Le PTN-RDC couvre 2025 à 2029. Du plus récent au plus ancien."
+        >
+          <Table size="lg">
+            <TableHead>
+              <TableRow>
+                <TableHeader>Exercice</TableHeader>
+                <TableHeader>Intitulé</TableHeader>
+                <TableHeader>État</TableHeader>
+                <TableHeader className="text-right">Activités</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {(exercices ?? []).length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <div className="py-8 text-center">
+                      <p className="text-heading-02 text-primary">
+                        Aucun exercice budgétaire n’est ouvert
+                      </p>
+                      <p className="text-body text-secondary mx-auto mt-2 max-w-[52ch]">
+                        Sans exercice, le plan n’a pas de cadre : ni allocation, ni activité, ni
+                        TDR possible. Tout le cycle de passation commence ici.
+                      </p>
+                      {peutOuvrir && (
+                        <div className="mt-4">
+                          <Button
+                            renderIcon={Add}
+                            size="sm"
+                            onClick={() => {
+                              setAnnee(proposee);
+                              setIntitule("");
+                              setRefus(null);
+                              setOuvrir(true);
+                            }}
+                          >
+                            Ouvrir le premier exercice
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
 
-              return (
-                <li key={e.id} className={styles.ligne}>
-                  <div className={styles.gauche}>
-                    <span className={styles.tete}>
-                      <span className={`ptn-mono ${styles.annee}`}>{e.year}</span>
-                      <span className={`${styles.statut} ${etat.ton}`}>{etat.label}</span>
-                    </span>
-                    <span className={styles.intitule}>{e.label}</span>
-                    <span className={styles.detail}>
-                      {etat.sens}{" "}
-                      {activites === 0
-                        ? "Aucune activité inscrite."
-                        : `${activites} activité${activites > 1 ? "s" : ""} inscrite${activites > 1 ? "s" : ""}.`}
-                    </span>
-                  </div>
+              {(exercices ?? []).map((e) => {
+                const etat = ETAT[e.status];
+                const activites = e._count?.activities ?? 0;
 
-                  <div className={styles.droite}>
-                    <Link href="/ptba/allocations" className={styles.lien}>
-                      Allocations <ArrowRight size={14} aria-hidden />
-                    </Link>
-                    {/* L'arrêté est refusé sur un exercice sans activité :
-                        le bouton reste, le refus explique. Le masquer
-                        laisserait chercher où il est passé. */}
-                    {e.status === "BROUILLON" && peutValider && (
-                      <button
-                        type="button"
-                        className={styles.btnValider}
-                        disabled={occupe}
-                        onClick={() => {
-                          setAValider(e);
-                          setRefus(null);
-                        }}
+                return (
+                  <TableRow key={e.id}>
+                    <TableCell>
+                      <Link
+                        href={`/ptba/exercices/${e.year}`}
+                        className="text-accent mono hover:underline"
                       >
-                        <CheckmarkOutline size={14} aria-hidden /> Arrêter le plan
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
+                        {e.year}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/ptba/exercices/${e.year}`}
+                        className="text-primary hover:underline"
+                      >
+                        {e.label}
+                      </Link>
+                      <span className="text-caption text-helper mt-1 block">{etat.sens}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Tag type={etat.tone} size="sm">
+                        {etat.label}
+                      </Tag>
+                    </TableCell>
+                    <TableCell className="mono text-right tabular-nums">
+                      {activites === 0 ? (
+                        <span className="text-helper">aucune</span>
+                      ) : (
+                        activites
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
-      <p className={styles.pied}>
-        Le PTN-RDC couvre les exercices 2025 à 2029 — entrée en vigueur le 31 octobre 2025,
-        achèvement technique le 31 décembre 2029 (MEP du 23 juin 2025). Chaque ouverture et
-        chaque arrêté sont inscrits au journal d’audit.
+      <p className="text-caption text-helper mt-4">
+        Entrée en vigueur le 31 octobre 2025, achèvement technique le 31 décembre 2029 (MEP du
+        23 juin 2025). Chaque ouverture et chaque arrêté sont inscrits au journal d’audit.
       </p>
 
       {/* ---------- Ouverture ---------- */}
@@ -226,9 +311,7 @@ export function ExercicesClient() {
           setOuvrir(false);
           setRefus(null);
         }}
-        onRequestSubmit={() =>
-          void agir(() => ptbaApi.openYear(Number(annee.trim()), intitule.trim() || undefined))
-        }
+        onRequestSubmit={() => void ouvrirExercice()}
       >
         <p className="text-body text-secondary mb-4">
           L’exercice naît <strong>en préparation et vide</strong> : ni allocation, ni activité.
@@ -238,8 +321,10 @@ export function ExercicesClient() {
         <TextInput
           id="exercice-annee"
           labelText="Année de l’exercice"
-          helperText="Quatre chiffres. Le projet couvre 2025 à 2029."
+          helperText={`Quatre chiffres, entre ${PREMIER_EXERCICE} et ${DERNIER_EXERCICE}.`}
           value={annee}
+          invalid={motifRefusSaisie !== null}
+          invalidText={motifRefusSaisie ?? undefined}
           onChange={(e) => setAnnee(e.target.value)}
         />
         <div className="mt-4">
@@ -252,45 +337,14 @@ export function ExercicesClient() {
           />
         </div>
         {refus && (
-          <p className={styles.refus} role="alert">
-            {refus}
-          </p>
-        )}
-      </Modal>
-
-      {/* ---------- Arrêté du plan ---------- */}
-      <Modal
-        open={aValider !== null}
-        modalHeading="Arrêter le plan de cet exercice ?"
-        modalLabel={aValider ? `Exercice ${aValider.year}` : undefined}
-        primaryButtonText={occupe ? "Enregistrement…" : "Arrêter le plan"}
-        secondaryButtonText="Annuler"
-        primaryButtonDisabled={occupe}
-        onRequestClose={() => {
-          setAValider(null);
-          setRefus(null);
-        }}
-        onRequestSubmit={() =>
-          aValider && void agir(() => ptbaApi.validateYear(aValider.year))
-        }
-      >
-        <p className="text-body text-secondary mb-4">
-          Le plan devient <strong>opposable</strong> : c’est la validation du COPIL. L’exercice
-          porte aujourd’hui{" "}
-          <strong>
-            {aValider?._count?.activities ?? 0} activité
-            {(aValider?._count?.activities ?? 0) > 1 ? "s" : ""}
-          </strong>
-          .
-        </p>
-        <p className="text-body text-secondary">
-          Un exercice sans activité ne peut pas être arrêté. L’arrêté est inscrit au journal
-          d’audit avec son auteur et la date.
-        </p>
-        {refus && (
-          <p className={styles.refus} role="alert">
-            {refus}
-          </p>
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title="Ouverture refusée"
+            subtitle={refus}
+            className="mt-4 max-w-none"
+          />
         )}
       </Modal>
     </>
