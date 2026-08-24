@@ -153,13 +153,17 @@
   }
 }
 
+// Le numéro partage la TAILLE et l'INTERLIGNE de l'intitulé qu'il précède.
+// À 12 px sur un intitulé de 13 px, les deux premières lignes ne tombaient
+// pas sur la même ligne de base et le numéro paraissait remonté — d'autant
+// qu'un `padding-top` ajouté à l'œil compensait dans le mauvais sens.
 .stepMarker {
   display: flex;
   justify-content: flex-end;
-  padding-top: 1px;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.35;
   letter-spacing: 0.16px;
-  color: var(--cds-text-helper);
+  color: var(--cds-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -176,7 +180,9 @@
 .stepDone {
   display: flex;
   align-items: center;
-  padding-top: 2px;
+  // Centrée sur la hauteur de la première ligne de l'intitulé, comme le
+  // numéro : 13 px × 1.35 ≈ 17,5 px.
+  height: calc(13px * 1.35);
   color: var(--ptn-accent);
 }
 
@@ -197,8 +203,12 @@
   border-left-color: var(--ptn-accent);
   background: var(--cds-background);
 
+  // Le numéro NE PREND PAS l'accent : il repère un rang, il ne signale pas
+  // un état. C'est le filet de gauche, le fond et la graisse de l'intitulé
+  // qui disent l'étape courante — trois marques suffisent, et l'accent est
+  // réservé à ce qui agit.
   .stepMarker {
-    color: var(--ptn-accent);
+    color: var(--cds-text-primary);
     font-weight: 500;
   }
 
@@ -210,8 +220,9 @@
 
 // --- Étapes franchies ---
 .done {
+  // Idem pour une étape franchie : la coche à droite le dit déjà.
   .stepMarker {
-    color: var(--ptn-accent);
+    color: var(--cds-text-secondary);
   }
 
   .stepLabel {

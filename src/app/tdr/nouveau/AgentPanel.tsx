@@ -584,14 +584,20 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
       <Tooltip
         label={occupe ? "Lecture de la pièce en cours…" : "Joindre une pièce au dossier"}
         hint={tdrId ? undefined : "Disponible une fois le brouillon ouvert"}
-        side="right"
+        // Le panneau est collé au bord droit : dessous, jamais à côté.
+        side="bottom"
+        // L'ancre se règle sur le BOUTON, non sur la largeur du panneau.
+        // Le défaut `block` la faisait courir sur toute la colonne : la bulle
+        // se plaçait alors par rapport à ce bloc, donc loin à droite du
+        // pictogramme, jusqu'à sortir de l'écran.
+        className="inline-flex self-start"
       >
         <button
           type="button"
           onClick={() => champRef.current?.click()}
           disabled={!tdrId || occupe}
           aria-label={occupe ? "Lecture de la pièce en cours" : "Joindre une pièce"}
-          className="border-subtle text-secondary hover:bg-layer-hover hover:text-primary disabled:text-disabled ptn-carte-liste inline-flex h-8 w-8 shrink-0 items-center justify-center self-start border disabled:cursor-not-allowed"
+          className="border-subtle text-secondary hover:bg-layer-hover hover:text-primary disabled:text-disabled ptn-carte-liste inline-flex h-8 w-8 shrink-0 items-center justify-center border disabled:cursor-not-allowed"
         >
           {occupe ? (
             <InlineLoading status="active" className="scale-75" />

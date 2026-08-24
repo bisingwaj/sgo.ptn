@@ -67,6 +67,13 @@ interface Placement {
   top: number;
   left: number;
   align: Align;
+  /**
+   * Côté RETENU, qui n'est pas toujours celui demandé : « à droite » se
+   * rabat dessous quand la place manque. La flèche et le décalage se
+   * règlent sur lui — les régler sur le côté demandé les mettrait du
+   * mauvais côté de la bulle, une fois le rabattement fait.
+   */
+  cote: Side;
 }
 
 export function Tooltip({
@@ -93,8 +100,12 @@ export function Tooltip({
     if (!el) return;
     const r = el.getBoundingClientRect();
 
-    if (side === "right") {
-      setAt({ top: r.top + r.height / 2, left: r.right + GAP, align: "center" });
+    // « À droite » n'était opposé à AUCUNE limite : posée sur un déclencheur
+    // proche du bord — le panneau de l'assistant y est collé — la bulle
+    // partait hors de l'écran, visible nulle part. Elle bascule dessous
+    // quand la place manque, plutôt que de disparaître.
+    if (side === "right" && r.right + GAP + 2 * HALF < window.innerWidth) {
+      setAt({ top: r.top + r.height / 2, left: r.right + GAP, align: "center", cote: "right" });
       return;
     }
 
@@ -102,7 +113,7 @@ export function Tooltip({
     const align: Align =
       centre > window.innerWidth - HALF ? "end" : centre < HALF ? "start" : "center";
     const left = align === "end" ? r.right : align === "start" ? r.left : centre;
-    setAt({ top: r.bottom + GAP, left, align });
+    setAt({ top: r.bottom + GAP, left, align, cote: "bottom" });
   }, [side]);
 
   const hide = useCallback(() => {
@@ -172,7 +183,7 @@ export function Tooltip({
               top: at.top,
               left: at.left,
               transform:
-                side === "right"
+                at.cote === "right"
                   ? "translateY(-50%)"
                   : at.align === "center"
                     ? "translateX(-50%)"
@@ -192,11 +203,11 @@ export function Tooltip({
                 aria-hidden
                 className={cn(
                   "bg-inverse-surface absolute h-2 w-2 rotate-45",
-                  side === "right" && "top-1/2 -left-1 -translate-y-1/2",
-                  side === "bottom" && "-top-1",
-                  side === "bottom" && at.align === "center" && "left-1/2 -translate-x-1/2",
-                  side === "bottom" && at.align === "start" && "left-3",
-                  side === "bottom" && at.align === "end" && "right-3",
+                  at.cote === "right" && "top-1/2 -left-1 -translate-y-1/2",
+                  at.cote === "bottom" && "-top-1",
+                  at.cote === "bottom" && at.align === "center" && "left-1/2 -translate-x-1/2",
+                  at.cote === "bottom" && at.align === "start" && "left-3",
+                  at.cote === "bottom" && at.align === "end" && "right-3",
                 )}
               />
 
