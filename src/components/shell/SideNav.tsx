@@ -116,10 +116,10 @@ function navFor(profile: ProfileKey): NavGroup[] {
           title: "Cycle de passation",
           items: [
             { label: "PTBA", href: "/ptba", permission: "ptba:read", icon: <ChartLineSmooth size={16} />, hint: PTBA },
-            { label: "PPM", href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, count: "78", hint: PPM },
+            { label: "PPM", href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, hint: PPM },
             { label: "TDR", href: "/tdr", permission: "tdr:read", icon: <Document size={16} />, hint: TDR },
             { label: "Instruction TDR", href: "/tdr/revue", permission: "tdr:review", icon: <TaskView size={16} />, hint: INSTRUCTION },
-            { label: "Inbox ANO", href: "/ano", permission: "ano:read", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
+            { label: "Non-objections", href: "/ano", permission: "ano:read", icon: <TaskApproved size={16} />, hint: ANO },
             { label: "Commissions", href: "/commissions", permission: "commission:read", icon: <Events size={16} /> },
             { label: "Contrats", href: "/contrats", permission: "contrat:read", icon: <Folders size={16} /> },
           ],
@@ -128,7 +128,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
           title: "Sauvegardes & MGP",
           items: [
             { label: "E&S / PEES", href: "/es", permission: "es:read", icon: <Earth size={16} />, hint: PEES },
-            { label: "MGP", href: "/mgp-admin", permission: "mgp:read", icon: <Voicemail size={16} />, count: "14", hint: MGP },
+            { label: "MGP", href: "/mgp-admin", permission: "mgp:read", icon: <Voicemail size={16} />, hint: MGP },
             { label: "EAS/HS confidentiel", href: "/mgp-eas-hs", permission: "easHs:read", icon: <Locked size={16} />, hint: EAS_HS },
           ],
         },
@@ -147,7 +147,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
         {
           items: [
             { label: "Tableau de bord", href: "/dashboard", icon: <Dashboard size={16} /> },
-            { label: "Mes initiatives", href: "/dashboard/initiatives", icon: <Document size={16} />, count: "12" },
+            { label: "Mes initiatives", href: "/dashboard/initiatives", icon: <Document size={16} /> },
             { label: "Documents", href: "/dashboard/documents", icon: <Folders size={16} /> },
             { label: "Échéances", href: "/dashboard/echeances", icon: <Time size={16} /> },
             { label: "MGP", href: "/mgp", icon: <Voicemail size={16} />, hint: MGP },
@@ -164,16 +164,16 @@ function navFor(profile: ProfileKey): NavGroup[] {
         {
           title: "Cycle TDR",
           items: [
-            { label: "Mes propositions", href: "/partenaire/propositions", icon: <Document size={16} />, count: "4" },
+            { label: "Mes propositions", href: "/partenaire/propositions", icon: <Document size={16} /> },
             { label: "Workflow", href: "/partenaire/workflow", icon: <Network_3 size={16} /> },
-            { label: "Modèles TDR", href: "/partenaire/modeles", icon: <Catalog size={16} />, count: "24", hint: TDR },
+            { label: "Modèles TDR", href: "/partenaire/modeles", icon: <Catalog size={16} />, hint: TDR },
           ],
         },
         {
           title: "Collaboration",
           items: [
-            { label: "Messages", href: "/partenaire/messages", icon: <Voicemail size={16} />, count: "1" },
-            { label: "Notifications", href: "/partenaire/notifications", icon: <Notification size={16} />, count: "3" },
+            { label: "Messages", href: "/partenaire/messages", icon: <Voicemail size={16} /> },
+            { label: "Notifications", href: "/partenaire/notifications", icon: <Notification size={16} /> },
             { label: "Documents partagés", href: "/partenaire/documents", icon: <Folders size={16} /> },
             { label: "Calendrier", href: "/partenaire/calendrier", icon: <Time size={16} /> },
           ],
@@ -192,7 +192,11 @@ function navFor(profile: ProfileKey): NavGroup[] {
         {
           items: [
             { label: "Dashboard", href: "/bailleur", icon: <Dashboard size={16} /> },
-            { label: "Inbox ANO", href: "/bailleur/ano", icon: <TaskApproved size={16} />, count: "9", hint: ANO },
+            // Vers l'écran réel, non la maquette de l'espace bailleur : la
+            // décision de non-objection s'y rend, et c'est le même dossier
+            // que l'UGPTN suit de son côté. Deux écrans auraient fait
+            // diverger deux lectures du même objet.
+            { label: "Non-objections", href: "/ano", permission: "ano:decide", icon: <TaskApproved size={16} />, hint: ANO },
             { label: "Portfolio", href: "/bailleur/portfolio", icon: <Catalog size={16} /> },
             { label: "Conditionnalités", href: "/bailleur/conditions", icon: <Document size={16} /> },
             { label: "Décaissements", href: "/bailleur/decaissements", icon: <Money size={16} /> },
@@ -204,9 +208,9 @@ function navFor(profile: ProfileKey): NavGroup[] {
       return [
         {
           items: [
-            { label: "Marketplace", href: "/soumissionnaire", icon: <Catalog size={16} />, count: "14" },
-            { label: "Mes soumissions", href: "/soumissionnaire/soumissions", icon: <Document size={16} />, count: "6" },
-            { label: "Mes contrats", href: "/soumissionnaire/contrats", icon: <Folders size={16} />, count: "3" },
+            { label: "Marketplace", href: "/soumissionnaire", icon: <Catalog size={16} /> },
+            { label: "Mes soumissions", href: "/soumissionnaire/soumissions", icon: <Document size={16} /> },
+            { label: "Mes contrats", href: "/soumissionnaire/contrats", icon: <Folders size={16} /> },
             { label: "Paiements", href: "/soumissionnaire/paiements", icon: <Money size={16} /> },
             { label: "KYC entreprise", href: "/soumissionnaire/kyc", icon: <TaskApproved size={16} />, hint: KYC },
           ],
