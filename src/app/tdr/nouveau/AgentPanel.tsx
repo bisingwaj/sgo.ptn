@@ -19,6 +19,7 @@ import { TexteEnrichi } from "@/components/ui/TexteEnrichi";
 import { apercuDePiece, tdrApi, type PieceJointeApi } from "@/lib/api";
 import {
   AiGenerate,
+  Attachment,
   Close,
   Document,
   DocumentPdf,
@@ -26,7 +27,8 @@ import {
   Undo,
   WarningAltFilled,
 } from "@carbon/icons-react";
-import { IconButton } from "@carbon/react";
+import { IconButton, InlineLoading } from "@carbon/react";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useAssistant, type Bulle, type Ecriture } from "./assistant-contexte";
 
 /** Une écriture faite par l'assistant, et de quoi la défaire. */
@@ -575,14 +577,29 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => champRef.current?.click()}
-        disabled={!tdrId || occupe}
-        className="text-caption text-link disabled:text-disabled self-start hover:underline disabled:cursor-not-allowed disabled:no-underline"
+      {/* Un pictogramme, non une phrase. Le texte occupait une ligne entière
+          au-dessus d'un champ de saisie déjà court, pour une commande
+          secondaire. L'intitulé revient au survol ET au focus — jamais au
+          seul survol, sans quoi il n'existe pas au clavier. */}
+      <Tooltip
+        label={occupe ? "Lecture de la pièce en cours…" : "Joindre une pièce au dossier"}
+        hint={tdrId ? undefined : "Disponible une fois le brouillon ouvert"}
+        side="right"
       >
-        {occupe ? "Lecture…" : "+ Joindre une pièce"}
-      </button>
+        <button
+          type="button"
+          onClick={() => champRef.current?.click()}
+          disabled={!tdrId || occupe}
+          aria-label={occupe ? "Lecture de la pièce en cours" : "Joindre une pièce"}
+          className="border-subtle text-secondary hover:bg-layer-hover hover:text-primary disabled:text-disabled ptn-carte-liste inline-flex h-8 w-8 shrink-0 items-center justify-center self-start border disabled:cursor-not-allowed"
+        >
+          {occupe ? (
+            <InlineLoading status="active" className="scale-75" />
+          ) : (
+            <Attachment size={16} aria-hidden />
+          )}
+        </button>
+      </Tooltip>
     </>
   );
 }

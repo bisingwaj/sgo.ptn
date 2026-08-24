@@ -126,7 +126,9 @@
 
 .stepBtn {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
+  // Trois colonnes : le numéro, l'intitulé, puis la coche. Elle était
+  // auparavant DANS la colonne du numéro, qu'elle effaçait.
+  grid-template-columns: 26px minmax(0, 1fr) auto;
   align-items: start;
   gap: var(--ptn-space-03);
   width: 100%;
@@ -166,6 +168,16 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+// La coche de franchissement, en fin de rangée. Muette pour les lecteurs
+// d'écran : `aria-current` et l'état du bouton portent déjà l'information,
+// et la redire en ferait une annonce de plus à chaque étape parcourue.
+.stepDone {
+  display: flex;
+  align-items: center;
+  padding-top: 2px;
+  color: var(--ptn-accent);
 }
 
 .stepLabel {
@@ -256,6 +268,12 @@
     grid-template-columns: auto;
     padding: 6px var(--ptn-space-03);
     white-space: nowrap;
+  }
+
+  // En bandeau, chaque étape se réduit à son numéro : la coche doublerait
+  // la couleur qui dit déjà « franchie », dans une rangée déjà serrée.
+  .stepDone {
+    display: none;
   }
 
   // Seul le libellé de l'étape courante reste lisible ; les autres se

@@ -243,13 +243,17 @@ export function EditeurTexte({
             role="status"
             aria-live="polite"
           >
-            <span className="border-ai bg-background text-caption text-ai-text ptn-entree-ligne inline-flex items-center gap-2.5 border px-3 py-2 shadow-sm">
+            {/* Assez grand pour se voir. En `text-caption` sur un liseré
+                fin, le repère passait inaperçu au milieu d'un texte qui
+                défile — or c'est le seul signe que la saisie est fermée à
+                dessein et non bloquée. */}
+            <span className="border-ai bg-ai-surface text-body-compact text-ai-text ptn-entree-ligne inline-flex items-center gap-3 border-2 px-5 py-3 font-medium shadow-md">
               <span className="ptn-points" aria-hidden>
                 <i />
                 <i />
                 <i />
               </span>
-              L’assistant rédige — laissez-le finir
+              L’assistant rédige — veuillez patienter
             </span>
           </div>
         )}

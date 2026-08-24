@@ -764,114 +764,33 @@ export class TdrDocumentService {
     // Rompre au fil de l'eau laissait « Établi par » seul sur un feuillet
     // supplémentaire : une page entière pour trois lignes. On mesure donc le
     // groupe avant de l'entamer, et on ouvre la page une fois pour toutes.
-    const hauteurGroupe =
-      58 +
-      22 +
-      plan.attestations.length * 46 +
-      26 +
-      (plan.annexes.length === 0 ? 20 : plan.annexes.length * 18) +
-      (plan.auteur ? 62 : 0);
+    const hauteurGroupe = plan.auteur ? 62 : 0;
 
     const reste = P.hauteur - P.bas - doc.y;
     if (reste < Math.min(hauteurGroupe, P.hauteur - P.haut - P.bas))
       doc.addPage();
     else doc.moveDown(2.2);
 
-    doc.font(f.sansSemi).fontSize(14).fillColor(TdrDocumentService.ENCRE);
-    // Aligné sur les titres numérotés : la partie n'a pas de numéro, ce
-    // n'est pas une raison pour qu'elle sorte de la colonne.
-    doc.text('Engagements et pièces jointes', P.gauche + 26, doc.y, {
-      width: col - 26,
-    });
-    doc.moveDown(0.35);
-    let y = doc.y;
-    doc
-      .moveTo(P.gauche, y)
-      .lineTo(P.largeur - P.droite, y)
-      .strokeColor(TdrDocumentService.ACCENT)
-      .lineWidth(1.2)
-      .stroke();
-    doc.moveDown(1);
+    // ENGAGEMENTS ET PIÈCES JOINTES — retiré du document, à la demande.
+    //
+    // Les attestations et la liste des annexes ne sont plus IMPRIMÉES. Elles
+    // restent portées par le dossier : `consentMepAt` et `consentRgpdAt` sont
+    // horodatés par le serveur, les pièces restent attachées et
+    // téléchargeables. Le contrôle de complétude continue d'exiger les deux
+    // engagements avant transmission — c'est la page qui change, pas la règle.
+    //
+    // « Établi par » demeure : une pièce contractuelle sans son auteur ne se
+    // retrouve plus des années après.
 
+    // Colonne du bloc, alignée sur les titres numérotés du document.
     const x = P.gauche + 26;
     const largeur = col - 26;
-
-    doc.font(f.sansSemi).fontSize(9.5).fillColor(TdrDocumentService.ACCENT);
-    doc.text('ATTESTATIONS PORTÉES PAR L’AUTEUR', x, doc.y, {
-      width: largeur,
-      characterSpacing: 0.9,
-    });
-    doc.moveDown(0.55);
-
-    for (const attestation of plan.attestations) {
-      const yl = doc.y;
-      // La coche n'est dessinée que si l'attestation a été portée : une case
-      // cochée d'avance vaudrait signature de quelque chose qui n'a pas eu
-      // lieu.
-      doc
-        .rect(x, yl + 1.5, 9, 9)
-        .strokeColor(
-          attestation.date
-            ? TdrDocumentService.ACCENT
-            : TdrDocumentService.FILET,
-        )
-        .lineWidth(1)
-        .stroke();
-      if (attestation.date) {
-        doc
-          .moveTo(x + 2, yl + 6)
-          .lineTo(x + 3.8, yl + 8.2)
-          .lineTo(x + 7, yl + 3.6)
-          .strokeColor(TdrDocumentService.ACCENT)
-          .lineWidth(1.4)
-          .stroke();
-      }
-
-      doc.font(f.serif).fontSize(10).fillColor(TdrDocumentService.ENCRE);
-      doc.text(attestation.intitule, x + 18, yl, {
-        width: largeur - 18,
-        lineGap: 2,
-      });
-
-      doc.font(f.sans).fontSize(8.5).fillColor(TdrDocumentService.GRIS);
-      doc.text(
-        attestation.date
-          ? `Portée le ${attestation.date}`
-          : 'Non portée à la date de composition',
-        x + 18,
-        doc.y + 1,
-        { width: largeur - 18 },
-      );
-      doc.moveDown(0.7);
-    }
-
-    doc.moveDown(0.5);
-    doc.font(f.sansSemi).fontSize(9.5).fillColor(TdrDocumentService.ACCENT);
-    doc.text('PIÈCES JOINTES AU DOSSIER', x, doc.y, {
-      width: largeur,
-      characterSpacing: 0.9,
-    });
-    doc.moveDown(0.5);
-
-    if (plan.annexes.length === 0) {
-      doc.font(f.serifItalique).fontSize(10).fillColor(TdrDocumentService.GRIS);
-      doc.text('Aucune pièce jointe au dossier.', x, doc.y, { width: largeur });
-    } else {
-      for (const [i, nom] of plan.annexes.entries()) {
-        const yl = doc.y;
-        doc.font(f.mono).fontSize(8.5).fillColor(TdrDocumentService.GRIS);
-        doc.text(`A${i + 1}`, x, yl + 1, { width: 22, lineBreak: false });
-        doc.font(f.serif).fontSize(10).fillColor(TdrDocumentService.ENCRE);
-        doc.text(nom, x + 26, yl, { width: largeur - 26 });
-        doc.moveDown(0.3);
-      }
-    }
 
     // Établi par — l'auteur et son entité. Une pièce contractuelle porte son
     // auteur : c'est ce qui permet d'y revenir des années plus tard.
     if (plan.auteur) {
       doc.moveDown(1.6);
-      y = doc.y;
+      const y = doc.y;
       doc.font(f.sans).fontSize(8.5).fillColor(TdrDocumentService.GRIS);
       doc.text('ÉTABLI PAR', x, y, { width: largeur, characterSpacing: 0.5 });
       doc.font(f.serifSemi).fontSize(11).fillColor(TdrDocumentService.ENCRE);
@@ -1177,87 +1096,9 @@ export class TdrDocumentService {
       }
     }
 
-    // Le bloc de clôture, comme dans le PDF et à l'écran : engagements,
-    // pièces, déclaration d'assistance, signature. Ces quatre blocs
-    // existaient dans le dossier sans jamais atteindre le fichier.
-    enfants.push(
-      new Paragraph({
-        text: 'Engagements et pièces jointes',
-        heading: HeadingLevel.HEADING_1,
-        spacing: { before: 480, after: 160 },
-      }),
-      new Paragraph({
-        text: 'Attestations portées par l’auteur',
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 120, after: 100 },
-      }),
-    );
-
-    for (const attestation of plan.attestations) {
-      enfants.push(
-        new Paragraph({
-          children: [
-            // La case n'est cochée que si l'attestation a été portée : une
-            // coche d'avance vaudrait signature de ce qui n'a pas eu lieu.
-            new TextRun({
-              text: `${attestation.date ? '☒' : '☐'}  `,
-              size: 21,
-              color: attestation.date ? '0F62FE' : '8D8D8D',
-            }),
-            new TextRun({ text: attestation.intitule, size: 21 }),
-          ],
-          spacing: { after: 40 },
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: attestation.date
-                ? `Portée le ${attestation.date}`
-                : 'Non portée à la date de composition',
-              size: 17,
-              color: '6F6F6F',
-            }),
-          ],
-          spacing: { after: 140 },
-        }),
-      );
-    }
-
-    enfants.push(
-      new Paragraph({
-        text: 'Pièces jointes au dossier',
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 200, after: 100 },
-      }),
-    );
-
-    if (plan.annexes.length === 0) {
-      enfants.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: 'Aucune pièce jointe au dossier.',
-              italics: true,
-              size: 20,
-              color: '6F6F6F',
-            }),
-          ],
-          spacing: { after: 160 },
-        }),
-      );
-    } else {
-      for (const [i, nom] of plan.annexes.entries()) {
-        enfants.push(
-          new Paragraph({
-            children: [
-              new TextRun({ text: `A${i + 1}  `, size: 17, color: '6F6F6F' }),
-              new TextRun({ text: nom, size: 21 }),
-            ],
-            spacing: { after: 60 },
-          }),
-        );
-      }
-    }
+    // Le bloc de clôture ne porte plus que la signature : « Engagements et
+    // pièces jointes » a été retiré du document, à la demande — voir le
+    // rendu PDF pour ce qui reste tenu par le dossier.
 
     if (plan.auteur) {
       enfants.push(

@@ -96,6 +96,16 @@ export interface WizardProps<T = unknown> {
    */
   patch?: { nonce: number; fn: (state: T) => T };
   /**
+   * Reprise d'un dossier existant : ouvrir à la première étape INCOMPLÈTE.
+   *
+   * Le parcours repartait de l'étape 01 alors que tout était déjà saisi, et
+   * il fallait cliquer « Suivant » onze fois pour revenir où l'on s'était
+   * arrêté. Rien n'est enregistré pour cela : l'étape se DÉDUIT de l'état
+   * du dossier, ce qui vaut mieux qu'un index mémorisé — on retombe là où
+   * il reste du travail, y compris après avoir modifié une étape ancienne.
+   */
+  reprendre?: boolean;
+  /**
    * Affiche « Brouillon enregistré ».
    *
    * Par défaut, seulement si un brouillon est réellement tenu. La puce était
@@ -120,10 +130,29 @@ export function Wizard<T>({
   patch,
   onFinish,
   onDraftChange,
+  reprendre = false,
   draftChip,
 }: WizardProps<T>) {
   const [state, setStateInternal] = useState<T>(initialState);
-  const [step, setStep] = useState(0);
+
+  /**
+   * Première étape qui réclame encore quelque chose, sur l'état d'ouverture.
+   *
+   * Calculé une seule fois, au montage : recalculer à chaque frappe
+   * déplacerait l'auteur pendant qu'il écrit. Une étape est « à faire » si
+   * elle bloque (`bloquePar`) ou si elle ne valide pas — le même jugement
+   * que celui opposé au clic sur « Suivant », de sorte que l'ouverture ne
+   * promet rien que le parcours refuserait ensuite.
+   */
+  const [step, setStep] = useState(() => {
+    if (!reprendre) return 0;
+    const visibles = rawSteps.filter((s) => !s.visibleIf || s.visibleIf(initialState));
+    const i = visibles.findIndex(
+      (s) => (s.bloquePar?.(initialState) ?? null) !== null || (s.validate?.(initialState) ?? null) !== null,
+    );
+    // Tout est complet : on ouvre sur la dernière étape, celle qui conclut.
+    return i === -1 ? Math.max(visibles.length - 1, 0) : i;
+  });
   /**
    * Étapes franchies, repérées par leur `num` et non par leur position.
    *
@@ -135,7 +164,18 @@ export function Wizard<T>({
    * dès qu'un aiguillage oui/non se trouve en milieu de parcours et que
    * l'utilisateur change d'avis.
    */
-  const [done, setDone] = useState<Set<string>>(new Set());
+  const [done, setDone] = useState<Set<string>>(() => {
+    if (!reprendre) return new Set();
+    // Les étapes qui précèdent le point de reprise sont tenues pour
+    // franchies : sans cela, le rail les refuserait au clic et l'auteur ne
+    // pourrait plus revenir sur ce qu'il a déjà écrit.
+    const visibles = rawSteps.filter((s) => !s.visibleIf || s.visibleIf(initialState));
+    const i = visibles.findIndex(
+      (s) => (s.bloquePar?.(initialState) ?? null) !== null || (s.validate?.(initialState) ?? null) !== null,
+    );
+    const jusqua = i === -1 ? visibles.length : i;
+    return new Set(visibles.slice(0, jusqua).map((s) => s.num));
+  });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const idBlocage = useId();
@@ -292,17 +332,24 @@ export function Wizard<T>({
                     disabled={!canJump}
                     aria-label={`Étape ${s.num} — ${s.label}`}
                   >
+                    {/* Le numéro NE DISPARAÎT PAS une fois l'étape franchie.
+                        La coche le remplaçait : arrivé à « Approche », on ne
+                        pouvait plus dire quel rang portait « Identification »,
+                        et le rail cessait d'être un repère de position pour
+                        n'être plus qu'une liste d'états. Le numéro tient sa
+                        colonne, la coche prend la sienne, à droite. */}
                     <span className={styles.stepMarker} aria-hidden>
-                      {isDone ? (
-                        <CheckmarkFilled size={14} />
-                      ) : (
-                        <span className="ptn-mono">{s.num}</span>
-                      )}
+                      <span className="ptn-mono">{s.num}</span>
                     </span>
                     <span className={styles.stepText}>
                       <span className={styles.stepLabel}>{s.label}</span>
                       {s.sub && <span className={styles.stepSub}>{s.sub}</span>}
                     </span>
+                    {isDone && (
+                      <span className={styles.stepDone} aria-hidden>
+                        <CheckmarkFilled size={14} />
+                      </span>
+                    )}
                   </button>
                 </li>
               );

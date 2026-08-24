@@ -40,7 +40,6 @@ import {
 import { enregistrerFichier } from "@/lib/telechargement";
 import {
   ArrowLeft,
-  Checkmark,
   DocumentPdf,
   DocumentWordProcessor,
   Printer,
@@ -319,53 +318,15 @@ function Cloture({ plan }: { plan: PlanDocumentApi }) {
   // se tient par ses titres, qui ne se détachent pas de leur suite.
   return (
     <section className="mt-10">
-      <h2 className="text-heading-03 text-primary pl-[2.1rem]">Engagements et pièces jointes</h2>
+      {/* « Engagements et pièces jointes » a été retiré du document, à la
+          demande : attestations et liste des annexes ne s'impriment plus.
+          Elles restent tenues par le dossier — les consentements sont
+          horodatés côté serveur et le contrôle de complétude les exige
+          toujours avant transmission. Seule la signature demeure ici. */}
+      <h2 className="text-heading-03 text-primary pl-[2.1rem]">Signature</h2>
       <div className="border-accent mt-1 border-b-2" />
 
       <div className="mt-5 flex flex-col gap-6 pl-[2.1rem]">
-        <div>
-          <SousTitre>Attestations portées par l’auteur</SousTitre>
-          <ul className="mt-2 flex flex-col gap-3">
-            {plan.attestations.map((a) => (
-              <li key={a.intitule} className="flex items-start gap-3">
-                {/* La coche n'est portée que si l'attestation l'a été : une
-                    case cochée d'avance vaudrait signature de quelque chose
-                    qui n'a pas eu lieu. */}
-                <span
-                  aria-hidden
-                  className={`mt-0.5 flex size-4 shrink-0 items-center justify-center border ${
-                    a.date ? "border-accent text-accent" : "border-subtle"
-                  }`}
-                >
-                  {a.date && <Checkmark size={12} />}
-                </span>
-                <span>
-                  <span className="text-body text-primary block">{a.intitule}</span>
-                  <span className="text-caption text-secondary">
-                    {a.date ? `Portée le ${a.date}` : "Non portée à la date de composition"}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <SousTitre>Pièces jointes au dossier</SousTitre>
-          {plan.annexes.length === 0 ? (
-            <p className="text-body text-helper mt-2 italic">Aucune pièce jointe au dossier.</p>
-          ) : (
-            <ul className="mt-2 flex flex-col gap-1">
-              {plan.annexes.map((nom, i) => (
-                <li key={nom} className="flex items-baseline gap-3">
-                  <span className="ptn-mono text-caption text-secondary shrink-0">A{i + 1}</span>
-                  <span className="text-body text-primary">{nom}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
         {plan.auteur && (
           <div>
             <p className="text-caption text-secondary uppercase">Établi par</p>

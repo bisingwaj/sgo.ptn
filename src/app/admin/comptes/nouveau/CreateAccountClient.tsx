@@ -446,10 +446,10 @@ function IdentityStep({ state, set }: { state: FormState; set: (s: FormState) =>
             placeholder="+243 81 234 56 78"
           />
         </Field>
-        <Field label="Langue de l’interface">
           <Select
+            label="Langue de l’interface"
             value={state.preferredLanguage}
-            onChange={(e) => set({ ...state, preferredLanguage: e.target.value })}
+            onChange={(v) => set({ ...state, preferredLanguage: v })}
             options={[
               { value: "FR", label: "Français" },
               { value: "EN", label: "English" },
@@ -459,7 +459,6 @@ function IdentityStep({ state, set }: { state: FormState; set: (s: FormState) =>
               { value: "KK", label: "Kikongo" },
             ]}
           />
-        </Field>
       </div>
     </div>
   );
@@ -504,37 +503,35 @@ function AttachmentStep({
         />
       </Field>
 
-      <Field
-        label="Composante du projet"
-        required={subrole?.requiresComponent}
-        helper={
-          subrole?.requiresComponent
-            ? `« ${subrole.label} » pilote une composante : le rattachement est obligatoire.`
-            : "Facultatif — restreint le périmètre de travail."
-        }
-      >
         <Select
+          label="Composante du projet"
+          required={subrole?.requiresComponent}
+          helper={
+            subrole?.requiresComponent
+              ? `« ${subrole.label} » pilote une composante : le rattachement est obligatoire.`
+              : "Facultatif — restreint le périmètre de travail."
+          }
           value={state.componentCode}
-          onChange={(e) => set({ ...state, componentCode: e.target.value })}
+          onChange={(v) => set({ ...state, componentCode: v })}
           placeholder="Aucune composante particulière"
           options={components.map((c) => ({
             value: c.code,
             label: `${c.code} · ${c.shortLabel} (${Number(c.totalUsdM)} M USD)`,
           }))}
         />
-      </Field>
 
-      <Field label="Province" helper="Pour les agents de liaison et les activités territorialisées.">
         <Select
+          searchable
+          label="Province"
+          helper="Pour les agents de liaison et les activités territorialisées."
           value={state.provinceCode}
-          onChange={(e) => set({ ...state, provinceCode: e.target.value })}
+          onChange={(v) => set({ ...state, provinceCode: v })}
           placeholder="Couverture nationale"
           options={provinces.map((p) => ({
             value: p.code,
             label: p.isPriorityCpf ? `${p.label} · prioritaire CPF` : p.label,
           }))}
         />
-      </Field>
     </div>
   );
 }

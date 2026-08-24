@@ -77,20 +77,20 @@ export function EtapeIdentification({
       {/* Maîtrise d'ouvrage bénéficiaire — distincte de l'organisation qui
           rédige, et distincte des bénéficiaires visés, qui sont des
           populations. Sans elle, l'assistance rédactionnelle devine. */}
-      <Field
+      {/* Saisie filtrante : le référentiel compte une trentaine d'entités,
+          et un menu déroulant de trente lignes se parcourt à l'aveugle. */}
+      <Select
+        searchable
         label="Maîtrise d’ouvrage bénéficiaire"
         helper="L’entité pour laquelle l’activité est conduite, si elle diffère de la vôtre. À ne pas confondre avec les bénéficiaires visés, qui sont les populations servies."
-      >
-        <Select
-          value={state.beneficiaryOrganisationId}
-          onChange={(e) => set({ ...state, beneficiaryOrganisationId: e.target.value })}
-          placeholder="Aucune — l’activité est conduite pour votre propre compte"
-          options={organisations.map((o) => ({
-            value: o.id,
-            label: `${o.code} — ${o.fullName}`,
-          }))}
-        />
-      </Field>
+        value={state.beneficiaryOrganisationId}
+        onChange={(v) => set({ ...state, beneficiaryOrganisationId: v })}
+        placeholder="Aucune — l’activité est conduite pour votre propre compte"
+        options={organisations.map((o) => ({
+          value: o.id,
+          label: `${o.code} — ${o.fullName}`,
+        }))}
+      />
     </div>
   );
 }

@@ -727,14 +727,14 @@ function Parcours() {
                   démarrage. La catégorie déterminée ici conditionne l’instrument exigé.
                 </Note>
               )}
-              <Field label="Catégorie de risque E&S" required={t?.requiresPges}>
-                <Select
-                  value={s.esCategory}
-                  onChange={(e) => set({ ...s, esCategory: e.target.value })}
-                  placeholder="À déterminer par le screening"
-                  options={ES_LEVELS}
-                />
-              </Field>
+              <Select
+                label="Catégorie de risque E&S"
+                required={t?.requiresPges}
+                value={s.esCategory}
+                onChange={(v) => set({ ...s, esCategory: v })}
+                placeholder="À déterminer par le screening"
+                options={ES_LEVELS}
+              />
               {/* Le CGES fournit le catalogue : le cocher permet de recenser
                   et de comparer d’un dossier à l’autre, ce qu’un champ libre
                   interdit. La saisie libre subsiste pour ce que le catalogue
@@ -929,6 +929,7 @@ function Parcours() {
       title={resume ? `Reprise de ${resume.reference}` : "Nouveau TDR"}
       subtitle={`Vous rédigez au titre de ${user.organisationName} · ${user.subroleLabel}`}
       steps={steps}
+      reprendre={Boolean(resume)}
       initialState={
         resume ?? {
           ...INITIAL,

@@ -14,7 +14,7 @@
 
 import { useState } from "react";
 import { WarningAltFilled } from "@carbon/icons-react";
-import { Field, Select } from "@/components/wizard/WizardFields";
+import { Select } from "@/components/wizard/WizardFields";
 import { tdrApi, ApiError } from "@/lib/api";
 import type { State } from "../etat";
 import { useAssistant } from "../assistant-contexte";
@@ -137,25 +137,22 @@ export function EtapeLivrables({
 
       {/* Modalités valant pour tout le marché, et non livrable par livrable. */}
       <div className="border-subtle grid gap-6 border-t pt-6 sm:grid-cols-2">
-        <Field
+        <Select
           label="Format de remise"
           helper="Forme sous laquelle les pièces sont remises et validées."
-        >
-          <Select
-            value={state.deliverableFormat}
-            onChange={(e) => set({ ...state, deliverableFormat: e.target.value })}
-            placeholder="Sélectionner le format"
-            options={DELIVERABLE_FORMATS}
-          />
-        </Field>
-        <Field label="Rythme de reporting" helper="Fréquence des points d’avancement avec l’UGP.">
-          <Select
-            value={state.reportingRhythm}
-            onChange={(e) => set({ ...state, reportingRhythm: e.target.value })}
-            placeholder="Sélectionner le rythme"
-            options={REPORTING_RHYTHMS}
-          />
-        </Field>
+          value={state.deliverableFormat}
+          onChange={(v) => set({ ...state, deliverableFormat: v })}
+          placeholder="Sélectionner le format"
+          options={DELIVERABLE_FORMATS}
+        />
+        <Select
+          label="Rythme de reporting"
+          helper="Fréquence des points d’avancement avec l’UGP."
+          value={state.reportingRhythm}
+          onChange={(v) => set({ ...state, reportingRhythm: v })}
+          placeholder="Sélectionner le rythme"
+          options={REPORTING_RHYTHMS}
+        />
       </div>
     </div>
   );

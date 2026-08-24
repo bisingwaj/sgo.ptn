@@ -10,7 +10,9 @@
  * - SignatureBlock (Code de Conduite, COI)
  */
 
+import { useId } from "react";
 import type { ComponentType, ReactNode } from "react";
+import { ComboBox, Dropdown } from "@carbon/react";
 import { CheckmarkFilled } from "@carbon/icons-react";
 import styles from "./WizardFields.module.scss";
 
@@ -61,25 +63,101 @@ export function Textarea(props: TextareaProps) {
   return <textarea {...props} className={`${styles.textarea} ${props.className ?? ""}`} />;
 }
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  options: Array<{ value: string; label: string }>;
-  placeholder?: string;
+export interface OptionSelect {
+  value: string;
+  label: string;
 }
 
-export function Select({ options, placeholder, ...rest }: SelectProps) {
-  return (
-    <select {...rest} className={`${styles.select} ${rest.className ?? ""}`}>
-      {placeholder && (
-        <option value="" disabled>
-          {placeholder}
-        </option>
-      )}
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+interface SelectProps {
+  label: string;
+  value: string;
+  onChange: (valeur: string) => void;
+  options: OptionSelect[];
+  /**
+   * Le choix « rien ». Rendu comme une ENTRÉE de la liste, non comme un
+   * gris de fond : c'est souvent une réponse en soi — « aucune maîtrise
+   * d'ouvrage tierce » — et il faut pouvoir y revenir après coup.
+   */
+  placeholder?: string;
+  helper?: ReactNode;
+  required?: boolean;
+  error?: string | null;
+  disabled?: boolean;
+  /**
+   * Liste longue : bascule en saisie filtrante. Vingt-six organisations
+   * dans un menu déroulant se parcourent à l'aveugle.
+   */
+  searchable?: boolean;
+  id?: string;
+}
+
+/**
+ * Liste de choix — Carbon, et non plus `<select>` natif.
+ *
+ * Le `<select>` du navigateur ouvre une liste dessinée par le SYSTÈME :
+ * fond noir, police du système, aucun jeton du thème. Au milieu d'un
+ * formulaire Carbon, elle passait pour un défaut d'affichage — et elle ne
+ * suivait ni le thème sombre, ni l'échelle typographique du produit.
+ *
+ * Le libellé est porté par le composant lui-même : Carbon le veut dans
+ * `titleText`, et l'envelopper dans le `<label>` de `Field` mettrait une
+ * liste interactive à l'intérieur d'une étiquette.
+ */
+export function Select({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  helper,
+  required,
+  error,
+  disabled,
+  searchable,
+  id,
+}: SelectProps) {
+  const auto = useId();
+  const idChamp = id ?? `select-${auto}`;
+
+  // Le choix « rien » est une entrée à part entière, en tête de liste.
+  const entrees: OptionSelect[] = placeholder
+    ? [{ value: "", label: placeholder }, ...options]
+    : options;
+  const choisi = entrees.find((o) => o.value === value) ?? null;
+
+  const communs = {
+    id: idChamp,
+    titleText: (
+      <>
+        {label}
+        {required && <span className={styles.required}>*</span>}
+      </>
+    ),
+    helperText: error ? undefined : helper,
+    invalid: Boolean(error),
+    invalidText: error ?? undefined,
+    disabled,
+    items: entrees,
+    itemToString: (o: OptionSelect | null) => o?.label ?? "",
+    selectedItem: choisi,
+  };
+
+  return searchable ? (
+    <ComboBox
+      {...communs}
+      placeholder={placeholder ?? "Rechercher…"}
+      onChange={({ selectedItem }: { selectedItem?: OptionSelect | null }) =>
+        onChange(selectedItem?.value ?? "")
+      }
+    />
+  ) : (
+    <Dropdown
+      {...communs}
+      label={placeholder ?? "Sélectionner"}
+      onChange={({ selectedItem }: { selectedItem?: OptionSelect | null }) =>
+        onChange(selectedItem?.value ?? "")
+      }
+    />
   );
 }
 
