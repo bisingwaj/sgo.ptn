@@ -1,0 +1,1106 @@
+<meta charset="utf-8">
+<title>Le cycle d'un dossier — PTN-RDC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /* ============================================================
+     Document d'impression. Format A4, marges tenues par le moteur
+     d'impression ; la mise en page ne gère que l'intérieur.
+
+     Rayon de bordure à zéro et IBM Plex : c'est le langage de la
+     plateforme, et un document qui la décrit doit lui ressembler.
+     ============================================================ */
+  @page { size: A4; }
+
+  :root {
+    --encre:    #12161f;
+    --encre-2:  #3f4756;
+    --encre-3:  #6d7587;
+    --trait:    #b9c1cd;
+    --trait-fin:#dfe4ec;
+    --fond-2:   #f3f6fa;
+
+    --auteur:   #0f52d9;
+    --ugp:      #00706b;
+    --bailleur: #8a5a00;
+    --candidat: #5b6270;
+
+    --ok:       #1a7f42;
+    --attente:  #9a6b00;
+    --alerte:   #b81922;
+    --absent:   #8b93a3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    color: var(--encre);
+    background: #fff;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  p { margin: 0; }
+
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.88em;
+    background: var(--fond-2);
+    border: 1px solid var(--trait-fin);
+    padding: 0 0.3em;
+    white-space: nowrap;
+  }
+
+  .saut { break-before: page; }
+
+  /* ---------------- Couverture ---------------- */
+  .couverture {
+    height: 245mm;
+    display: flex;
+    flex-direction: column;
+    break-after: page;
+  }
+
+  .couverture .marque {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 8pt;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--encre-3);
+    padding-bottom: 6mm;
+    border-bottom: 2.5pt solid var(--encre);
+  }
+
+  .couverture .titre {
+    margin-top: auto;
+    padding-bottom: 8mm;
+  }
+
+  .couverture h1 {
+    font-size: 34pt;
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+  }
+
+  .couverture .sous {
+    margin-top: 5mm;
+    font-size: 13pt;
+    color: var(--encre-2);
+    max-width: 120mm;
+    font-weight: 400;
+  }
+
+  .couverture .resume {
+    margin-top: 10mm;
+    padding-top: 5mm;
+    border-top: 1px solid var(--trait);
+    max-width: 130mm;
+    color: var(--encre-2);
+  }
+
+  .couverture .identite {
+    margin-top: auto;
+    padding-top: 6mm;
+    border-top: 1px solid var(--trait);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6mm;
+    font-size: 8.5pt;
+  }
+
+  .couverture .identite dt {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 7.5pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--encre-3);
+    margin-bottom: 1mm;
+  }
+
+  .couverture .identite dd { margin: 0; color: var(--encre); }
+
+  /* ---------------- Sections ---------------- */
+  section { margin-top: 9mm; }
+  section:first-of-type { margin-top: 0; }
+
+  .section-tete {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 1mm 4mm;
+    padding-bottom: 2mm;
+    border-bottom: 1.5pt solid var(--encre);
+    break-after: avoid;
+  }
+
+  /* La colonne du document fait 163 mm, non la pleine largeur de la page :
+     sans repli, la mention de droite se faisait rogner au bord. */
+  .section-tete h2 { min-width: 0; }
+
+  .section-tete .numero {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9pt;
+    color: var(--encre-3);
+  }
+
+  .section-tete h2 { font-size: 15pt; }
+
+  .section-tete .portee {
+    margin-left: auto;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 8pt;
+    color: var(--encre-3);
+    white-space: nowrap;
+  }
+
+  .intro {
+    margin-top: 3mm;
+    max-width: 155mm;
+    color: var(--encre-2);
+  }
+
+  /* ---------------- Légende des acteurs ---------------- */
+  .acteurs {
+    margin-top: 5mm;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border: 1px solid var(--trait-fin);
+  }
+
+  .acteurs > div {
+    padding: 3mm 4mm;
+    border-right: 1px solid var(--trait-fin);
+    border-bottom: 1px solid var(--trait-fin);
+  }
+
+  .acteurs > div:nth-child(2n) { border-right: 0; }
+  .acteurs > div:nth-last-child(-n + 2) { border-bottom: 0; }
+
+  .acteurs .qui {
+    display: flex;
+    align-items: center;
+    gap: 2.5mm;
+    font-weight: 600;
+    font-size: 10pt;
+  }
+
+  .acteurs .qui::before {
+    content: "";
+    width: 3mm;
+    height: 3mm;
+    flex: none;
+    background: var(--teinte);
+  }
+
+  .acteurs .quoi {
+    margin-top: 1mm;
+    font-size: 8.5pt;
+    color: var(--encre-3);
+  }
+
+  /* ---------------- Les actes ---------------- */
+  .acte {
+    display: grid;
+    grid-template-columns: 13mm 1fr;
+    margin-top: 4mm;
+    border: 1px solid var(--trait-fin);
+    border-left: 3.5pt solid var(--teinte, var(--encre-3));
+    break-inside: avoid;
+  }
+
+  .acte .rang {
+    padding: 3mm 0 3mm;
+    text-align: center;
+    background: var(--fond-2);
+    border-right: 1px solid var(--trait-fin);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--teinte, var(--encre-2));
+  }
+
+  .acte .corps { padding: 3mm 4mm 3.5mm; }
+
+  .acte h3 { font-size: 12pt; font-weight: 600; }
+
+  .acte .quoi {
+    margin-top: 1.5mm;
+    max-width: 145mm;
+    color: var(--encre-2);
+    font-size: 9.5pt;
+  }
+
+  .faits {
+    margin-top: 3mm;
+    padding-top: 2.5mm;
+    border-top: 1px solid var(--trait-fin);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5mm 4mm;
+  }
+
+  .faits.deux { grid-template-columns: repeat(2, 1fr); }
+
+  .faits .cle {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 7pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--encre-3);
+    margin-bottom: 0.6mm;
+  }
+
+  .faits .val { font-size: 9pt; line-height: 1.4; }
+
+  .etat {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 8pt;
+    padding: 0.3mm 1.6mm;
+    border: 1px solid currentColor;
+  }
+
+  .e-ok      { color: var(--ok); }
+  .e-attente { color: var(--attente); }
+  .e-alerte  { color: var(--alerte); }
+  .e-absent  { color: var(--absent); }
+
+  /* Un acte sans écran : le trait se pointille, le fond se retire. */
+  .acte.absent {
+    border-style: dashed;
+    border-left-style: solid;
+    --teinte: var(--absent);
+  }
+
+  .acte.absent .rang { background: #fff; }
+  .acte.absent h3 { color: var(--encre-2); }
+
+  .signal {
+    margin-top: 2.5mm;
+    padding: 2mm 3mm;
+    border-left: 2.5pt solid var(--alerte);
+    background: var(--fond-2);
+    font-size: 8.5pt;
+    color: var(--encre-2);
+  }
+
+  .acte.absent .signal { border-left-color: var(--absent); }
+
+  /* ---------------- La bifurcation ---------------- */
+  .bifurcation {
+    margin: 4mm 0 0 13mm;
+    padding: 3mm 4mm;
+    border: 1px dashed var(--trait);
+    border-left: 3.5pt solid var(--ugp);
+    background: var(--fond-2);
+    break-inside: avoid;
+  }
+
+  .bifurcation .cle {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 7pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ugp);
+  }
+
+  .bifurcation p { margin-top: 1.5mm; font-size: 9.5pt; color: var(--encre-2); max-width: 145mm; }
+
+  /* ---------------- Tableau ---------------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-top: 4mm;
+    font-size: 8.5pt;
+    break-inside: avoid;
+  }
+
+  table th:first-child { width: 36%; }
+
+  /* Huit colonnes de marques sur 163 mm : les intitulés doivent tenir dans
+     8 % de la largeur, d'où la taille réduite et le centrage sur la marque
+     qu'ils surmontent. Sans cela, « INSTRUIRE » et « VALIDER » se
+     chevauchaient. */
+  table th:not(:first-child) {
+    width: 8%;
+    text-align: center;
+    font-size: 6.2pt;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+    padding-left: 0.5mm;
+    padding-right: 0.5mm;
+  }
+
+  th, td {
+    padding: 1.5mm 1mm;
+    text-align: left;
+    border-bottom: 1px solid var(--trait-fin);
+  }
+
+  tbody th { padding-left: 2mm; hyphens: auto; }
+
+  thead th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 7pt;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--encre-3);
+    font-weight: 500;
+    vertical-align: bottom;
+    border-bottom: 1px solid var(--trait);
+  }
+
+  tbody th { font-weight: 500; }
+
+  td.m { text-align: center; font-family: "IBM Plex Mono", monospace; }
+  td.oui { color: var(--ok); font-weight: 600; }
+  td.non { color: var(--trait); }
+
+  tr.groupe th {
+    background: var(--fond-2);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 7pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--encre-3);
+  }
+
+  /* ---------------- Listes de constat ---------------- */
+  .constats { margin-top: 4mm; display: flex; flex-direction: column; gap: 3mm; }
+
+  .constat {
+    padding-left: 4mm;
+    border-left: 2.5pt solid var(--trait);
+    break-inside: avoid;
+  }
+
+  .constat.manque { border-left-color: var(--absent); }
+  .constat.acquis { border-left-color: var(--ok); }
+
+  .constat h4 { font-size: 10.5pt; font-weight: 600; }
+  .constat p { margin-top: 1mm; font-size: 9.5pt; color: var(--encre-2); max-width: 155mm; }
+
+  /* ---------------- Déroulé de démonstration ---------------- */
+  .deroule { margin-top: 4mm; counter-reset: pas; }
+
+  .pas {
+    display: grid;
+    grid-template-columns: 9mm 1fr;
+    gap: 3mm;
+    padding: 2.5mm 0;
+    border-bottom: 1px solid var(--trait-fin);
+    break-inside: avoid;
+  }
+
+  .pas::before {
+    counter-increment: pas;
+    content: counter(pas, decimal-leading-zero);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9pt;
+    color: var(--encre-3);
+    padding-top: 0.4mm;
+  }
+
+  .pas .compte {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 8pt;
+    color: var(--auteur);
+  }
+
+  .pas .geste { font-size: 9.5pt; }
+  .pas .geste strong { font-weight: 600; }
+
+  .encadre {
+    margin-top: 4mm;
+    padding: 3mm 4mm;
+    border: 1px solid var(--trait);
+    background: var(--fond-2);
+    font-size: 9pt;
+    color: var(--encre-2);
+    break-inside: avoid;
+  }
+
+  .encadre .cle {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 7pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--encre-3);
+    margin-bottom: 1.5mm;
+  }
+</style>
+
+<!-- ======================= COUVERTURE ======================= -->
+<div class="couverture">
+  <div class="marque">République Démocratique du Congo · MPTN · UGPTN</div>
+
+  <div class="titre">
+    <h1>Le cycle d’un dossier,<br>du plan au marché</h1>
+    <p class="sous">
+      Comment un besoin devient un marché publié dans la plateforme de gouvernance
+      du PTN-RDC : les treize actes, qui les pose, et ce qui reste à ouvrir.
+    </p>
+    <p class="resume">
+      Ce document décrit <strong>l’application telle qu’elle fonctionne</strong>, et non la
+      procédure idéale. Chaque acte indique son écran ; ceux qui n’en ont pas encore sont
+      signalés comme tels. Les habilitations sont relevées dans les tables de la plateforme,
+      non dans une documentation.
+    </p>
+  </div>
+
+  <dl class="identite">
+    <div>
+      <dt>Projet</dt>
+      <dd>PTN-RDC · P180495<br>510 M USD · IDA 79 % / AFD 21 %</dd>
+    </div>
+    <div>
+      <dt>Objet</dt>
+      <dd>Plateforme de gouvernance interne<br>Passation, ANO, sauvegardes, reporting</dd>
+    </div>
+    <div>
+      <dt>État relevé le</dt>
+      <dd>24 août 2026<br>Base de développement</dd>
+    </div>
+  </dl>
+</div>
+
+<!-- ======================= §1 COMMENT LIRE ======================= -->
+<section>
+  <div class="section-tete">
+    <span class="numero">§ 1</span>
+    <h2>Comment lire ce document</h2>
+    <span class="portee">quatre acteurs, trois phases</span>
+  </div>
+
+  <p class="intro">
+    Un dossier change de mains quatre fois. À chaque passage, l’habilitation change aussi :
+    ce n’est pas une préférence d’organisation, c’est une obligation du Manuel d’exécution.
+    Les bailleurs ne rédigent pas de termes de référence ; l’UGPTN ne rend pas de
+    non-objection. L’outil applique la procédure, il ne l’invente pas et ne décide jamais.
+  </p>
+
+  <div class="acteurs">
+    <div style="--teinte: var(--auteur)">
+      <div class="qui">L’auteur du dossier</div>
+      <div class="quoi">
+        Responsable de composante, point focal d’une entité MDA, agence partenaire.
+        Il rédige et transmet.
+      </div>
+    </div>
+    <div style="--teinte: var(--ugp)">
+      <div class="qui">L’UGPTN qui instruit</div>
+      <div class="quoi">
+        RPM, chargé de passation, coordination. Elle instruit, valide, demande la
+        non-objection et publie l’avis.
+      </div>
+    </div>
+    <div style="--teinte: var(--bailleur)">
+      <div class="qui">Le bailleur</div>
+      <div class="quoi">
+        Banque mondiale (IDA) et AFD. Une seule prérogative dans l’outil : la
+        non-objection. Elle n’appartient qu’à lui.
+      </div>
+    </div>
+    <div style="--teinte: var(--candidat)">
+      <div class="qui">Les candidats</div>
+      <div class="quoi">
+        Entreprises inscrites. Elles consultent les avis publiés et déposent
+        leurs offres.
+      </div>
+    </div>
+  </div>
+
+  <div class="encadre">
+    <span class="cle">Trois conventions de lecture</span>
+    Un acte <strong>encadré d’un trait plein</strong> dispose de son écran et fonctionne
+    aujourd’hui. Un acte <strong>en pointillé</strong> existe côté serveur mais n’a pas
+    d’écran : il ne peut pas être posé depuis l’application. Les <strong>états en
+    capitales</strong> — <span class="etat e-attente">SOUMIS_UGP</span> — sont ceux que
+    porte réellement le dossier en base.
+  </div>
+</section>
+
+<!-- ======================= §2 LE PLAN ======================= -->
+<section class="saut">
+  <div class="section-tete">
+    <span class="numero">§ 2</span>
+    <h2>Le plan — PTBA</h2>
+    <span class="portee">actes 01 → 04</span>
+  </div>
+
+  <p class="intro">
+    Rien ne se rédige avant d’être budgété. Un dossier se rattache obligatoirement à une
+    ligne du plan annuel : c’est elle qui porte l’enveloppe, et sans enveloppe il n’y a pas
+    de marché possible. Le cycle commence donc ici, et non au dossier.
+  </p>
+
+  <article class="acte absent">
+    <div class="rang">01</div>
+    <div class="corps">
+      <h3>Ouvrir l’exercice budgétaire</h3>
+      <p class="quoi">
+        L’année de gestion porte les allocations, les activités et son propre état.
+        L’exercice 2026 est ouvert.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">Administration de la plateforme</span></div>
+        <div><span class="cle">Écran</span><span class="val">Aucun</span></div>
+        <div><span class="cle">État</span><span class="val"><span class="etat e-absent">BROUILLON</span></span></div>
+      </div>
+      <p class="signal">
+        Il n’existe aucun point d’entrée pour créer un exercice. Celui de 2026 vient du
+        peuplement initial de la base.
+      </p>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--ugp)">
+    <div class="rang">02</div>
+    <div class="corps">
+      <h3>Arrêter l’allocation d’une composante</h3>
+      <p class="quoi">
+        Ce qu’une composante peut engager sur l’exercice. Une composante non dotée
+        n’accepte aucune activité : c’est le point de départ réel du cycle. L’écran rappelle
+        les deux bornes <em>avant</em> la saisie — les découvrir au refus fait recommencer.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">Coordination, responsables de composante, RAF · <code>ptba:write</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/ptba/allocations</code></span></div>
+        <div><span class="cle">Bornes</span><span class="val">Dotation de projet du MEP ; ce que le plan engage déjà</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--ugp)">
+    <div class="rang">03</div>
+    <div class="corps">
+      <h3>Inscrire une activité au plan</h3>
+      <p class="quoi">
+        L’activité porte l’enveloppe que le futur marché consommera, sa ventilation
+        IDA / AFD et sa couverture géographique. Son enveloppe est plafonnée par
+        l’allocation de sa composante.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">Responsables de composante, coordination · <code>ptba:write</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/ptba/nouveau</code></span></div>
+        <div><span class="cle">Produit</span><span class="val">Une ligne du plan, citable par un dossier</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte absent">
+    <div class="rang">04</div>
+    <div class="corps">
+      <h3>Valider l’exercice</h3>
+      <p class="quoi">
+        L’arrêté du plan annuel. Le point d’entrée serveur existe et n’est ouvert qu’au
+        Coordonnateur ; aucun bouton ne l’appelle.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">Coordonnateur seul · <code>ptba:validate</code></span></div>
+        <div><span class="cle">Écran</span><span class="val">Aucun</span></div>
+        <div><span class="cle">État visé</span><span class="val"><span class="etat e-absent">VALIDE</span></span></div>
+      </div>
+      <p class="signal">
+        Le plan fonctionne sans cet acte : les activités s’inscrivent quel que soit l’état
+        de l’exercice. C’est un contrôle qui manque, non un blocage.
+      </p>
+    </div>
+  </article>
+</section>
+
+<!-- ======================= §3 LE DOSSIER ======================= -->
+<section class="saut">
+  <div class="section-tete">
+    <span class="numero">§ 3</span>
+    <h2>Le dossier — termes de référence</h2>
+    <span class="portee">actes 05 → 09</span>
+  </div>
+
+  <p class="intro">
+    Dix-huit étapes de rédaction, une question par écran. Tant qu’il est en brouillon, le
+    dossier n’appartient qu’à son auteur : personne d’autre ne le voit, et il n’entame
+    aucune enveloppe. La transmission change les deux choses à la fois.
+  </p>
+
+  <article class="acte" style="--teinte: var(--auteur)">
+    <div class="rang">05</div>
+    <div class="corps">
+      <h3>Ouvrir un brouillon</h3>
+      <p class="quoi">
+        La référence <span class="mono">PTN-2026-NNN</span> est prise à l’ouverture et ne se
+        rembobine jamais : deux dossiers ne doivent pas avoir porté le même numéro, même à
+        des mois d’intervalle.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">Composantes, entités MDA, partenaires · <code>tdr:author</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/tdr/nouveau</code></span></div>
+        <div><span class="cle">État</span><span class="val"><span class="etat e-absent">BROUILLON</span></span></div>
+        <div><span class="cle">Visible de</span><span class="val">Son auteur seul</span></div>
+        <div><span class="cle">Enveloppe</span><span class="val">Aucune réservation</span></div>
+        <div><span class="cle">Réversible</span><span class="val">L’auteur — et lui seul — peut le supprimer</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--auteur)">
+    <div class="rang">06</div>
+    <div class="corps">
+      <h3>Rédiger, budgéter, verser les pièces</h3>
+      <p class="quoi">
+        Huit champs rédigés, objectifs, livrables, clauses, indicateurs, risques et
+        sauvegardes environnementales et sociales. L’assistant peut proposer un texte ;
+        l’auteur le reprend ou le refuse, et la contribution reste marquée pour le
+        relecteur.
+      </p>
+      <div class="faits deux">
+        <div><span class="cle">Contrôle du budget</span><span class="val">Le budget ne peut dépasser l’enveloppe de l’activité, ni ce qu’il en reste après les dossiers déjà transmis</span></div>
+        <div><span class="cle">Rattachement</span><span class="val">La composante et le plafond se déduisent de la ligne du plan retenue, jamais saisis deux fois</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--auteur)">
+    <div class="rang">07</div>
+    <div class="corps">
+      <h3>Transmettre à l’UGPTN</h3>
+      <p class="quoi">
+        Le geste qui fait quitter la main de l’auteur. Le contrôle de complétude s’exerce
+        ici : objectifs, livrables, méthode de passation, budget dans l’enveloppe,
+        engagements de conformité au MEP et de protection des données.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">L’auteur du dossier · <code>tdr:author</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/tdr/nouveau</code>, dernière étape</span></div>
+        <div><span class="cle">État</span><span class="val"><span class="etat e-attente">SOUMIS_UGP</span></span></div>
+        <div><span class="cle">Ce que ça écrit</span><span class="val">Une version figée du dossier, et une entrée au journal d’audit</span></div>
+        <div><span class="cle">Visible de</span><span class="val">Toute l’organisation</span></div>
+        <div><span class="cle">Enveloppe</span><span class="val">Réservée à partir d’ici</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--ugp)">
+    <div class="rang">08</div>
+    <div class="corps">
+      <h3>Prendre le dossier en revue</h3>
+      <p class="quoi">
+        Ce n’est pas une décision : c’est dire aux autres que le dossier est pris, pour que
+        deux instructeurs ne travaillent pas dessus en même temps.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">RPM, chargé de passation, composantes, coordination · <code>tdr:review</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/tdr/revue</code> — la file « à instruire »</span></div>
+        <div><span class="cle">État</span><span class="val"><span class="etat e-attente">REVUE_UGP</span></span></div>
+      </div>
+    </div>
+  </article>
+
+  <div class="bifurcation">
+    <span class="cle">Bifurcation — le retour à l’auteur</span>
+    <p>
+      L’instructeur peut renvoyer le dossier avec un <strong>motif obligatoire</strong> :
+      sans lui, l’auteur recommence à l’aveugle. Le dossier repasse en
+      <span class="etat e-alerte">RETOURNE</span>, revient à l’acte 05 et se retransmet par
+      le même chemin. Sa ligne du plan lui reste réservée pendant ce temps — elle ne doit
+      pas lui être prise pendant qu’il se corrige.
+    </p>
+  </div>
+
+  <article class="acte" style="--teinte: var(--ugp)">
+    <div class="rang">09</div>
+    <div class="corps">
+      <h3>Valider — et faire naître le marché</h3>
+      <p class="quoi">
+        C’est ici, et nulle part ailleurs, qu’un marché apparaît. Il reprend la référence du
+        dossier, sa méthode de passation et son type de revue tels qu’ils ont été figés à la
+        transmission : les seuils bougent, un marché en cours ne change pas de méthode en
+        chemin.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">RPM et Coordonnateur · <code>tdr:validate</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/tdr/revue</code></span></div>
+        <div><span class="cle">Le dossier devient</span><span class="val"><span class="etat e-ok">VALIDE_UGP</span></span></div>
+        <div><span class="cle">Le marché naît</span><span class="val"><span class="etat e-ok">PLANIFIE</span></span></div>
+      </div>
+    </div>
+  </article>
+</section>
+
+<!-- ======================= §4 LE MARCHÉ ======================= -->
+<section class="saut">
+  <div class="section-tete">
+    <span class="numero">§ 4</span>
+    <h2>Le marché — de la non-objection à l’avis publié</h2>
+    <span class="portee">actes 10 → 13</span>
+  </div>
+
+  <p class="intro">
+    L’UGPTN demande la non-objection ; le bailleur la rend ; l’UGPTN publie. Les trois
+    actes sont distincts, portés par trois habilitations distinctes, et aucun compte ne les
+    réunit tous.
+  </p>
+
+  <article class="acte absent">
+    <div class="rang">10</div>
+    <div class="corps">
+      <h3>Préparer le dossier d’appel d’offres</h3>
+      <p class="quoi">
+        Étape prévue par le corpus, sans module dans l’application. La demande de
+        non-objection porte le dossier directement.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">RPM, chargés de passation · <code>dao:write</code></span></div>
+        <div><span class="cle">Écran</span><span class="val">Aucun</span></div>
+        <div><span class="cle">État visé</span><span class="val"><span class="etat e-absent">DAO_PREPARATION</span></span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--ugp)">
+    <div class="rang">11</div>
+    <div class="corps">
+      <h3>Demander la non-objection</h3>
+      <p class="quoi">
+        L’UGPTN dépose la demande ; elle ne la décide pas. Le bailleur saisi se déduit de la
+        <strong>ventilation du financement</strong> inscrite au dossier — IDA, AFD, ou les
+        deux en cofinancement. Le délai de service court à compter du dépôt.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">RPM, coordination, composantes · <code>ano:submit</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/tdr/revue</code></span></div>
+        <div><span class="cle">État</span><span class="val"><span class="etat e-attente">ANO_EN_COURS</span></span></div>
+        <div><span class="cle">Délai Banque mondiale</span><span class="val">14 jours</span></div>
+        <div><span class="cle">Délai AFD</span><span class="val">21 jours</span></div>
+        <div><span class="cle">Journal</span><span class="val">Demande, bailleur saisi et auteur</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--bailleur)">
+    <div class="rang">12</div>
+    <div class="corps">
+      <h3>Rendre la décision</h3>
+      <p class="quoi">
+        La seule prérogative du bailleur dans l’outil, et elle n’appartient qu’à lui : ni le
+        RPM ni le Coordonnateur ne portent <code>ano:decide</code>. La file se range par
+        échéance de délai de service, la plus proche en tête. Trois suites, et les deux
+        dernières exigent un motif.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">Banque mondiale et AFD seules · <code>ano:decide</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/ano</code></span></div>
+        <div><span class="cle">Non-objection</span><span class="val"><span class="etat e-ok">ANO_OBTENU</span></span></div>
+        <div><span class="cle">Demande de modification</span><span class="val">Le dossier repart à l’UGPTN, sans être refusé</span></div>
+        <div><span class="cle">Refus motivé</span><span class="val"><span class="etat e-alerte">ANO_REFUSE</span> — l’enveloppe est libérée</span></div>
+        <div><span class="cle">Journal</span><span class="val">Décision, motif et auteur</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="acte" style="--teinte: var(--candidat)">
+    <div class="rang">13</div>
+    <div class="corps">
+      <h3>Publier l’avis, recevoir les offres</h3>
+      <p class="quoi">
+        L’avis paraît au marketplace, où les entreprises inscrites déposent. Un marché ne se
+        publie qu’une fois : deux avis pour un même marché laisseraient un candidat sans
+        savoir auquel répondre. La publication est refusée sans non-objection.
+      </p>
+      <div class="faits">
+        <div><span class="cle">Qui</span><span class="val">RPM et Coordonnateur · <code>dao:publish</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/tdr/revue</code></span></div>
+        <div><span class="cle">Le marché devient</span><span class="val"><span class="etat e-ok">PUBLIE</span></span></div>
+        <div><span class="cle">Délai de dépôt</span><span class="val">De 7 à 120 jours — en deçà, un dossier ne se constitue pas</span></div>
+        <div><span class="cle">Côté candidat</span><span class="val">L’avis et le dépôt d’offre, sur de vraies données</span></div>
+        <div><span class="cle">Suite</span><span class="val"><span class="etat e-absent">CLOTURE</span> <span class="etat e-absent">EVALUATION</span> <span class="etat e-absent">ATTRIBUE</span></span></div>
+      </div>
+    </div>
+  </article>
+</section>
+
+<!-- ======================= §5 HABILITATIONS ======================= -->
+<section class="saut">
+  <div class="section-tete">
+    <span class="numero">§ 5</span>
+    <h2>Qui peut poser quel acte</h2>
+    <span class="portee">relevé dans la base</span>
+  </div>
+
+  <p class="intro">
+    Habilitations réellement portées par chaque fonction, lues dans les tables de la
+    plateforme. Un profil absent de ce tableau ne pose aucun de ces actes — c’est le cas des
+    auditeurs, en lecture seule sur l’ensemble.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fonction</th>
+        <th>Éditer<br>PTBA</th>
+        <th>Valider<br>PTBA</th>
+        <th>Rédiger<br>TDR</th>
+        <th>Instruire<br>TDR</th>
+        <th>Valider<br>TDR</th>
+        <th>Demander<br>ANO</th>
+        <th>Décider<br>ANO</th>
+        <th>Publier<br>avis</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="groupe"><th colspan="9">UGP-PTN</th></tr>
+      <tr>
+        <th>Coordonnateur</th>
+        <td class="m oui">●</td><td class="m oui">●</td><td class="m oui">●</td><td class="m oui">●</td><td class="m oui">●</td><td class="m oui">●</td><td class="m non">—</td><td class="m oui">●</td>
+      </tr>
+      <tr>
+        <th>Coordonnateur adjoint</th>
+        <td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td>
+      </tr>
+      <tr>
+        <th>Responsable passation des marchés</th>
+        <td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m oui">●</td><td class="m oui">●</td><td class="m oui">●</td><td class="m non">—</td><td class="m oui">●</td>
+      </tr>
+      <tr>
+        <th>Chargé de passation des marchés</th>
+        <td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td>
+      </tr>
+      <tr>
+        <th>Responsable composante 1 · 2 · 3</th>
+        <td class="m oui">●</td><td class="m non">—</td><td class="m oui">●</td><td class="m oui">●</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td>
+      </tr>
+      <tr>
+        <th>Responsable administratif et financier</th>
+        <td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td>
+      </tr>
+      <tr>
+        <th>Spécialiste suivi &amp; évaluation</th>
+        <td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td>
+      </tr>
+
+      <tr class="groupe"><th colspan="9">Entités MDA et agences partenaires</th></tr>
+      <tr>
+        <th>Secrétaire général, directeur sectoriel, point focal</th>
+        <td class="m non">—</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td>
+      </tr>
+      <tr>
+        <th>ANIE, ARPTC, ONIP, OSC, universités, fédérations</th>
+        <td class="m non">—</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td>
+      </tr>
+
+      <tr class="groupe"><th colspan="9">Bailleurs</th></tr>
+      <tr>
+        <th>TTL et spécialiste Banque mondiale</th>
+        <td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td>
+      </tr>
+      <tr>
+        <th>Référent et spécialiste AFD</th>
+        <td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m non">—</td><td class="m oui">●</td><td class="m non">—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="encadre">
+    <span class="cle">Ce que ce tableau établit</span>
+    Le <strong>Coordonnateur</strong> porte tout du côté UGPTN, <em>sauf</em> la décision
+    d’ANO. Les <strong>bailleurs</strong> ne portent que celle-là : ils ne rédigent aucun
+    terme de référence et n’en instruisent aucun. Aucun compte ne cumule la demande et la
+    décision — la séparation est tenue par le serveur, pas par l’écran.
+  </div>
+</section>
+
+<!-- ======================= §6 CE QUI RESTE ======================= -->
+<section class="saut">
+  <div class="section-tete">
+    <span class="numero">§ 6</span>
+    <h2>Ce qui fonctionne, et ce qui reste à ouvrir</h2>
+    <span class="portee">état au 24 août 2026</span>
+  </div>
+
+  <p class="intro">
+    Dit franchement, pour que la présentation n’ait rien à masquer.
+  </p>
+
+  <div class="constats">
+    <div class="constat acquis">
+      <h4>La chaîne va de l’allocation à l’avis publié</h4>
+      <p>
+        Éprouvée de bout en bout sur trois comptes : allocation d’une composante, activité
+        inscrite, dossier rédigé et transmis, pris en revue, validé, marché ouvert,
+        non-objection demandée puis accordée par le bailleur, avis publié et visible au
+        marketplace. Chaque acte laisse une trace au journal d’audit avec son auteur.
+      </p>
+    </div>
+
+    <div class="constat manque">
+      <h4>L’exercice budgétaire ne se crée ni ne se valide depuis l’application</h4>
+      <p>
+        Aucun point d’entrée ne crée un exercice ; celui de 2026 vient du peuplement de la
+        base. La validation existe côté serveur, réservée au Coordonnateur, mais aucun
+        bouton ne l’appelle. Les activités s’inscrivent quel que soit l’état de l’exercice :
+        c’est un contrôle qui manque.
+      </p>
+    </div>
+
+    <div class="constat manque">
+      <h4>La préparation du dossier d’appel d’offres n’a pas de module</h4>
+      <p>
+        L’étape 10 est absente de l’application, serveur compris. La demande de
+        non-objection porte le dossier directement. C’est le seul acte du cycle qui n’ait
+        aucune existence technique.
+      </p>
+    </div>
+
+    <div class="constat manque">
+      <h4>Après le dépôt des offres, rien n’est ouvert</h4>
+      <p>
+        Clôture, commissions d’évaluation, attribution et contrat existent comme états en
+        base, sans écran. Les pages <code>/ppm</code>, <code>/contrats</code> et
+        <code>/commissions</code> affichent encore des données d’exemple : elles montrent
+        une intention, elles ne lisent rien.
+      </p>
+    </div>
+
+    <div class="constat manque">
+      <h4>Aucune notification</h4>
+      <p>
+        Un dossier qui arrive en instruction, une non-objection qui approche de son
+        échéance, un retour à l’auteur : rien n’est signalé. Chacun doit ouvrir l’écran pour
+        savoir qu’il l’attend. C’est le manque le plus visible à l’usage quotidien.
+      </p>
+    </div>
+
+    <div class="constat manque">
+      <h4>La plateforme ne parle que français</h4>
+      <p>
+        L’anglais est prévu pour la plateforme — les six langues du site institutionnel sont
+        hors périmètre. Aucune chaîne n’est encore externalisée.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= §7 DÉROULÉ ======================= -->
+<section class="saut">
+  <div class="section-tete">
+    <span class="numero">§ 7</span>
+    <h2>Dérouler la démonstration</h2>
+    <span class="portee">quatre comptes, treize gestes</span>
+  </div>
+
+  <p class="intro">
+    Le cycle complet se montre en direct en changeant de compte. Chaque changement rend
+    visible la séparation des habilitations : le compte suivant ne peut pas faire ce que
+    le précédent vient de faire.
+  </p>
+
+  <div class="deroule">
+    <div class="pas">
+      <div>
+        <span class="compte">rc2@ptn-rdc.gov.cd — Responsable composante 2</span>
+        <div class="geste">Ouvrir <code>/ptba/allocations</code> et montrer les dotations arrêtées, avec leurs deux bornes.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rc2@ptn-rdc.gov.cd</span>
+        <div class="geste">Inscrire une activité au plan sur une composante dotée, et faire constater que l’enveloppe est plafonnée.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rc2@ptn-rdc.gov.cd</span>
+        <div class="geste">Ouvrir un brouillon de TDR, le rattacher à la ligne, montrer que <strong>l’enveloppe n’est pas encore entamée</strong>.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rpm@ptn-rdc.gov.cd — Responsable passation</span>
+        <div class="geste">Ouvrir le registre des TDR : <strong>le brouillon n’y figure pas</strong>. Un dossier en rédaction n’appartient qu’à son auteur.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rc2@ptn-rdc.gov.cd</span>
+        <div class="geste">Transmettre le dossier. Montrer le contrôle de complétude s’il manque quelque chose.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rpm@ptn-rdc.gov.cd</span>
+        <div class="geste">Le dossier paraît dans <code>/tdr/revue</code>. Le prendre en revue.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rpm@ptn-rdc.gov.cd</span>
+        <div class="geste">Le retourner à son auteur avec un motif — montrer que <strong>le motif est exigé</strong>.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rc2@ptn-rdc.gov.cd</span>
+        <div class="geste">Lire le motif, corriger, retransmettre.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rpm@ptn-rdc.gov.cd</span>
+        <div class="geste">Valider. <strong>Le marché naît</strong> — c’est le seul endroit où cela se produit.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rpm@ptn-rdc.gov.cd</span>
+        <div class="geste">Demander la non-objection. Montrer le bailleur saisi, déduit de la ventilation du financement.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">ttl@worldbank.org — TTL Banque mondiale</span>
+        <div class="geste">Ouvrir <code>/ano</code> : objet, montant, ventilation, échéance à 14 jours. Accorder la non-objection.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">rpm@ptn-rdc.gov.cd</span>
+        <div class="geste">Le dossier est revenu dans la file avec <strong>l’avis à publier</strong>. Rédiger le résumé, fixer le délai de dépôt, publier.</div>
+      </div>
+    </div>
+    <div class="pas">
+      <div>
+        <span class="compte">contact@congofibre.cd — Entreprise candidate</span>
+        <div class="geste">Ouvrir le marketplace : <strong>l’avis y est</strong>. Le cycle est bouclé.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="encadre">
+    <span class="cle">Deux refus à montrer, s’il reste du temps</span>
+    Depuis le compte du RPM, tenter de décider la non-objection : le module est verrouillé,
+    et le message dit qui détient ce droit. Depuis un compte bailleur, chercher à rédiger un
+    terme de référence : il n’y a pas d’entrée. Ces refus valent une démonstration — ils
+    montrent que la séparation n’est pas une convention d’affichage.
+  </div>
+</section>
