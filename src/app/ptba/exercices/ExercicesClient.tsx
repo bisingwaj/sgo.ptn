@@ -46,28 +46,9 @@ import { Add } from "@carbon/icons-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
 import { ptbaApi, type PtbaYearApi } from "@/lib/api";
-
-/** Ce qu'un état veut dire pour qui lit, et non pour la base. */
-export const ETAT: Record<
-  PtbaYearApi["status"],
-  { label: string; tone: "gray" | "green" | "cool-gray"; sens: string }
-> = {
-  BROUILLON: {
-    label: "En préparation",
-    tone: "gray",
-    sens: "Le plan se construit. Il n’est pas encore opposable.",
-  },
-  VALIDE: {
-    label: "Validé — opposable",
-    tone: "green",
-    sens: "Le plan est arrêté et opposable devant le bailleur.",
-  },
-  CLOS: {
-    label: "Clos",
-    tone: "cool-gray",
-    sens: "L’exercice est terminé. Plus rien ne s’y inscrit.",
-  },
-};
+// Les états de l'exercice sont déclarés avec l'en-tête partagé : deux
+// libellés divergents du même statut seraient pires qu'aucun.
+import { ETAT, hrefSection } from "@/components/ptba/EnteteExercice";
 
 /** Bornes du projet — MEP du 23 juin 2025. */
 const PREMIER_EXERCICE = 2025;
@@ -157,12 +138,12 @@ export function ExercicesClient() {
       <PageHeader
         eyebrow="PTBA · EXERCICES BUDGÉTAIRES"
         title="Les exercices"
-        subtitle="La vie du plan annuel : ouvrir l’exercice, le doter, l’arrêter. Un exercice neuf ne porte ni allocation ni activité — les dotations relèvent du COPIL et ne se reconduisent pas d’elles-mêmes."
+        subtitle="Chaque exercice porte une année du plan. Ouvrez-en un ici, puis arrêtez ses allocations avant d’y inscrire des activités — un exercice neuf ne porte ni l’une ni l’autre, les dotations relèvent du COPIL et ne se reconduisent pas d’elles-mêmes."
         actions={
           <>
-            <Button as={Link} href="/ptba" kind="ghost" size="md">
-              Le registre
-            </Button>
+            {/* Plus de « Le registre » : son intitulé n'annonçait pas son
+                arrivée, et il doublait ce que chaque ligne offre déjà —
+                laquelle, elle, dit de quelle ANNÉE elle parle. */}
             {peutOuvrir && (
               <Button
                 renderIcon={Add}
@@ -217,12 +198,13 @@ export function ExercicesClient() {
                 <TableHeader>Intitulé</TableHeader>
                 <TableHeader>État</TableHeader>
                 <TableHeader className="text-right">Activités</TableHeader>
+                <TableHeader>Sections</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
               {(exercices ?? []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4}>
+                  <TableCell colSpan={5}>
                     <div className="py-8 text-center">
                       <p className="text-heading-02 text-primary">
                         Aucun exercice budgétaire n’est ouvert
@@ -286,6 +268,30 @@ export function ExercicesClient() {
                       ) : (
                         activites
                       )}
+                    </TableCell>
+                    {/* Les deux sections de l'exercice, nommées ici comme
+                        elles le sont dans son en-tête. La liste dit ainsi
+                        de quoi un exercice est fait, et non seulement
+                        qu'il existe. */}
+                    <TableCell>
+                      <span className="flex flex-wrap gap-1">
+                        <Button
+                          as={Link}
+                          href={hrefSection("allocations", e.year)}
+                          kind="ghost"
+                          size="sm"
+                        >
+                          Allocations
+                        </Button>
+                        <Button
+                          as={Link}
+                          href={hrefSection("plan", e.year)}
+                          kind="ghost"
+                          size="sm"
+                        >
+                          Plan
+                        </Button>
+                      </span>
                     </TableCell>
                   </TableRow>
                 );

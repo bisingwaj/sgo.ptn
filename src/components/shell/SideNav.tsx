@@ -319,6 +319,21 @@ export function SideNav({ collapsed = false }: SideNavProps) {
   }
 
   /**
+   * L'entrée courante : la plus PRÉCISE de celles que le chemin satisfait.
+   *
+   * Deux entrées peuvent décrire le même chemin quand l'une est rangée sous
+   * l'autre — `/ptba` et `/ptba/exercices`. Marquer « courant » sur simple
+   * préfixe les allumait toutes les deux, et une colonne qui montre deux
+   * pages actives n'en montre aucune. Le href le plus long l'emporte : il
+   * est le seul à décrire vraiment où l'on se trouve.
+   */
+  const hrefCourant = groups
+    .flatMap((g) => g.items)
+    .map((i) => i.href)
+    .filter((h) => pathname === h || (h !== "/" && pathname.startsWith(h + "/")))
+    .sort((a, b) => b.length - a.length)[0];
+
+  /**
    * Bloc de contexte : sous quelle casquette et pour quelle organisation.
    *
    * Il affichait deux fois la même chose — `config.short` valait « UGP » et
@@ -364,9 +379,13 @@ export function SideNav({ collapsed = false }: SideNavProps) {
             {g.title && <div className={styles.group}>{g.title}</div>}
             <ul>
               {g.items.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href !== "/" && pathname.startsWith(item.href + "/"));
+                // L'entrée LA PLUS PRÉCISE gagne, et elle seule.
+                //
+                // Un simple test de préfixe allumait les deux quand un href
+                // en contenait un autre : sur `/ptba/exercices`, « PTBA »
+                // (/ptba) et « Exercices » se disaient courants ensemble, et
+                // la colonne montrait deux pages actives — donc aucune.
+                const active = item.href === hrefCourant;
                 // Le module est-il ouvert à cette personne ?
                 //
                 // Sans session — écrans de démonstration — rien n'est

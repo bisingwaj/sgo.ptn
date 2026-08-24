@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PtbaRegistryClient } from "./PtbaRegistryClient";
 
 export const metadata: Metadata = {
@@ -8,5 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default function PtbaPage() {
-  return <PtbaRegistryClient />;
+  return (
+    // `useSearchParams` — l'exercice affiché vient de l'URL — impose une
+    // frontière de suspense en rendu statique.
+    <Suspense fallback={null}>
+      <PtbaRegistryClient />
+    </Suspense>
+  );
 }

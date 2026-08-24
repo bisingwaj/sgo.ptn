@@ -18,7 +18,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Button,
@@ -436,7 +436,21 @@ function soldeDe(alloc: PtbaAllocationRowApi | undefined): number | null {
 export function PtbaWizardClient() {
   const router = useRouter();
   const { can, loading: authLoading } = useAuth();
-  const { year, allocations, chargement, avertissement } = usePtbaExercice();
+  /**
+   * L'exercice visé vient de l'URL.
+   *
+   * L'assistant retenait toujours le plus récent : depuis les allocations
+   * de 2026, « Inscrire une activité » ouvrait un dossier sur 2027 sans
+   * que rien ne le dise, et l'activité partait dans le mauvais budget.
+   * Sans paramètre, le comportement d'avant est conservé.
+   */
+  const parametres = useSearchParams();
+  const anneeDemandee = /^\d{4}$/.test(parametres.get("annee") ?? "")
+    ? Number(parametres.get("annee"))
+    : undefined;
+  const { year, allocations, chargement, avertissement } = usePtbaExercice({
+    annee: anneeDemandee,
+  });
   const provinces = useProvinces();
   const [erreurFinale, setErreurFinale] = useState<string | null>(null);
 

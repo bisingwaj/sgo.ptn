@@ -49,15 +49,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tag,
 } from "@carbon/react";
 import { Add, CheckmarkOutline } from "@carbon/icons-react";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
 import { usePtbaExercice } from "@/components/ptba/use-ptba-exercice";
 import { ptbaApi, type PtbaAllocationRowApi } from "@/lib/api";
 import { formatUsd, formatUsdCompact, formatDate } from "@/lib/format";
-import { ETAT } from "../ExercicesClient";
+import { EnteteExercice } from "@/components/ptba/EnteteExercice";
 
 /** Teintes de composante. Jetons universels — voir tokens.scss. */
 const TEINTE: Record<string, string> = {
@@ -157,71 +155,40 @@ export function ExerciceClient({ annee }: { annee: number }) {
     }
   };
 
-  const etat = exercice ? ETAT[exercice.status] : null;
-
   return (
     <>
-      <PageHeader
-        eyebrow="PTBA · EXERCICE BUDGÉTAIRE"
-        title={`Exercice ${annee}`}
-        subtitle={
-          exercice?.label ??
-          "Ce qu’une composante peut engager sur l’exercice. Une activité ne s’inscrit au plan que dans la limite de l’allocation de sa composante."
-        }
-        meta={
-          etat && (
-            <>
-              <Tag type={etat.tone} size="sm">
-                {etat.label}
-              </Tag>
-              <span>{etat.sens}</span>
-              {exercice?.validatedAt && (
-                <>
-                  <span>·</span>
-                  <span>Arrêté le {formatDate(exercice.validatedAt)}</span>
-                </>
-              )}
-              <span>·</span>
-              <span>
-                {nbActivites === 0
-                  ? "Aucune activité inscrite"
-                  : `${nbActivites} activité${nbActivites > 1 ? "s" : ""} inscrite${nbActivites > 1 ? "s" : ""}`}
-              </span>
-              {allocations.length > 0 && (
-                <>
-                  <span>·</span>
-                  <span>
-                    <span className="mono">{formatUsdCompact(engageTotal)}</span> engagés sur{" "}
-                    <span className="mono">{formatUsdCompact(alloueTotal)}</span> alloués
-                  </span>
-                </>
-              )}
-            </>
+      <EnteteExercice
+        annee={annee}
+        exercice={exercice}
+        exercices={exercices}
+        allocations={allocations}
+        nbActivites={nbActivites}
+        section="allocations"
+        chargement={chargement}
+        actions={
+          modifiable &&
+          peutValider && (
+            <Button
+              renderIcon={CheckmarkOutline}
+              size="md"
+              onClick={() => {
+                setAValider(true);
+                setRefus(null);
+              }}
+            >
+              Arrêter le plan
+            </Button>
           )
         }
-        actions={
-          <>
-            <Button as={Link} href="/ptba/exercices" kind="ghost" size="md">
-              Les exercices
-            </Button>
-            <Button as={Link} href="/ptba" kind="tertiary" size="md">
-              Le registre
-            </Button>
-            {modifiable && peutValider && (
-              <Button
-                renderIcon={CheckmarkOutline}
-                size="md"
-                onClick={() => {
-                  setAValider(true);
-                  setRefus(null);
-                }}
-              >
-                Arrêter le plan
-              </Button>
-            )}
-          </>
-        }
       />
+
+      {/* Ce que la section fait, dit une fois, sous ses onglets. */}
+      <p className="text-body text-secondary mb-6 max-w-[68ch]">
+        Ce que chaque composante peut engager sur l’exercice {annee}. Une activité ne
+        s’inscrit au plan que dans la limite de l’allocation de sa composante — sans
+        allocation, la composante n’en accepte aucune.
+        {exercice?.validatedAt && ` Plan arrêté le ${formatDate(exercice.validatedAt)}.`}
+      </p>
 
       {error && (
         <InlineNotification
@@ -432,7 +399,13 @@ export function ExerciceClient({ annee }: { annee: number }) {
 
       {!introuvable && modifiable && peutEcrire && !aucuneAllocation && (
         <div className="mt-6">
-          <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="md" kind="tertiary">
+          <Button
+            as={Link}
+            href={`/ptba/nouveau?annee=${annee}`}
+            renderIcon={Add}
+            size="md"
+            kind="tertiary"
+          >
             Inscrire une activité
           </Button>
         </div>

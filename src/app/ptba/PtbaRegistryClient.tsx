@@ -17,11 +17,11 @@
 
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Button,
   DataTable,
   DataTableSkeleton,
-  Dropdown,
   InlineNotification,
   Modal,
   MultiSelect,
@@ -41,13 +41,12 @@ import {
   TableToolbar,
   TableToolbarContent,
   TableToolbarSearch,
-  Tag,
   TextArea,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { Shell } from "@/components/shell/Shell";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/components/auth/AuthContext";
+import { EnteteExercice } from "@/components/ptba/EnteteExercice";
 import { usePtbaExercice } from "@/components/ptba/use-ptba-exercice";
 import { ptbaApi, ApiError, type PtbaActivityApi } from "@/lib/api";
 import { formatDate, formatUsdCompact, formatUsdCompactBare } from "@/lib/format";
@@ -166,7 +165,17 @@ function Contenu({ activite }: { activite: PtbaActivityApi }) {
 export function PtbaRegistryClient() {
   const { can } = useAuth();
 
-  const [annee, setAnnee] = useState<number | undefined>(undefined);
+  /**
+   * L'exercice affiché vient de l'URL.
+   *
+   * Il n'était qu'un état de composant : le plan d'une année précise
+   * n'était donc ni adressable ni partageable, et l'onglet « Plan » de
+   * l'en-tête n'aurait eu aucun moyen de viser l'année qu'il annonce.
+   * Sans paramètre, le hook retient le plus récent — inchangé.
+   */
+  const params = useSearchParams();
+  const anneeUrl = Number(params.get("annee"));
+  const annee = /^\d{4}$/.test(params.get("annee") ?? "") ? anneeUrl : undefined;
   const exercice = usePtbaExercice({ avecActivites: true, annee });
   const { year, exercices, activities, allocations, chargement, error, avertissement, relire } =
     exercice;
@@ -233,72 +242,43 @@ export function PtbaRegistryClient() {
   };
 
   return (
-    <Shell crumbs={[{ label: "Cockpit UGP", href: "/cockpit" }, { label: "PTBA" }]}>
-      <PageHeader
-        eyebrow="UGP · PLAN DE TRAVAIL ET BUDGET ANNUEL"
-        title={year ? `PTBA ${year.year}` : "PTBA"}
-        subtitle={
-          year
-            ? "Toute activité du plan devient un rattachement possible pour un TDR. Sans ligne au plan, il n’y a pas d’enveloppe — donc pas de marché."
-            : chargement
-              ? "Chargement du plan…"
-              : "Aucun exercice ouvert."
-        }
-        meta={
-          year ? (
-            <>
-              <Tag type={STATUT[year.status]?.tone ?? "gray"} size="sm">
-                {STATUT[year.status]?.label ?? year.status}
-              </Tag>
-              <span>
-                <strong>{activities.length}</strong> activité
-                {activities.length > 1 ? "s" : ""}
-              </span>
-              <span>·</span>
-              <span>
-                <span className="mono">{formatUsdCompact(engage)}</span> engagés sur{" "}
-                <span className="mono">{formatUsdCompact(alloueTotal)}</span> alloués
-              </span>
-            </>
-          ) : undefined
-        }
+    <Shell
+      crumbs={[
+        { label: "Cockpit UGP", href: "/cockpit" },
+        { label: "PTBA", href: "/ptba" },
+        // L'ariane nomme l'exercice affiché : le titre le nomme aussi, et
+        // deux fils qui se contredisent valent moins qu'un seul.
+        { label: year ? `Exercice ${year.year}` : "Exercice" },
+      ]}
+    >
+      <EnteteExercice
+        annee={year?.year ?? annee ?? 0}
+        exercice={year}
+        exercices={exercices}
+        allocations={allocations}
+        nbActivites={activities.length}
+        section="plan"
+        chargement={chargement}
         actions={
-          peutEcrire ? (
-            <>
-              {/* Les trois commandes dans l'ordre du cycle : l'exercice
-                  précède l'allocation, qui précède l'activité. Sans
-                  allocation, « Ajouter » mène à cinq composantes
-                  désactivées ; sans exercice, il n'y a rien du tout.
-
-                  « Exercices » reste offert quand le plan n'est plus
-                  modifiable : c'est de là qu'on ouvre l'exercice suivant.
-
-                  « Allocations » porte l'année AFFICHÉE, et non plus une
-                  route qui devinait la sienne. Le registre laisse changer
-                  d'exercice par son sélecteur : sans l'année dans le lien,
-                  on partait doter une autre année que celle sous les yeux. */}
-              <Button as={Link} href="/ptba/exercices" kind="ghost" size="md">
-                Exercices
-              </Button>
-              {year && (
-                <Button
-                  as={Link}
-                  href={`/ptba/exercices/${year.year}`}
-                  kind="tertiary"
-                  size="md"
-                >
-                  Allocations {year.year}
-                </Button>
-              )}
-              {editable && (
-                <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="md">
-                  Ajouter une activité
-                </Button>
-              )}
-            </>
+          peutEcrire && editable ? (
+            <Button
+              as={Link}
+              href={year ? `/ptba/nouveau?annee=${year.year}` : "/ptba/nouveau"}
+              renderIcon={Add}
+              size="md"
+            >
+              Ajouter une activité
+            </Button>
           ) : undefined
         }
       />
+
+      {/* Ce que la section fait, dit une fois, sous ses onglets. */}
+      <p className="text-body text-secondary mb-6 max-w-[68ch]">
+        Les activités inscrites au plan de l’exercice. Chacune ouvre une enveloppe et devient
+        un rattachement possible pour un TDR — sans ligne au plan, il n’y a pas d’enveloppe,
+        donc pas de marché.
+      </p>
 
       {error && (
         <InlineNotification
@@ -432,23 +412,10 @@ export function PtbaRegistryClient() {
                               }}
                             />
                           </div>
-                          {exercices.length > 1 && (
-                            <div className="w-44">
-                              <Dropdown
-                                id="ptba-exercice"
-                                label="Exercice"
-                                titleText=""
-                                hideLabel
-                                items={exercices.map((e) => e.year)}
-                                selectedItem={year?.year ?? null}
-                                itemToString={(y) => `Exercice ${y}`}
-                                onChange={({ selectedItem }) => {
-                                  setAnnee(selectedItem ?? undefined);
-                                  setPage(1);
-                                }}
-                              />
-                            </div>
-                          )}
+                          {/* Le sélecteur d'exercice a rejoint l'en-tête :
+                              il y vaut pour les DEUX sections, et deux
+                              sélecteurs d'année sur le même écran laissaient
+                              douter de celui qui commandait. */}
                         </TableToolbarContent>
                       </TableToolbar>
 
@@ -490,7 +457,7 @@ export function PtbaRegistryClient() {
                                   </p>
                                   {activities.length === 0 && peutEcrire && editable && (
                                     <div className="mt-4">
-                                      <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="sm">
+                                      <Button as={Link} href={year ? `/ptba/nouveau?annee=${year.year}` : "/ptba/nouveau"} renderIcon={Add} size="sm">
                                         Inscrire la première activité
                                       </Button>
                                     </div>

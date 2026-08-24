@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { PtbaWizardClient } from "./PtbaWizardClient";
 
@@ -15,7 +16,11 @@ export const metadata: Metadata = {
 export default function NouvelleActivitePage() {
   return (
     <AuthGate>
-      <PtbaWizardClient />
+      {/* `useSearchParams` — l'exercice visé vient de l'URL — impose une
+          frontière de suspense en rendu statique. */}
+      <Suspense fallback={null}>
+        <PtbaWizardClient />
+      </Suspense>
     </AuthGate>
   );
 }
