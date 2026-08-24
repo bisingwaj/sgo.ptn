@@ -795,6 +795,16 @@ export interface PtbaActivityDetailApi extends PtbaActivityApi {
 
 export const ptbaApi = {
   years: () => api.get<PtbaYearApi[]>("/ptba/exercices"),
+
+  /**
+   * Ouvrir un exercice budgétaire.
+   *
+   * L'acte n'existait nulle part : l'exercice 2026 venait du peuplement de
+   * la base, et l'arrivée de 2027 aurait demandé une intervention en base
+   * de données. L'intitulé est facultatif — le serveur en compose un.
+   */
+  openYear: (year: number, label?: string) =>
+    api.post<PtbaYearApi>("/ptba/exercices", { year, ...(label ? { label } : {}) }),
   activity: (id: string) => api.get<PtbaActivityDetailApi>(`/ptba/activites/${id}`),
   allocations: (year: number) =>
     api.get<{ year: PtbaYearApi; rows: PtbaAllocationRowApi[] }>(

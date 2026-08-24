@@ -15,7 +15,12 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { PtbaService } from './ptba.service';
-import { DeactivateActivityDto, UpsertActivityDto, UpsertAllocationDto } from './dto/ptba.dto';
+import {
+  DeactivateActivityDto,
+  OpenYearDto,
+  UpsertActivityDto,
+  UpsertAllocationDto,
+} from './dto/ptba.dto';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
@@ -43,6 +48,21 @@ export class PtbaController {
   @ApiOperation({ summary: 'Exercices PTBA et leur nombre d’activités' })
   years() {
     return this.ptba.years();
+  }
+
+  @Post('exercices')
+  @RequirePermissions('ptba:write')
+  @ApiOperation({
+    summary: 'Ouvrir un exercice budgétaire',
+    description:
+      'L’exercice naît en préparation et VIDE : ni allocation ni activité. Une dotation est une décision du COPIL, et recopier celles de l’année précédente les ferait passer pour reconduites. Les bornes du projet — 2025 à 2029, MEP du 23 juin 2025 — sont opposées ici.',
+  })
+  openYear(
+    @Body() dto: OpenYearDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.ptba.openYear(dto.year, dto.label, actor, contextOf(req));
   }
 
   @Get('exercices/:year/activites')

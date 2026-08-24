@@ -28,6 +28,82 @@ export class PtbaService {
     });
   }
 
+  /**
+   * Ouvre un exercice budgétaire.
+   *
+   * L'ACTE N'EXISTAIT PAS. Le PTBA savait lire ses exercices, y allouer,
+   * y inscrire des activités et les valider — mais rien ne permettait
+   * d'en OUVRIR un. Celui de 2026 venait du peuplement de la base, et
+   * l'arrivée de 2027 aurait demandé une intervention en base de données.
+   *
+   * L'exercice naît en BROUILLON, vide : ni allocation ni activité. Une
+   * dotation est une décision du COPIL, et recopier celles de l'année
+   * précédente les ferait passer pour reconduites alors que personne ne
+   * les a arrêtées.
+   *
+   * TROIS REFUS, ET LEURS RAISONS. L'année déjà ouverte, parce qu'un
+   * exercice est unique. L'année hors de la vie du projet — le PTN-RDC
+   * s'achève au 31 décembre 2029, un plan pour 2032 n'aurait pas d'objet.
+   * Et l'année antérieure au premier exercice connu, qui trahit une
+   * saisie plutôt qu'une intention.
+   */
+  async openYear(
+    year: number,
+    label: string | undefined,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ) {
+    const existant = await this.prisma.ptbaYear.findUnique({ where: { year } });
+    if (existant) {
+      throw new ConflictException(
+        `L’exercice ${year} est déjà ouvert (${PtbaService.ETAT_LISIBLE[existant.status]}).`,
+      );
+    }
+
+    // Bornes du projet, reprises du MEP : entrée en vigueur le 31 octobre
+    // 2025, achèvement technique le 31 décembre 2029. Un exercice au-delà
+    // se planifierait sans financement.
+    if (year < PtbaService.PREMIER_EXERCICE || year > PtbaService.DERNIER_EXERCICE) {
+      throw new BadRequestException(
+        `Le PTN-RDC couvre les exercices ${PtbaService.PREMIER_EXERCICE} à ` +
+          `${PtbaService.DERNIER_EXERCICE} (MEP du 23 juin 2025). L’exercice ${year} ` +
+          'ne relève pas de la durée du projet.',
+      );
+    }
+
+    const cree = await this.prisma.ptbaYear.create({
+      data: {
+        year,
+        label: label?.trim() || `Plan de Travail et Budget Annuel ${year}`,
+        status: 'BROUILLON',
+      },
+      include: { _count: { select: { activities: true } } },
+    });
+
+    await this.audit.record({
+      actorId: actor.userId,
+      actorEmail: actor.email,
+      action: 'ptba.year_opened',
+      entityType: 'PtbaYear',
+      entityId: cree.id,
+      payload: { year, label: cree.label },
+      ...ctx,
+    });
+
+    return cree;
+  }
+
+  /** Bornes de la vie du projet, MEP du 23 juin 2025. */
+  private static readonly PREMIER_EXERCICE = 2025;
+  private static readonly DERNIER_EXERCICE = 2029;
+
+  /** Ce qu'un état veut dire, quand le refus doit le nommer. */
+  private static readonly ETAT_LISIBLE: Record<string, string> = {
+    BROUILLON: 'en préparation',
+    VALIDE: 'validé par le COPIL',
+    CLOS: 'clos',
+  };
+
   async activities(year: number, filters: { componentCode?: string } = {}) {
     const ptbaYear = await this.prisma.ptbaYear.findUnique({ where: { year } });
     if (!ptbaYear) throw new NotFoundException(`Aucun exercice PTBA ${year}.`);

@@ -263,17 +263,27 @@ export function PtbaRegistryClient() {
           ) : undefined
         }
         actions={
-          peutEcrire && editable ? (
+          peutEcrire ? (
             <>
-              {/* L'allocation précède l'activité : sans elle, « Ajouter » mène
-                  à cinq composantes désactivées. Les deux commandes sont donc
-                  côte à côte, dans cet ordre. */}
+              {/* Les trois commandes dans l'ordre du cycle : l'exercice
+                  précède l'allocation, qui précède l'activité. Sans
+                  allocation, « Ajouter » mène à cinq composantes
+                  désactivées ; sans exercice, il n'y a rien du tout.
+
+                  « Exercices » et « Allocations » restent offerts quand le
+                  plan n'est plus modifiable : c'est de là qu'on ouvre
+                  l'exercice suivant. */}
+              <Button as={Link} href="/ptba/exercices" kind="ghost" size="md">
+                Exercices
+              </Button>
               <Button as={Link} href="/ptba/allocations" kind="tertiary" size="md">
                 Allocations
               </Button>
-              <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="md">
-                Ajouter une activité
-              </Button>
+              {editable && (
+                <Button as={Link} href="/ptba/nouveau" renderIcon={Add} size="md">
+                  Ajouter une activité
+                </Button>
+              )}
             </>
           ) : undefined
         }

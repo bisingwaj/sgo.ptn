@@ -16,6 +16,7 @@ import {
   Activity,
   Asleep,
   Catalog,
+  Calendar,
   ChartLineSmooth,
   Dashboard,
   Document,
@@ -92,6 +93,8 @@ interface NavGroup {
  */
 const UGP = "Unité de Gestion du Projet";
 const PTBA = "Plan de Travail et Budget Annuel";
+const EXERCICES =
+  "Ouvrir un exercice budgétaire, le doter, puis arrêter le plan annuel";
 const PPM = "Plan de Passation des Marchés";
 const TDR = "Termes de Référence";
 const INSTRUCTION =
@@ -116,6 +119,7 @@ function navFor(profile: ProfileKey): NavGroup[] {
           title: "Cycle de passation",
           items: [
             { label: "PTBA", href: "/ptba", permission: "ptba:read", icon: <ChartLineSmooth size={16} />, hint: PTBA },
+            { label: "Exercices", href: "/ptba/exercices", permission: "ptba:read", icon: <Calendar size={16} />, hint: EXERCICES },
             { label: "PPM", href: "/ppm", permission: "ppm:read", icon: <Notebook size={16} />, hint: PPM },
             { label: "TDR", href: "/tdr", permission: "tdr:read", icon: <Document size={16} />, hint: TDR },
             { label: "Instruction TDR", href: "/tdr/revue", permission: "tdr:review", icon: <TaskView size={16} />, hint: INSTRUCTION },

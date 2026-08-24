@@ -3,10 +3,12 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
   Matches,
+  Max,
   Min,
   MaxLength,
   MinLength,
@@ -269,4 +271,24 @@ export class UpsertAllocationDto {
   @IsString()
   @MaxLength(1000)
   note?: string;
+}
+
+/**
+ * Ouverture d'un exercice budgétaire.
+ *
+ * L'intitulé est facultatif : sans lui, le service en compose un. Le
+ * demander obligatoirement ferait saisir « PTBA 2027 » à la main, avec
+ * les fautes de frappe que cela suppose sur un libellé qui figure ensuite
+ * sur chaque écran.
+ */
+export class OpenYearDto {
+  @IsInt({ message: 'L’exercice s’exprime en année entière.' })
+  @Min(2000, { message: 'Année non plausible.' })
+  @Max(2100, { message: 'Année non plausible.' })
+  year!: number;
+
+  @IsOptional()
+  @IsString({ message: 'L’intitulé doit être du texte.' })
+  @MaxLength(160, { message: 'Cet intitulé est trop long pour un en-tête d’écran.' })
+  label?: string;
 }

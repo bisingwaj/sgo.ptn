@@ -1548,21 +1548,37 @@ function ReviewStep({
 }) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
-  // Le contrôle est fait par le serveur : les règles ne sont pas dupliquées
-  // ici, où elles dériveraient.
-  const relireCompletude = useCallback(async () => {
-    if (!state.tdrId) return;
+  /**
+   * Relit le contrôle de complétude et range le verdict dans l'état.
+   *
+   * L'ÉTAT SUR LEQUEL ÉCRIRE EST PASSÉ EN ARGUMENT, jamais capturé.
+   *
+   * Cette fonction était mémorisée sur `state.tdrId`, avec la règle des
+   * dépendances désactivée : elle retenait donc l'état du rendu où elle
+   * avait été créée — celui d'AVANT toute case cochée. Cocher un
+   * engagement enregistrait bien la case au serveur, puis cet appel
+   * réécrivait par-dessus l'instantané périmé : `consentMep` et
+   * `consentRgpd` revenaient à faux dans la foulée.
+   *
+   * À l'écran, la case se cochait et se décochait aussitôt. LES DEUX
+   * ENGAGEMENTS ÉTAIENT DONC IMPOSSIBLES À DONNER, et la transmission
+   * définitivement bloquée sur « les engagements ne sont pas confirmés ».
+   *
+   * Le contrôle lui-même reste au serveur : les règles ne sont pas
+   * dupliquées ici, où elles dériveraient.
+   */
+  const relireCompletude = async (base: State) => {
+    if (!base.tdrId) return;
     try {
-      const r = await tdrApi.completeness(state.tdrId);
+      const r = await tdrApi.completeness(base.tdrId);
       setWarnings(r.warnings);
-      if (JSON.stringify(r.blockers) !== JSON.stringify(state.blockers)) {
-        set({ ...state, blockers: r.blockers });
+      if (JSON.stringify(r.blockers) !== JSON.stringify(base.blockers)) {
+        set({ ...base, blockers: r.blockers });
       }
     } catch {
       // Un contrôle indisponible ne doit pas effacer le dernier connu.
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tdrId]);
+  };
 
   // À l'ouverture de l'étape seulement. Le contrôle qui suit une case cochée
   // est déclenché par `toggleConsent`, APRÈS l'enregistrement — voir ci-dessous.
@@ -1572,7 +1588,7 @@ function ReviewStep({
   // déclenche un rendu en cascade et que le dépôt interdit.
   useEffect(() => {
     void (async () => {
-      await relireCompletude();
+      await relireCompletude(state);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.tdrId]);
@@ -1595,9 +1611,14 @@ function ReviewStep({
    * du poste, et un engagement de conformité ne s'antidate pas.
    */
   const toggleConsent = async (field: "consentMep" | "consentRgpd", value: boolean) => {
-    set({ ...state, [field]: value });
-    await persist(state, { [field]: value });
-    await relireCompletude();
+    // L'état suivant est calculé une fois et suivi partout : l'affichage,
+    // l'enregistrement et la relecture doivent parler du même dossier.
+    // `state` ne change pas dans cette closure — s'y référer après `set`
+    // fait écrire un état périmé.
+    const suivant = { ...state, [field]: value };
+    set(suivant);
+    await persist(suivant, { [field]: value });
+    await relireCompletude(suivant);
   };
 
   return (
