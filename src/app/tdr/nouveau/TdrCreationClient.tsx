@@ -1525,13 +1525,6 @@ function DocumentFinal({ tdrId }: { tdrId: string | null }) {
         })}
       </ol>
 
-      {plan.champsAssistes.length > 0 && (
-        <p className={styles.hint}>
-          Le document mentionnera en page de garde que la rédaction a été assistée sur :{" "}
-          {plan.champsAssistes.join(", ")}. Une pièce contractuelle dit ce qui a été écrit avec
-          une assistance automatique.
-        </p>
-      )}
     </div>
   );
 }

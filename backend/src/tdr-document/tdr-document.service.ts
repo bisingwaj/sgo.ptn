@@ -770,7 +770,6 @@ export class TdrDocumentService {
       plan.attestations.length * 46 +
       26 +
       (plan.annexes.length === 0 ? 20 : plan.annexes.length * 18) +
-      (plan.champsAssistes.length > 0 ? 74 : 0) +
       (plan.auteur ? 62 : 0);
 
     const reste = P.hauteur - P.bas - doc.y;
@@ -866,34 +865,6 @@ export class TdrDocumentService {
         doc.text(nom, x + 26, yl, { width: largeur - 26 });
         doc.moveDown(0.3);
       }
-    }
-
-    // La déclaration d'assistance ferme le document. Une pièce contractuelle
-    // dit ce qui a été rédigé avec une assistance automatique ; le taire
-    // serait une omission, non une discrétion.
-    if (plan.champsAssistes.length > 0) {
-      doc.moveDown(1.2);
-      y = doc.y;
-      const hauteur = 54;
-      doc
-        .rect(P.gauche, y, 2.5, hauteur)
-        .fillColor(TdrDocumentService.ACCENT)
-        .fill();
-
-      doc.font(f.sansSemi).fontSize(8.5).fillColor(TdrDocumentService.ACCENT);
-      doc.text('RÉDACTION ASSISTÉE', P.gauche + 14, y + 2, {
-        width: col - 14,
-        characterSpacing: 0.9,
-      });
-      doc.font(f.serif).fontSize(9.5).fillColor(TdrDocumentService.ENCRE);
-      doc.text(
-        `Un modèle de langage a contribué à la rédaction ${
-          plan.champsAssistes.length === 1 ? 'de la section' : 'des sections'
-        } : ${plan.champsAssistes.join(', ')}. Le texte a été relu et repris par son auteur, qui en porte la responsabilité.`,
-        P.gauche + 14,
-        doc.y + 3,
-        { width: col - 20, lineGap: 2 },
-      );
     }
 
     // Établi par — l'auteur et son entité. Une pièce contractuelle porte son
@@ -1286,31 +1257,6 @@ export class TdrDocumentService {
           }),
         );
       }
-    }
-
-    if (plan.champsAssistes.length > 0) {
-      enfants.push(
-        new Paragraph({
-          text: 'Rédaction assistée',
-          heading: HeadingLevel.HEADING_2,
-          spacing: { before: 240, after: 100 },
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text:
-                `Un modèle de langage a contribué à la rédaction ${
-                  plan.champsAssistes.length === 1
-                    ? 'de la section'
-                    : 'des sections'
-                } : ${plan.champsAssistes.join(', ')}. ` +
-                'Le texte a été relu et repris par son auteur, qui en porte la responsabilité.',
-              size: 20,
-            }),
-          ],
-          spacing: { after: 240 },
-        }),
-      );
     }
 
     if (plan.auteur) {

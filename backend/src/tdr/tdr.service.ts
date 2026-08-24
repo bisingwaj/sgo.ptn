@@ -179,10 +179,14 @@ export class TdrService {
      *
      * Seul l'agent conversationnel marquait jusqu'ici sa contribution : une
      * proposition acceptée depuis le panneau d'assistance n'en laissait
-     * aucune trace, alors que le document produit rend `champsAssistes`.
-     * Deux dossiers rédigés avec la même aide s'en trouvaient décrits
-     * différemment — or un TDR est une pièce contractuelle, et il faut
-     * pouvoir établir ce qu'une machine y a écrit.
+     * aucune trace. Deux dossiers rédigés avec la même aide s'en trouvaient
+     * décrits différemment — or un TDR est une pièce contractuelle, et il
+     * faut pouvoir établir ce qu'une machine y a écrit.
+     *
+     * La marque N'EST PLUS IMPRIMÉE sur le document depuis qu'elle en a été
+     * retirée, à la demande. Elle continue d'être TENUE : elle reste en
+     * base et dans le plan (`champsAssistes`), donc consultable par l'API
+     * et par un audit. Ne pas la supprimer en croyant nettoyer du code mort.
      *
      * Union, jamais retrait : l'auteur peut réécrire le texte par-dessus,
      * la contribution a bien eu lieu et un relecteur doit continuer de le

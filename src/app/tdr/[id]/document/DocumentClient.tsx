@@ -366,21 +366,6 @@ function Cloture({ plan }: { plan: PlanDocumentApi }) {
           )}
         </div>
 
-        {/* Déclarée, jamais tue. Une pièce contractuelle dit ce qui a été
-            écrit avec une assistance automatique ; le taire serait une
-            omission, non une discrétion. */}
-        {plan.champsAssistes.length > 0 && (
-          <div className="border-ai border-l-2 pl-4">
-            <SousTitre>Rédaction assistée</SousTitre>
-            <p className="text-body text-primary mt-1">
-              Un modèle de langage a contribué à la rédaction{" "}
-              {plan.champsAssistes.length === 1 ? "de la section" : "des sections"} :{" "}
-              {plan.champsAssistes.join(", ")}. Le texte a été relu et repris par son auteur, qui
-              en porte la responsabilité.
-            </p>
-          </div>
-        )}
-
         {plan.auteur && (
           <div>
             <p className="text-caption text-secondary uppercase">Établi par</p>

@@ -114,12 +114,13 @@ export interface PlanDocument {
 const VIDE = 'Non renseigné.';
 
 /**
- * Nom lisible des champs assistés, pour la mention de rédaction assistée.
+ * Nom lisible des champs assistés.
  *
- * Le document annonçait « Rédaction assistée sur : context, justification,
- * beneficiaries, expectedResults… » — les clés du modèle, telles quelles,
- * dans une pièce qui part chez un bailleur. La mention existe pour être
- * comprise ; elle disait le contraire de ce qu'elle vaut.
+ * Le plan continue de porter `champsAssistes`, mais AUCUN rendu ne
+ * l'imprime plus : la mention de rédaction assistée a été retirée du PDF,
+ * du DOCX et de l'écran, à la demande. Ce qui reste est la donnée — lisible
+ * par l'API et par un audit — et elle reste nommée en clair pour que ce
+ * qu'on y lit soit compréhensible sans le code sous les yeux.
  *
  * Les libellés reprennent les titres de section du document, quand il y en
  * a un : le lecteur doit pouvoir aller voir la section nommée.
