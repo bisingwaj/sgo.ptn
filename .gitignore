@@ -50,3 +50,6 @@ next-env.d.ts
 # Secrets de production — jamais commités
 .env.prod
 sauvegardes/
+
+# Identifiants de développement local — jamais commités
+COMPTES-LOCAUX.md
