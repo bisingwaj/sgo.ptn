@@ -80,17 +80,31 @@ export function AjoutLibre({ quoi, placeholder, aide, refuser, onAjouter, disabl
   }
 
   return (
-    <div className="border-subtle bg-layer flex flex-col gap-3 border p-3">
-      <div className="flex items-end gap-2">
+    <div className="border-subtle bg-layer flex flex-col gap-2 border p-3">
+      {/* L'ÉTIQUETTE AU-DESSUS DE LA RANGÉE, L'AIDE EN DESSOUS.
+          Carbon empile étiquette, champ et texte d'aide dans un même bloc.
+          Aligner les boutons sur ce bloc — `items-end` — les faisait tomber
+          sous la zone de saisie, à la hauteur de l'aide. Le champ est donc
+          rendu SEUL sur sa rangée (`hideLabel`), et les deux textes sont
+          posés autour : les trois éléments partagent la même ligne, quelle
+          que soit la longueur de l'aide ou du refus. */}
+      <label htmlFor={`ajout-${id}`} className="text-caption text-secondary">
+        Intitulé — {quoi}
+      </label>
+
+      <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <TextInput
             id={`ajout-${id}`}
             ref={champRef}
             labelText={`Intitulé — ${quoi}`}
+            hideLabel
             placeholder={placeholder}
-            helperText={touche && refus ? undefined : aide}
             invalid={touche && refus !== null}
-            invalidText={refus ?? undefined}
+            // Le refus se lit sous la rangée, avec l'aide : le laisser à
+            // Carbon rallongerait le bloc du champ et décalerait à nouveau
+            // les boutons, au moment précis où l'on veut recliquer.
+            invalidText=""
             value={texte}
             onChange={(e) => setTexte(e.target.value)}
             onKeyDown={(e) => {
@@ -113,7 +127,6 @@ export function AjoutLibre({ quoi, placeholder, aide, refuser, onAjouter, disabl
           hasIconOnly
           renderIcon={Close}
           iconDescription="Fermer sans ajouter"
-          tooltipPosition="top"
           onClick={() => {
             setOuvert(false);
             setTexte("");
@@ -121,6 +134,15 @@ export function AjoutLibre({ quoi, placeholder, aide, refuser, onAjouter, disabl
           }}
         />
       </div>
+
+      {touche && refus ? (
+        <p className="text-caption text-danger-text" role="alert">
+          {refus}
+        </p>
+      ) : (
+        aide && <p className="text-caption text-helper">{aide}</p>
+      )}
+
       <p className="text-caption text-helper">
         Cette entrée vaut pour ce dossier seulement. Elle n’est pas versée au référentiel.
       </p>

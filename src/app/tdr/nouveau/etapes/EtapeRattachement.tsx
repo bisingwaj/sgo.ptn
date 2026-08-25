@@ -113,12 +113,15 @@ export function EtapeRattachement({
         description="Cas d’exception. Le budget se saisit alors sans plafond opposable, et le dossier ne consomme l’enveloppe d’aucune activité."
       />
 
-      {state.sansRattachement ? (
+      {state.sansRattachement && (
         <Note tone="warning" title="Dossier hors plan annuel">
           Aucune enveloppe ne borne ce marché, et rien ne le rattache au cadre budgétaire de
-          l’exercice. L’instruction le verra tel quel.
+          l’exercice. L’instruction le verra tel quel. Décochez ci-dessus pour rattacher le
+          dossier à une ligne.
         </Note>
-      ) : activities.length === 0 ? (
+      )}
+
+      {activities.length === 0 && !state.sansRattachement ? (
         <Note tone="warning" title="Aucune activité au plan de l’exercice">
           Un TDR se rattache obligatoirement à une ligne du PTBA : sans elle, il n’y a pas
           d’enveloppe, donc pas de marché possible. L’activité doit être inscrite au plan
@@ -139,7 +142,25 @@ export function EtapeRattachement({
           )}
         </Note>
       ) : (
-        <>
+        // ÉTEINT, NON MASQUÉ.
+        //
+        // La liste disparaissait dès la case cochée : l'écran se vidait, et
+        // l'on ne savait plus si l'option existait encore ni comment y
+        // revenir. Elle reste sous les yeux, grisée et inerte — c'est déjà
+        // ce que fait l'étape « Type d'activité » une fois le type arrêté.
+        //
+        // `inert` retire tout le bloc du parcours clavier et du lecteur
+        // d'écran d'un seul attribut : sans lui, on tabulerait dans vingt
+        // boutons éteints.
+        <div
+          inert={state.sansRattachement ? true : undefined}
+          aria-hidden={state.sansRattachement || undefined}
+          className={
+            state.sansRattachement
+              ? "pointer-events-none opacity-40 select-none"
+              : undefined
+          }
+        >
           {/* Pas de `Field` ici non plus : un groupe de boutons dans un
               `<label>` s'active au clic sur n'importe quel vide. */}
           <div className="flex w-full flex-col gap-2">
@@ -233,7 +254,7 @@ export function EtapeRattachement({
               cadre de résultats auquel ce marché contribue.
             </Note>
           )}
-        </>
+        </div>
       )}
     </div>
   );

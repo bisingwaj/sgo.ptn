@@ -11,7 +11,16 @@
  * - Support clavier complet
  */
 
-import { useEffect, useId, useRef, useState, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -20,6 +29,32 @@ import {
   WarningAltFilled,
 } from "@carbon/icons-react";
 import styles from "./Wizard.module.scss";
+
+/**
+ * Navigation du parcours, offerte à ses étapes.
+ *
+ * Une étape ne connaît ni son rang ni ceux des autres : elle reçoit l'état
+ * et son setter, rien de plus. Or la dernière doit pouvoir RENVOYER vers
+ * celle qui corrige un manque — « le contexte n'est pas rédigé » sans
+ * moyen d'y aller laisse chercher parmi dix-huit étapes.
+ *
+ * Repérage par `num`, jamais par indice : une étape conditionnelle qui
+ * apparaît décale toutes les positions suivantes, et c'est déjà la règle
+ * que suit le suivi des étapes franchies.
+ */
+interface NavigationParcours {
+  allerAEtape: (num: string) => void;
+}
+
+const ContexteNavigation = createContext<NavigationParcours | null>(null);
+
+export function useNavigationParcours(): NavigationParcours {
+  const ctx = useContext(ContexteNavigation);
+  // Hors parcours, la navigation n'a pas de sens : plutôt que d'échouer, on
+  // rend une commande inerte — une étape réutilisée ailleurs continue de
+  // s'afficher, sans lien de correction.
+  return ctx ?? { allerAEtape: () => undefined };
+}
 
 export interface WizardStep<T = unknown> {
   /** Numéro affiché (ex. "01") */
@@ -289,6 +324,24 @@ export function Wizard<T>({
     }
   };
 
+  /**
+   * Aller à une étape par son numéro, pour corriger ce qui manque.
+   *
+   * Passe par `jumpTo`, donc par la même règle que le rail : on ne saute
+   * pas en avant vers une étape non franchie. Toutes les cibles d'une
+   * correction sont derrière — c'est bien pourquoi elles manquent.
+   */
+  const navigation = useMemo<NavigationParcours>(
+    () => ({
+      allerAEtape: (num) => {
+        const i = steps.findIndex((s) => s.num === num);
+        if (i >= 0) jumpTo(i);
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [steps, stepSafe, done],
+  );
+
   const isLast = stepSafe === steps.length - 1;
   const currentStep = steps[stepSafe];
   const blocage = currentStep?.bloquePar?.(state) ?? null;
@@ -373,7 +426,9 @@ export function Wizard<T>({
               glissement provoque un recalcul de mise en page percu comme
               un a-coup a 150 % de zoom. */}
           <div key={currentStep.num} className={styles.bodyContent}>
-            {currentStep.render(state, setState)}
+            <ContexteNavigation.Provider value={navigation}>
+              {currentStep.render(state, setState)}
+            </ContexteNavigation.Provider>
           </div>
         </main>
 

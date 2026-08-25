@@ -903,12 +903,26 @@
 
 /* Le lien d'issue d'une note : dans le fil du texte, pas un bouton. Un
    bouton ferait croire à l'action de l'étape en cours ; c'est un renvoi. */
+/* Sert à un lien comme à un bouton — la correction d'un manque renvoie à
+   une étape, ce qui n'est pas une navigation d'URL. D'où la remise à plat
+   des attributs de bouton, sans quoi il hériterait de la police du système
+   et d'un fond gris. */
 .lienNote {
   color: var(--cds-link-primary);
   text-decoration: underline;
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
 
   &:hover {
     color: var(--cds-link-primary-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
   }
 }
 

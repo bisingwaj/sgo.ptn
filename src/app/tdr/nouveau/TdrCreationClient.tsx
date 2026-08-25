@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Modal } from "@carbon/react";
-import { Wizard, type WizardStep } from "@/components/wizard/Wizard";
+import { Wizard, useNavigationParcours, type WizardStep } from "@/components/wizard/Wizard";
 import { CheckRow, Note, Segmented, Select } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import {
@@ -1707,6 +1707,66 @@ function DocumentFinal({ tdrId }: { tdrId: string | null }) {
   );
 }
 
+/**
+ * Où se corrige chaque manque.
+ *
+ * POURQUOI UNE TABLE, ET NON UN CHAMP DE PLUS DANS LA RÉPONSE. Le contrôle
+ * de complétude rend des phrases ; `submit` s'appuie sur la même forme pour
+ * refuser une transmission incomplète. En changer la structure pour le
+ * confort d'un écran toucherait un contrat que deux appels partagent.
+ *
+ * Le rapprochement se fait donc ici, sur un fragment stable de chaque
+ * message. Un libellé qui changerait côté serveur ferait DISPARAÎTRE le
+ * lien, jamais casser l'écran : le manque reste écrit, il perd seulement
+ * son raccourci. C'est le compromis assumé.
+ */
+const ORIENTATIONS: Array<{ motif: RegExp; num: string; etape: string }> = [
+  { motif: /activité PTBA|ligne du PTBA/i, num: "02", etape: "Rattachement" },
+  { motif: /contexte/i, num: "04", etape: "Contexte" },
+  { motif: /bénéficiaire/i, num: "06", etape: "Bénéficiaires" },
+  { motif: /objectif/i, num: "08", etape: "Objectifs SMART" },
+  { motif: /livrable/i, num: "09", etape: "Livrables" },
+  { motif: /méthodologie/i, num: "11", etape: "Méthodologie" },
+  { motif: /budget|enveloppe/i, num: "15", etape: "Budget" },
+  { motif: /catégorie E&S|screening|PGES/i, num: "17", etape: "Sauvegardes E&S" },
+];
+
+/** Le manque, et l'étape où il se comble — ou rien, si l'on ne sait pas. */
+function orienter(message: string) {
+  return ORIENTATIONS.find((o) => o.motif.test(message)) ?? null;
+}
+
+/**
+ * Un manque, avec la porte qui le corrige.
+ *
+ * Le message disait ce qui manquait sans dire où le réparer : sur dix-huit
+ * étapes, « le contexte n'est pas rédigé » laisse chercher. Le bouton porte
+ * le RANG et le NOM de l'étape — les deux, car le rail affiche les deux, et
+ * l'on retrouve mieux ce qu'on a déjà vu.
+ */
+function Manque({ message, ton }: { message: string; ton: "danger" | "warning" }) {
+  const { allerAEtape } = useNavigationParcours();
+  const cible = orienter(message);
+
+  return (
+    <Note tone={ton} title={ton === "danger" ? "Élément manquant" : "À vérifier"}>
+      {message}
+      {cible && (
+        <>
+          {" "}
+          <button
+            type="button"
+            className={styles.lienNote}
+            onClick={() => allerAEtape(cible.num)}
+          >
+            Corriger à l’étape {cible.num} · {cible.etape}
+          </button>
+        </>
+      )}
+    </Note>
+  );
+}
+
 function ReviewStep({
   state, set, persist, types, activities, provinces,
 }: {
@@ -1799,17 +1859,11 @@ function ReviewStep({
           Tous les éléments obligatoires sont renseignés.
         </Note>
       ) : (
-        state.blockers.map((b) => (
-          <Note key={b} tone="danger" title="Élément manquant">
-            {b}
-          </Note>
-        ))
+        state.blockers.map((b) => <Manque key={b} message={b} ton="danger" />)
       )}
 
       {warnings.map((w) => (
-        <Note key={w} tone="warning" title="À vérifier">
-          {w}
-        </Note>
+        <Manque key={w} message={w} ton="warning" />
       ))}
 
       {/* Relecture avant transmission. Un TDR transmis passe en SOUMIS_UGP
