@@ -171,7 +171,7 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 
 ---
 
-## 7. État au 16 août 2026
+## 7. État au 25 août 2026
 
 ### Acquis
 
@@ -186,10 +186,16 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 - Actifs de marque détourés (`npm run logo`)
 - **PTBA** refait de bout en bout : allocation annuelle par composante,
   gardes d'exercice côté serveur, couverture multi-provinces, registre
-  Carbon, routes séparées, assistant de saisie pas à pas
+  Carbon, routes séparées, assistant de saisie pas à pas.
+  L'**exercice est le contenant** : `EnteteExercice` porte ses deux sections
+  — Allocations et Plan — sur `/ptba` comme sur `/ptba/exercices/[year]`,
+  et l'année voyage dans l'URL partout
 - **TDR** — parcours de rédaction en 18 étapes, une question par écran,
   assistance IA en flux sur les huit champs de texte. Étapes 16 à 18 encore
-  dans l'ancien moule
+  dans l'ancien moule. Lot d'ergonomie livré : reprise à la première étape
+  incomplète, saisie libre dans les cinq listes de catalogue, dossier
+  possible hors plan annuel, chaque manque de l'étape finale renvoyant à
+  l'étape qui le corrige
 
 ### Compétences chargées automatiquement
 
@@ -197,6 +203,15 @@ Deux modules portent leurs propres règles, dans `.claude/skills/` :
 `ptba` (plafonds, cycle de l'exercice, invariants) et `tdr` (architecture du
 parcours, assistance IA et ses interdits, pièges de refactorisation). Les
 charger avant d'intervenir sur ces domaines.
+
+### Chantier ouvert — l'assistance rédactionnelle
+
+La génération **s'interrompt en milieu de phrase et ne reprend pas**. Le
+diagnostic est posé et l'outillage de vérification consigné dans
+[documents/reprise-assistant-ia.md](documents/reprise-assistant-ia.md) :
+`streamField` ignore le motif d'arrêt du fournisseur, si bien qu'une coupure
+sur limite de jetons ne se distingue pas d'une fin normale. À lire avant de
+toucher à `backend/src/ai/`.
 
 ### Non fait
 
