@@ -169,7 +169,10 @@ export class UpsertActivityDto {
    * un backbone Goma-Bukavu en concerne trois — et le champ unique
    * obligeait a en choisir une au detriment des autres.
    *
-   * Liste vide ou absente = couverture nationale. L'existence des codes est
+   * Liste vide ou absente = périmètre NON ARRÊTÉ, et non plus couverture
+   * nationale : les deux s'écrivaient pareil, et rien ne les distinguait au
+   * dossier. Une activité nationale retient les vingt-six provinces, ce que
+   * l'écran permet d'un geste. L'existence des codes est
    * verifiee par le service : une cle etrangere Prisma produirait une 500 la
    * ou une 400 explicite est attendue.
    */

@@ -627,14 +627,15 @@ export function PtbaWizardClient() {
         render: (s, set) => (
           <Question
             titre="Où cette activité se déploie-t-elle ?"
-            aide="Une activité en traverse souvent plusieurs — un backbone Goma–Bukavu en concerne trois. Ne rien choisir vaut couverture nationale, et c’est une réponse en soi."
+            aide="Une activité en traverse souvent plusieurs — un backbone Goma–Bukavu en concerne trois. Pour une activité nationale, retenez-les toutes : « Retenir toute la RDC » les coche d’un geste."
           >
             <MultiDropdownPicker
               options={optionsProvinces}
               values={s.provinceCodes}
               onChange={(v) => set({ ...s, provinceCodes: v })}
-              placeholder="Couverture nationale"
+              placeholder="Aucune province retenue"
               searchable
+              toutLabel="Retenir toute la RDC"
               ariaLabel="Provinces couvertes par l’activité"
               resume={(choisis) => {
                 const prio = choisis.filter((c) => c.sub).length;
@@ -664,8 +665,9 @@ export function PtbaWizardClient() {
 
             {s.provinceCodes.length === 0 && (
               <p className="border-subtle text-body text-secondary border-l-2 py-1 pl-4">
-                Aucune province retenue : l’activité sera enregistrée comme de{" "}
-                <strong>couverture nationale</strong>.
+                Aucune province retenue. Ce n’est plus lu comme une couverture nationale :
+                pour un déploiement sur tout le pays, retenez les vingt-six provinces —{" "}
+                <strong>« Retenir toute la RDC »</strong> le fait d’un geste.
               </p>
             )}
           </Question>

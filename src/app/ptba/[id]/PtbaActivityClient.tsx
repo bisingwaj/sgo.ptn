@@ -160,7 +160,8 @@ export function PtbaActivityClient({ activityId }: { activityId: string }) {
         subtitle={
           activite.provinces && activite.provinces.length > 0
             ? `Couverture : ${activite.provinces.map((c) => c.province.label).join(", ")}.`
-            : "Couverture nationale."
+            // L'absence ne se lit plus comme « tout le pays » : elle se dit.
+            : "Couverture géographique non renseignée."
         }
         meta={
           <>

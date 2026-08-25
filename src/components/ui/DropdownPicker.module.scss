@@ -103,6 +103,44 @@
   flex-shrink: 0;
 }
 
+/* Bandeau d'actions du menu — « tout retenir », et le décompte de ce qui
+   l'est. Sous la recherche, car l'action porte sur ce qui est filtré. */
+.menuActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+  flex-shrink: 0;
+}
+
+.menuAction {
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--ptn-accent);
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 2px;
+  }
+}
+
+.menuCount {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper);
+  font-variant-numeric: tabular-nums;
+}
+
 .menuSearchInput {
   border: 0;
   background: transparent;

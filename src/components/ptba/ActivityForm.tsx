@@ -303,8 +303,9 @@ export function ActivityForm({
           />
           <div>
             <span className="text-caption text-secondary mb-2 block">Couverture géographique</span>
-            {/* Une activité en traverse souvent plusieurs. Aucune retenue
-                vaut couverture nationale, et c'est une valeur. */}
+            {/* Une activité en traverse souvent plusieurs. Ne rien retenir
+                ne vaut PLUS couverture nationale : « tout le pays » et
+                « périmètre pas encore arrêté » s'écrivaient pareil. */}
             <MultiDropdownPicker
               options={[...provinces]
                 .sort((a, b) =>
@@ -321,13 +322,15 @@ export function ActivityForm({
                 }))}
               values={value.provinceCodes}
               onChange={(v) => set("provinceCodes", v)}
-              placeholder="Couverture nationale"
+              placeholder="Aucune province retenue"
+              toutLabel="Retenir toute la RDC"
               searchable
               ariaLabel="Provinces couvertes"
               resume={(choisis) => `${choisis.length} province${choisis.length > 1 ? "s" : ""}`}
             />
             <span className="text-caption text-helper mt-2 block">
-              Laissé vide, l’activité est réputée de couverture nationale.
+              Pour une activité nationale, retenez les vingt-six provinces. Laissé vide, le
+              périmètre est réputé non arrêté — et non pas national.
             </span>
           </div>
         </div>

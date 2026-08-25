@@ -25,6 +25,7 @@
 import type { State } from "../etat";
 import { CheckRow } from "@/components/wizard/WizardFields";
 import { PROFIL_KEYS } from "../referentiel-ecran";
+import { AjoutLibre } from "@/components/wizard/AjoutLibre";
 import { CHAMPS_TEXTE } from "./champs-texte";
 import { EtapeTexte } from "./EtapeTexte";
 
@@ -36,6 +37,15 @@ export function EtapeExpertise({
   set: (s: State) => void;
 }) {
   const retenus = state.keyProfiles.length;
+
+  /**
+   * Un poste retenu est soit une CLÉ du catalogue, soit un intitulé écrit
+   * à la main. La distinction ne tient qu'à l'appartenance au catalogue :
+   * `keyProfiles` est un tableau de chaînes, et c'est déjà ainsi que le
+   * récapitulatif les rend — la clé si elle est connue, la chaîne sinon.
+   */
+  const libres = state.keyProfiles.filter((k) => !PROFIL_KEYS.some((p) => p.id === k));
+  const intitule = (k: string) => PROFIL_KEYS.find((p) => p.id === k)?.label ?? k;
 
   return (
     <EtapeTexte
@@ -82,7 +92,35 @@ export function EtapeExpertise({
                 description={p.description}
               />
             ))}
+
+            {/* Les postes ajoutés à la main. Ils se cochent et se décochent
+                comme les autres — décoché, un poste libre disparaît, car
+                rien d'autre ne le retient : il n'existe que par ce dossier. */}
+            {libres.map((poste) => (
+              <CheckRow
+                key={poste}
+                checked
+                onChange={() =>
+                  set({ ...state, keyProfiles: state.keyProfiles.filter((k) => k !== poste) })
+                }
+                title={poste}
+                description="Poste propre à ce dossier"
+              />
+            ))}
           </div>
+
+          <AjoutLibre
+            quoi="un poste"
+            placeholder="Ex. Expert en cybersécurité industrielle"
+            aide="Le poste tel qu'il devra être nommé dans l'offre."
+            refuser={(t) =>
+              state.keyProfiles.some((k) => intitule(k).toLowerCase() === t.toLowerCase()) ||
+              PROFIL_KEYS.some((p) => p.label.toLowerCase() === t.toLowerCase())
+                ? "Ce poste figure déjà dans la liste."
+                : null
+            }
+            onAjouter={(t) => set({ ...state, keyProfiles: [...state.keyProfiles, t] })}
+          />
         </section>
       }
     />

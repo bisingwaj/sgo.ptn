@@ -147,7 +147,7 @@ export function useProvinces(): ProvinceApi[] {
         if (!annule) setProvinces(p);
       })
       // Une province absente dégrade la saisie sans l'empêcher : le champ
-      // est facultatif, et l'activité vaut alors couverture nationale.
+      // est facultatif, et le périmètre reste alors non renseigné.
       .catch(() => undefined);
     return () => {
       annule = true;

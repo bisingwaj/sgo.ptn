@@ -32,6 +32,12 @@ interface MultiDropdownPickerProps {
   className?: string;
   /** Ce qu'affiche le déclencheur quand plusieurs entrées sont retenues */
   resume?: (choisis: DropdownOption[]) => string;
+  /**
+   * Intitulé de l'action « tout retenir ». Absent, l'action ne s'affiche
+   * pas : cocher vingt-six entrées d'un geste n'a de sens que là où « tout »
+   * est une réponse légitime — la couverture nationale, par exemple.
+   */
+  toutLabel?: string;
 }
 
 export function MultiDropdownPicker({
@@ -44,6 +50,7 @@ export function MultiDropdownPicker({
   ariaLabel,
   className,
   resume,
+  toutLabel,
 }: MultiDropdownPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -196,6 +203,41 @@ export function MultiDropdownPicker({
               className={styles.menuSearchInput}
               aria-label="Filtrer les options"
             />
+          </div>
+        )}
+
+        {/* Tout retenir / tout retirer.
+            Cocher les vingt-six provinces une à une était le seul moyen de
+            dire « tout le pays » — vingt-six clics pour la réponse la plus
+            courante. L'action agit sur ce qui est FILTRÉ : après une
+            recherche, elle porte sur ce qu'on voit, jamais sur ce qu'on ne
+            voit pas. */}
+        {toutLabel && filtered.length > 1 && (
+          <div className={styles.menuActions}>
+            <button
+              type="button"
+              className={styles.menuAction}
+              onClick={() => {
+                const visibles = filtered.filter((o) => !o.disabled).map((o) => o.value);
+                const tousRetenus = visibles.every((v) => values.includes(v));
+                onChange(
+                  tousRetenus
+                    ? values.filter((v) => !visibles.includes(v))
+                    : [...new Set([...values, ...visibles])],
+                );
+              }}
+            >
+              {filtered
+                .filter((o) => !o.disabled)
+                .every((o) => values.includes(o.value))
+                ? "Tout retirer"
+                : toutLabel}
+            </button>
+            {values.length > 0 && (
+              <span className={styles.menuCount}>
+                {values.length} retenue{values.length > 1 ? "s" : ""}
+              </span>
+            )}
           </div>
         )}
 

@@ -158,8 +158,11 @@ export function EtapeCalendrier({
  * Les dix provinces prioritaires du Cadre de Partenariat-Pays remontent en
  * tête et le disent : c'est ce qui oriente le choix.
  *
- * Aucune sélection vaut couverture nationale, et l'aide le dit — c'est un
- * cas fréquent, pas un oubli.
+ * NE RIEN RETENIR NE VAUT PLUS COUVERTURE NATIONALE. L'absence était lue
+ * comme « tout le pays » : deux situations très différentes — le marché
+ * national et le marché dont on n'a pas encore arrêté le périmètre —
+ * s'écrivaient de la même façon, et rien ne les distinguait au dossier.
+ * « Toute la RDC » se retient maintenant explicitement, d'un geste.
  */
 function Couverture({
   provinces,
@@ -213,8 +216,10 @@ function Couverture({
         label="Couverture géographique"
         helper={
           retenues.length === 0
-            ? "Sans province retenue, le marché est réputé de couverture nationale."
-            : undefined
+            ? "Aucune province retenue. Pour un marché national, retenez-les toutes — « Retenir toute la RDC » dans le menu."
+            : retenues.length === provinces.length
+              ? "Toutes les provinces sont retenues : le marché couvre l’ensemble du territoire."
+              : undefined
         }
       >
         <MultiDropdownPicker
@@ -222,7 +227,8 @@ function Couverture({
           values={retenues}
           onChange={onChange}
           searchable
-          placeholder="Couverture nationale"
+          toutLabel="Retenir toute la RDC"
+          placeholder="Aucune province retenue"
           ariaLabel="Provinces couvertes par le marché"
           resume={(choisis) =>
             choisis.length <= 2

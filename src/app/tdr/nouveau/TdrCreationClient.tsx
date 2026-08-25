@@ -18,7 +18,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Modal } from "@carbon/react";
 import { Wizard, type WizardStep } from "@/components/wizard/Wizard";
-import { Field, Textarea, Select, Note, CheckRow, Segmented } from "@/components/wizard/WizardFields";
+import { CheckRow, Note, Segmented, Select } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import {
   tdrApi,
@@ -69,7 +69,6 @@ import {
   type State,
 } from "./etat";
 import {
-  CATALOG_IDS,
   ES_LEVELS,
   ES_RISK_CATALOG,
   PROFIL_KEYS,
@@ -77,6 +76,7 @@ import {
 } from "./referentiel-ecran";
 import { formatUsd } from "@/lib/format";
 import { AgentPanel } from "./AgentPanel";
+import { AjoutLibre } from "@/components/wizard/AjoutLibre";
 import { AssistantProvider, useAssistant, type Ecriture } from "./assistant-contexte";
 import styles from "./tdr-creation.module.scss";
 
@@ -686,18 +686,20 @@ function Parcours() {
         sub: "Clauses, indicateurs et risques pré-cadrés pour ce type",
         commit: (s) =>
           persist(s, {
+            // `familyKey` vide = entrée écrite à la main : elle part sans
+            // origine, et se reconstruira comme telle à la reprise.
             clauses: s.clauses.map((c) => ({
-              sourceFamilyKey: c.familyKey,
+              sourceFamilyKey: c.familyKey || null,
               sourceVersion: c.version,
               category: c.category,
               label: c.label,
               text: c.text,
             })),
             indicators: s.indicators.map((i) => ({
-              sourceFamilyKey: i.familyKey, label: i.label, measure: i.measure, target: i.target,
+              sourceFamilyKey: i.familyKey || null, label: i.label, measure: i.measure, target: i.target,
             })),
             risks: s.risks.map((r) => ({
-              sourceFamilyKey: r.familyKey, label: r.label, description: r.description,
+              sourceFamilyKey: r.familyKey || null, label: r.label, description: r.description,
               mitigation: r.mitigation, level: r.level,
             })),
           }),
@@ -771,24 +773,51 @@ function Parcours() {
                   l'étape 16, et les risques ENVIRONNEMENTAUX ET SOCIAUX, ici.
                   Un retard de livraison se déclarait donc à l'étape 17, où il
                   finissait au chapitre des sauvegardes du document produit. */}
-              <Field
-                label="Autres risques environnementaux ou sociaux propres à ce dossier"
-                helper="Un par ligne, et seulement ce que le catalogue du CGES ne couvre pas. Les risques d’exécution du marché — délais, dépendances, capacité du titulaire — relèvent de l’étape « Cadre & risques »."
-              >
-                <Textarea
-                  rows={3}
-                  value={freeRisks(s.esRisks).join("\n")}
-                  onChange={(e) =>
-                    set({
-                      ...s,
-                      esRisks: [
-                        ...s.esRisks.filter((x) => CATALOG_IDS.has(x)),
-                        ...e.target.value.split("\n").map((l) => l.trim()).filter(Boolean),
-                      ],
-                    })
-                  }
-                />
-              </Field>
+              {/* UNE LISTE, ET NON PLUS UNE ZONE DE TEXTE.
+                  « Un par ligne » laissait passer les lignes vides, les
+                  doublons et les demi-saisies — le compteur les comptait.
+                  Chaque risque libre est désormais une entrée, cochée comme
+                  celles du catalogue et retirable d'un clic. */}
+              <div>
+                <h3 className={styles.sectionTitle}>
+                  Autres risques environnementaux ou sociaux propres à ce dossier
+                </h3>
+                <p className={styles.hint}>
+                  Seulement ce que le catalogue du CGES ne couvre pas. Les risques d’exécution
+                  du marché — délais, dépendances, capacité du titulaire — relèvent de l’étape
+                  « Cadre &amp; risques ».
+                </p>
+                {freeRisks(s.esRisks).length > 0 && (
+                  <div className={styles.checkStack}>
+                    {freeRisks(s.esRisks).map((r) => (
+                      <CheckRow
+                        key={r}
+                        checked
+                        onChange={() =>
+                          set({ ...s, esRisks: s.esRisks.filter((x) => x !== r) })
+                        }
+                        title={r}
+                        description="Risque propre à ce dossier"
+                      />
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3">
+                  <AjoutLibre
+                    quoi="un risque E&S"
+                    placeholder="Ex. Perturbation d’un site cultuel riverain"
+                    aide="Ce que le catalogue du CGES ne couvre pas."
+                    refuser={(t) =>
+                      s.esRisks.some((x) => x.toLowerCase() === t.toLowerCase())
+                        ? "Ce risque figure déjà."
+                        : ES_RISK_CATALOG.some((r) => r.title.toLowerCase() === t.toLowerCase())
+                          ? "Ce risque est au catalogue du CGES : cochez-le ci-dessus."
+                          : null
+                    }
+                    onAjouter={(t) => set({ ...s, esRisks: [...s.esRisks, t] })}
+                  />
+                </div>
+              </div>
             </div>
           );
         },
@@ -1042,6 +1071,37 @@ function Parcours() {
  * référencé : une évolution ultérieure de la bibliothèque ne doit pas
  * réécrire un document déjà transmis.
  */
+/**
+ * Squelette d'une entrée écrite à la main.
+ *
+ * `familyKey` VIDE, à dessein : c'est ce qui la distingue d'une entrée de
+ * bibliothèque au moment d'enregistrer, où elle part avec une origine
+ * nulle. À la reprise du brouillon, l'hydratation reconnaît cette absence
+ * et reconstruit une entrée de substitution à partir du texte conservé —
+ * le chemin existait déjà pour les familles archivées depuis.
+ *
+ * `version: 0` suit la même convention : une entrée qui ne vient de nulle
+ * part n'a pas de version publiée.
+ */
+function socleLibre(intitule: string, tdrTypeCode: string) {
+  return {
+    // Horodaté : deux entrées libres du même intitulé restent distinctes,
+    // et l'identifiant ne sert qu'à la sélection côté écran.
+    id: `libre:${intitule.toLowerCase()}`,
+    familyKey: "",
+    version: 0,
+    tdrTypeCode,
+    status: "PUBLIE" as const,
+    effectiveFrom: null,
+    supersededAt: null,
+    // Vide, comme le socle de reprise : une entrée qui ne vient pas de la
+    // bibliothèque n'y a pas de date de publication, et en inventer une la
+    // ferait passer pour une entrée du référentiel.
+    createdAt: "",
+    label: intitule,
+  };
+}
+
 function FrameworkStep({
   state, set, library,
 }: {
@@ -1080,6 +1140,16 @@ function FrameworkStep({
           }
           renderBody={(c) => c.text}
           renderTag={(c) => c.category}
+          quoiLibre="une clause"
+          onAjouterLibre={(intitule) =>
+            set({
+              ...state,
+              clauses: [
+                ...state.clauses,
+                { ...socleLibre(intitule, state.tdrTypeCode), category: "REG", text: intitule },
+              ],
+            })
+          }
         />
       )}
 
@@ -1098,6 +1168,18 @@ function FrameworkStep({
             })
           }
           renderBody={(i) => `${i.measure} — cible ${i.target}`}
+          quoiLibre="un indicateur"
+          onAjouterLibre={(intitule) =>
+            set({
+              ...state,
+              indicators: [
+                ...state.indicators,
+                // Mesure et cible restent à préciser : les inventer ici
+                // fabriquerait une donnée que personne n'a arrêtée.
+                { ...socleLibre(intitule, state.tdrTypeCode), measure: "À préciser", target: "À préciser" },
+              ],
+            })
+          }
         />
       )}
 
@@ -1116,6 +1198,24 @@ function FrameworkStep({
           }
           renderBody={(r) => `${r.description} — atténuation : ${r.mitigation}`}
           renderTag={(r) => r.level.toLowerCase()}
+          quoiLibre="un risque"
+          onAjouterLibre={(intitule) =>
+            set({
+              ...state,
+              risks: [
+                ...state.risks,
+                {
+                  ...socleLibre(intitule, state.tdrTypeCode),
+                  description: intitule,
+                  // Niveau MODERE par défaut, et non ÉLEVÉ ni FAIBLE : un
+                  // niveau tranché d'office serait une appréciation que
+                  // personne n'a portée. Il se corrige à l'étape suivante.
+                  mitigation: "À préciser",
+                  level: "MODERE" as const,
+                },
+              ],
+            })
+          }
         />
       )}
     </div>
@@ -1123,7 +1223,7 @@ function FrameworkStep({
 }
 
 function PickerStep<T extends LibraryEntry>({
-  title, hint, available, selected, onToggle, renderBody, renderTag,
+  title, hint, available, selected, onToggle, renderBody, renderTag, quoiLibre, onAjouterLibre,
 }: {
   title: string;
   hint?: string;
@@ -1132,7 +1232,21 @@ function PickerStep<T extends LibraryEntry>({
   onToggle: (item: T) => void;
   renderBody: (item: T) => string;
   renderTag?: (item: T) => string;
+  /** Ce que l'on ajoute, au singulier — « une clause », « un risque ». */
+  quoiLibre?: string;
+  /** L'appelant fabrique l'entrée : lui seul connaît la forme de sa liste. */
+  onAjouterLibre?: (intitule: string) => void;
 }) {
+  /**
+   * Les entrées retenues qui ne viennent PAS de la bibliothèque.
+   *
+   * Elles n'apparaissent pas dans `available` — la bibliothèque ne les
+   * connaît pas — et se perdraient donc à l'affichage alors qu'elles sont
+   * bien au dossier. Rendues à la suite, avec la même case et le même
+   * geste de retrait.
+   */
+  const libres = selected.filter((x) => !available.some((a) => a.id === x.id));
+
   return (
     <div>
       <h3 className={styles.sectionTitle}>{title}</h3>
@@ -1167,6 +1281,47 @@ function PickerStep<T extends LibraryEntry>({
             );
           })}
         </ul>
+      )}
+
+      {libres.length > 0 && (
+        <ul className={styles.picker}>
+          {libres.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className={`${styles.pickerItem} ${styles.pickerItemOn}`}
+                onClick={() => onToggle(item)}
+                aria-pressed
+              >
+                <span className={styles.pickerCheck}>
+                  <CheckmarkFilled size={20} aria-hidden />
+                </span>
+                <span className={styles.pickerBody}>
+                  <span className={styles.pickerLabel}>
+                    {item.label}
+                    <span className={styles.pickerTag}>propre à ce dossier</span>
+                  </span>
+                  <span className={styles.pickerText}>{renderBody(item)}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {onAjouterLibre && quoiLibre && (
+        <div className="mt-3">
+          <AjoutLibre
+            quoi={quoiLibre}
+            aide="Ce que la bibliothèque du type ne couvre pas."
+            refuser={(t) =>
+              selected.some((x) => x.label.toLowerCase() === t.toLowerCase())
+                ? "Cet intitulé figure déjà parmi les entrées retenues."
+                : null
+            }
+            onAjouter={onAjouterLibre}
+          />
+        </div>
       )}
     </div>
   );
