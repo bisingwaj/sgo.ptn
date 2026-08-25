@@ -459,11 +459,11 @@
     <h1>Le cycle d’un dossier,<br>du plan au marché</h1>
     <p class="sous">
       Comment un besoin devient un marché publié dans la plateforme de gouvernance
-      du PTN-RDC : les treize actes, qui les pose, et ce qui reste à ouvrir.
+      du PTN-RDC : les treize actes, qui les pose, et ce qui reste à ouvrir.
     </p>
     <p class="resume">
       Ce document décrit <strong>l’application telle qu’elle fonctionne</strong>, et non la
-      procédure idéale. Chaque acte indique son écran ; ceux qui n’en ont pas encore sont
+      procédure idéale. Chaque acte indique son écran ; ceux qui n’en ont pas encore sont
       signalés comme tels. Les habilitations sont relevées dans les tables de la plateforme,
       non dans une documentation.
     </p>
@@ -496,7 +496,7 @@
   <p class="intro">
     Un dossier change de mains quatre fois. À chaque passage, l’habilitation change aussi :
     ce n’est pas une préférence d’organisation, c’est une obligation du Manuel d’exécution.
-    Les bailleurs ne rédigent pas de termes de référence ; l’UGPTN ne rend pas de
+    Les bailleurs ne rédigent pas de termes de référence ; l’UGPTN ne rend pas de
     non-objection. L’outil applique la procédure, il ne l’invente pas et ne décide jamais.
   </p>
 
@@ -518,7 +518,7 @@
     <div style="--teinte: var(--bailleur)">
       <div class="qui">Le bailleur</div>
       <div class="quoi">
-        Banque mondiale (IDA) et AFD. Une seule prérogative dans l’outil : la
+        Banque mondiale (IDA) et AFD. Une seule prérogative dans l’outil : la
         non-objection. Elle n’appartient qu’à lui.
       </div>
     </div>
@@ -535,7 +535,7 @@
     <span class="cle">Trois conventions de lecture</span>
     Un acte <strong>encadré d’un trait plein</strong> dispose de son écran et fonctionne
     aujourd’hui. Un acte <strong>en pointillé</strong> existe côté serveur mais n’a pas
-    d’écran : il ne peut pas être posé depuis l’application. Les <strong>états en
+    d’écran : il ne peut pas être posé depuis l’application. Les <strong>états en
     capitales</strong> — <span class="etat e-attente">SOUMIS_UGP</span> — sont ceux que
     porte réellement le dossier en base.
   </div>
@@ -550,28 +550,30 @@
   </div>
 
   <p class="intro">
-    Rien ne se rédige avant d’être budgété. Un dossier se rattache obligatoirement à une
-    ligne du plan annuel : c’est elle qui porte l’enveloppe, et sans enveloppe il n’y a pas
-    de marché possible. Le cycle commence donc ici, et non au dossier.
+    Rien ne se rédige avant d’être budgété. Un dossier se rattache en règle à une
+    ligne du plan annuel : c’est elle qui porte l’enveloppe, et sans enveloppe il n’y a pas
+    de marché possible. Le cycle commence donc ici, et non au dossier. Les quatre actes ont
+    désormais leur écran : le plan annuel se conduit entièrement depuis l’application.
   </p>
 
-  <article class="acte absent">
+  <article class="acte" style="--teinte: var(--ugp)">
     <div class="rang">01</div>
     <div class="corps">
       <h3>Ouvrir l’exercice budgétaire</h3>
       <p class="quoi">
         L’année de gestion porte les allocations, les activités et son propre état.
-        L’exercice 2026 est ouvert.
+        L’exercice naît <strong>vide</strong> : ni allocation ni activité. Une dotation est
+        une décision du COPIL, et recopier celles de l’année précédente les ferait passer
+        pour reconduites alors que personne ne les a arrêtées.
       </p>
       <div class="faits">
-        <div><span class="cle">Qui</span><span class="val">Administration de la plateforme</span></div>
-        <div><span class="cle">Écran</span><span class="val">Aucun</span></div>
-        <div><span class="cle">État</span><span class="val"><span class="etat e-absent">BROUILLON</span></span></div>
+        <div><span class="cle">Qui</span><span class="val">Coordination, responsables de composante, RAF · <code>ptba:write</code></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/ptba/exercices</code></span></div>
+        <div><span class="cle">État</span><span class="val"><span class="etat e-attente">BROUILLON</span></span></div>
+        <div><span class="cle">Bornes du projet</span><span class="val">2025 à 2029, MEP du 23 juin 2025</span></div>
+        <div><span class="cle">Refus motivés</span><span class="val">Année déjà ouverte ; année hors de la durée du projet</span></div>
+        <div><span class="cle">Journal</span><span class="val">Ouverture, intitulé et auteur</span></div>
       </div>
-      <p class="signal">
-        Il n’existe aucun point d’entrée pour créer un exercice. Celui de 2026 vient du
-        peuplement initial de la base.
-      </p>
     </div>
   </article>
 
@@ -581,13 +583,15 @@
       <h3>Arrêter l’allocation d’une composante</h3>
       <p class="quoi">
         Ce qu’une composante peut engager sur l’exercice. Une composante non dotée
-        n’accepte aucune activité : c’est le point de départ réel du cycle. L’écran rappelle
-        les deux bornes <em>avant</em> la saisie — les découvrir au refus fait recommencer.
+        n’accepte aucune activité : c’est le point de départ réel du cycle. L’allocation
+        n’est pas un écran à part, c’est une propriété de l’exercice : elle se saisit sur
+        sa page, où l’année est portée par l’adresse. Les deux bornes sont rappelées
+        <em>pendant</em> la saisie — les découvrir au refus fait recommencer.
       </p>
       <div class="faits">
         <div><span class="cle">Qui</span><span class="val">Coordination, responsables de composante, RAF · <code>ptba:write</code></span></div>
-        <div><span class="cle">Écran</span><span class="val"><code>/ptba/allocations</code></span></div>
-        <div><span class="cle">Bornes</span><span class="val">Dotation de projet du MEP ; ce que le plan engage déjà</span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/ptba/exercices/2026</code></span></div>
+        <div><span class="cle">Bornes</span><span class="val">Dotation de projet du MEP moins ce que les autres exercices ont pris ; ce que le plan engage déjà</span></div>
       </div>
     </div>
   </article>
@@ -609,22 +613,23 @@
     </div>
   </article>
 
-  <article class="acte absent">
+  <article class="acte" style="--teinte: var(--ugp)">
     <div class="rang">04</div>
     <div class="corps">
-      <h3>Valider l’exercice</h3>
+      <h3>Arrêter le plan</h3>
       <p class="quoi">
-        L’arrêté du plan annuel. Le point d’entrée serveur existe et n’est ouvert qu’au
-        Coordonnateur ; aucun bouton ne l’appelle.
+        La validation du COPIL : le plan devient <strong>opposable</strong>. À partir de
+        là, ni allocation ni activité ne s’y modifie — le serveur refuse toute écriture
+        sur un exercice validé ou clos.
       </p>
       <div class="faits">
         <div><span class="cle">Qui</span><span class="val">Coordonnateur seul · <code>ptba:validate</code></span></div>
-        <div><span class="cle">Écran</span><span class="val">Aucun</span></div>
-        <div><span class="cle">État visé</span><span class="val"><span class="etat e-absent">VALIDE</span></span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/ptba/exercices/2026</code></span></div>
+        <div><span class="cle">Devient</span><span class="val"><span class="etat e-ok">VALIDE</span></span></div>
       </div>
       <p class="signal">
-        Le plan fonctionne sans cet acte : les activités s’inscrivent quel que soit l’état
-        de l’exercice. C’est un contrôle qui manque, non un blocage.
+        Un exercice sans activité ne peut pas être arrêté : l’acte s’éteint dans la boîte
+        de dialogue, où la raison est sous les yeux.
       </p>
     </div>
   </article>
@@ -640,7 +645,7 @@
 
   <p class="intro">
     Dix-huit étapes de rédaction, une question par écran. Tant qu’il est en brouillon, le
-    dossier n’appartient qu’à son auteur : personne d’autre ne le voit, et il n’entame
+    dossier n’appartient qu’à son auteur : personne d’autre ne le voit, et il n’entame
     aucune enveloppe. La transmission change les deux choses à la fois.
   </p>
 
@@ -650,7 +655,7 @@
       <h3>Ouvrir un brouillon</h3>
       <p class="quoi">
         La référence <span class="mono">PTN-2026-NNN</span> est prise à l’ouverture et ne se
-        rembobine jamais : deux dossiers ne doivent pas avoir porté le même numéro, même à
+        rembobine jamais : deux dossiers ne doivent pas avoir porté le même numéro, même à
         des mois d’intervalle.
       </p>
       <div class="faits">
@@ -661,6 +666,13 @@
         <div><span class="cle">Enveloppe</span><span class="val">Aucune réservation</span></div>
         <div><span class="cle">Réversible</span><span class="val">L’auteur — et lui seul — peut le supprimer</span></div>
       </div>
+      <p class="signal" style="border-left-color: var(--ugp)">
+        <strong>L’exception&#8239;:</strong> un dossier peut ne relever d’aucune ligne du plan. Une
+        case le déclare à l’étape de rattachement, avant la liste — qui le sait déjà n’a
+        pas à parcourir vingt activités pour le dire. Le dossier n’a alors ni enveloppe ni
+        plafond, et la transmission le signale à l’instruction par un avertissement plutôt
+        que de la refuser&#8239;: la règle reste la règle, l’exception se voit.
+      </p>
     </div>
   </article>
 
@@ -675,7 +687,7 @@
         relecteur.
       </p>
       <div class="faits deux">
-        <div><span class="cle">Contrôle du budget</span><span class="val">Le budget ne peut dépasser l’enveloppe de l’activité, ni ce qu’il en reste après les dossiers déjà transmis</span></div>
+        <div><span class="cle">Contrôle du budget</span><span class="val">Le budget ne peut dépasser l’enveloppe de l’activité, ni ce qu’il en reste après les dossiers déjà transmis. Un dossier hors plan n’a pas de plafond : l’écran cesse d’en annoncer un</span></div>
         <div><span class="cle">Rattachement</span><span class="val">La composante et le plafond se déduisent de la ligne du plan retenue, jamais saisis deux fois</span></div>
       </div>
     </div>
@@ -687,7 +699,7 @@
       <h3>Transmettre à l’UGPTN</h3>
       <p class="quoi">
         Le geste qui fait quitter la main de l’auteur. Le contrôle de complétude s’exerce
-        ici : objectifs, livrables, méthode de passation, budget dans l’enveloppe,
+        ici : objectifs, livrables, méthode de passation, budget dans l’enveloppe,
         engagements de conformité au MEP et de protection des données.
       </p>
       <div class="faits">
@@ -706,12 +718,12 @@
     <div class="corps">
       <h3>Prendre le dossier en revue</h3>
       <p class="quoi">
-        Ce n’est pas une décision : c’est dire aux autres que le dossier est pris, pour que
+        Ce n’est pas une décision : c’est dire aux autres que le dossier est pris, pour que
         deux instructeurs ne travaillent pas dessus en même temps.
       </p>
       <div class="faits">
         <div><span class="cle">Qui</span><span class="val">RPM, chargé de passation, composantes, coordination · <code>tdr:review</code></span></div>
-        <div><span class="cle">Écran</span><span class="val"><code>/tdr/revue</code> — la file « à instruire »</span></div>
+        <div><span class="cle">Écran</span><span class="val"><code>/tdr/revue</code> — la file « à instruire »</span></div>
         <div><span class="cle">État</span><span class="val"><span class="etat e-attente">REVUE_UGP</span></span></div>
       </div>
     </div>
@@ -735,7 +747,7 @@
       <p class="quoi">
         C’est ici, et nulle part ailleurs, qu’un marché apparaît. Il reprend la référence du
         dossier, sa méthode de passation et son type de revue tels qu’ils ont été figés à la
-        transmission : les seuils bougent, un marché en cours ne change pas de méthode en
+        transmission : les seuils bougent, un marché en cours ne change pas de méthode en
         chemin.
       </p>
       <div class="faits">
@@ -757,7 +769,7 @@
   </div>
 
   <p class="intro">
-    L’UGPTN demande la non-objection ; le bailleur la rend ; l’UGPTN publie. Les trois
+    L’UGPTN demande la non-objection ; le bailleur la rend ; l’UGPTN publie. Les trois
     actes sont distincts, portés par trois habilitations distinctes, et aucun compte ne les
     réunit tous.
   </p>
@@ -783,7 +795,7 @@
     <div class="corps">
       <h3>Demander la non-objection</h3>
       <p class="quoi">
-        L’UGPTN dépose la demande ; elle ne la décide pas. Le bailleur saisi se déduit de la
+        L’UGPTN dépose la demande ; elle ne la décide pas. Le bailleur saisi se déduit de la
         <strong>ventilation du financement</strong> inscrite au dossier — IDA, AFD, ou les
         deux en cofinancement. Le délai de service court à compter du dépôt.
       </p>
@@ -803,7 +815,7 @@
     <div class="corps">
       <h3>Rendre la décision</h3>
       <p class="quoi">
-        La seule prérogative du bailleur dans l’outil, et elle n’appartient qu’à lui : ni le
+        La seule prérogative du bailleur dans l’outil, et elle n’appartient qu’à lui : ni le
         RPM ni le Coordonnateur ne portent <code>ano:decide</code>. La file se range par
         échéance de délai de service, la plus proche en tête. Trois suites, et les deux
         dernières exigent un motif.
@@ -825,7 +837,7 @@
       <h3>Publier l’avis, recevoir les offres</h3>
       <p class="quoi">
         L’avis paraît au marketplace, où les entreprises inscrites déposent. Un marché ne se
-        publie qu’une fois : deux avis pour un même marché laisseraient un candidat sans
+        publie qu’une fois : deux avis pour un même marché laisseraient un candidat sans
         savoir auquel répondre. La publication est refusée sans non-objection.
       </p>
       <div class="faits">
@@ -924,7 +936,7 @@
   <div class="encadre">
     <span class="cle">Ce que ce tableau établit</span>
     Le <strong>Coordonnateur</strong> porte tout du côté UGPTN, <em>sauf</em> la décision
-    d’ANO. Les <strong>bailleurs</strong> ne portent que celle-là : ils ne rédigent aucun
+    d’ANO. Les <strong>bailleurs</strong> ne portent que celle-là : ils ne rédigent aucun
     terme de référence et n’en instruisent aucun. Aucun compte ne cumule la demande et la
     décision — la séparation est tenue par le serveur, pas par l’écran.
   </div>
@@ -946,20 +958,20 @@
     <div class="constat acquis">
       <h4>La chaîne va de l’allocation à l’avis publié</h4>
       <p>
-        Éprouvée de bout en bout sur trois comptes : allocation d’une composante, activité
+        Éprouvée de bout en bout sur trois comptes : allocation d’une composante, activité
         inscrite, dossier rédigé et transmis, pris en revue, validé, marché ouvert,
         non-objection demandée puis accordée par le bailleur, avis publié et visible au
         marketplace. Chaque acte laisse une trace au journal d’audit avec son auteur.
       </p>
     </div>
 
-    <div class="constat manque">
-      <h4>L’exercice budgétaire ne se crée ni ne se valide depuis l’application</h4>
+    <div class="constat acquis">
+      <h4>Le plan annuel se conduit de bout en bout</h4>
       <p>
-        Aucun point d’entrée ne crée un exercice ; celui de 2026 vient du peuplement de la
-        base. La validation existe côté serveur, réservée au Coordonnateur, mais aucun
-        bouton ne l’appelle. Les activités s’inscrivent quel que soit l’état de l’exercice :
-        c’est un contrôle qui manque.
+        Ouvrir l’exercice, doter chaque composante, inscrire les activités, arrêter le plan :
+        les quatre actes ont leur écran. L’allocation vit sur la page de son exercice, où
+        l’année est portée par l’adresse — il n’y a plus de déduction, donc plus de
+        divergence possible entre deux écrans qui parleraient d’années différentes.
       </p>
     </div>
 
@@ -977,7 +989,7 @@
       <p>
         Clôture, commissions d’évaluation, attribution et contrat existent comme états en
         base, sans écran. Les pages <code>/ppm</code>, <code>/contrats</code> et
-        <code>/commissions</code> affichent encore des données d’exemple : elles montrent
+        <code>/commissions</code> affichent encore des données d’exemple : elles montrent
         une intention, elles ne lisent rien.
       </p>
     </div>
@@ -986,7 +998,7 @@
       <h4>Aucune notification</h4>
       <p>
         Un dossier qui arrive en instruction, une non-objection qui approche de son
-        échéance, un retour à l’auteur : rien n’est signalé. Chacun doit ouvrir l’écran pour
+        échéance, un retour à l’auteur : rien n’est signalé. Chacun doit ouvrir l’écran pour
         savoir qu’il l’attend. C’est le manque le plus visible à l’usage quotidien.
       </p>
     </div>
@@ -1011,7 +1023,7 @@
 
   <p class="intro">
     Le cycle complet se montre en direct en changeant de compte. Chaque changement rend
-    visible la séparation des habilitations : le compte suivant ne peut pas faire ce que
+    visible la séparation des habilitations : le compte suivant ne peut pas faire ce que
     le précédent vient de faire.
   </p>
 
@@ -1019,7 +1031,7 @@
     <div class="pas">
       <div>
         <span class="compte">rc2@ptn-rdc.gov.cd — Responsable composante 2</span>
-        <div class="geste">Ouvrir <code>/ptba/allocations</code> et montrer les dotations arrêtées, avec leurs deux bornes.</div>
+        <div class="geste">Ouvrir <code>/ptba/exercices</code>, puis la ligne 2026 : les dotations arrêtées et leurs deux bornes. Ouvrir un exercice 2027 pour montrer d’où part le cycle.</div>
       </div>
     </div>
     <div class="pas">
@@ -1037,7 +1049,7 @@
     <div class="pas">
       <div>
         <span class="compte">rpm@ptn-rdc.gov.cd — Responsable passation</span>
-        <div class="geste">Ouvrir le registre des TDR : <strong>le brouillon n’y figure pas</strong>. Un dossier en rédaction n’appartient qu’à son auteur.</div>
+        <div class="geste">Ouvrir le registre des TDR : <strong>le brouillon n’y figure pas</strong>. Un dossier en rédaction n’appartient qu’à son auteur.</div>
       </div>
     </div>
     <div class="pas">
@@ -1079,7 +1091,7 @@
     <div class="pas">
       <div>
         <span class="compte">ttl@worldbank.org — TTL Banque mondiale</span>
-        <div class="geste">Ouvrir <code>/ano</code> : objet, montant, ventilation, échéance à 14 jours. Accorder la non-objection.</div>
+        <div class="geste">Ouvrir <code>/ano</code> : objet, montant, ventilation, échéance à 14 jours. Accorder la non-objection.</div>
       </div>
     </div>
     <div class="pas">
@@ -1091,16 +1103,16 @@
     <div class="pas">
       <div>
         <span class="compte">contact@congofibre.cd — Entreprise candidate</span>
-        <div class="geste">Ouvrir le marketplace : <strong>l’avis y est</strong>. Le cycle est bouclé.</div>
+        <div class="geste">Ouvrir le marketplace : <strong>l’avis y est</strong>. Le cycle est bouclé.</div>
       </div>
     </div>
   </div>
 
   <div class="encadre">
     <span class="cle">Deux refus à montrer, s’il reste du temps</span>
-    Depuis le compte du RPM, tenter de décider la non-objection : le module est verrouillé,
+    Depuis le compte du RPM, tenter de décider la non-objection : le module est verrouillé,
     et le message dit qui détient ce droit. Depuis un compte bailleur, chercher à rédiger un
-    terme de référence : il n’y a pas d’entrée. Ces refus valent une démonstration — ils
+    terme de référence : il n’y a pas d’entrée. Ces refus valent une démonstration — ils
     montrent que la séparation n’est pas une convention d’affichage.
   </div>
 </section>
