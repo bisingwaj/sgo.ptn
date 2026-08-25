@@ -15,7 +15,6 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { WarningAltFilled } from "@carbon/icons-react";
 import { redigerChamp } from "@/lib/agent-stream";
 import type { State } from "../etat";
 import { useAssistant } from "../assistant-contexte";
@@ -185,6 +184,7 @@ export function EtapeTexte({
         desactive={!state.tdrId}
         desactiveRaison="Disponible une fois le brouillon ouvert, à l’étape Identification."
         onGenerer={() => void generer()}
+        erreur={erreur}
         onOuvrirAssistant={() => {
           assistant.setChampCourant(champ.question);
           assistant.ouvrir();
@@ -201,13 +201,6 @@ export function EtapeTexte({
             : undefined
         }
       />
-
-      {erreur && (
-        <p className="text-caption text-danger-text flex items-start gap-2">
-          <WarningAltFilled size={16} className="mt-0.5 shrink-0" aria-hidden />
-          {erreur}
-        </p>
-      )}
 
       {complement}
     </div>

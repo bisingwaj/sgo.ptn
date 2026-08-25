@@ -21,6 +21,7 @@
  */
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Modal, TextArea, TextInput } from "@carbon/react";
 import {
   Add,
@@ -58,6 +59,7 @@ export function ListeEntrees<T extends Record<string, string>>({
   desactive,
   desactiveRaison,
   labelGenerer,
+  gabarits,
 }: {
   titre: string;
   /** Repère d'ordre — « O » pour un objectif, « L » pour un livrable. */
@@ -74,6 +76,15 @@ export function ListeEntrees<T extends Record<string, string>>({
   desactive?: boolean;
   desactiveRaison?: string;
   labelGenerer: string;
+  /**
+   * Amorces de saisie, proposées EN TÊTE de la modale.
+   *
+   * Devant deux champs vides, l'auteur ne sait pas quelle FORME on attend
+   * de lui — et l'oubli du critère est le défaut le plus fréquent. Une
+   * amorce pose la forme et laisse le fond. Ce n'est pas de l'assistance :
+   * aucun modèle n'intervient, rien n'est marqué comme assisté.
+   */
+  gabarits?: Array<{ label: string; valeurs: Record<string, string> }>;
 }) {
   const [menu, setMenu] = useState(false);
   /** Entrée en cours d'édition. `-1` = création. */
@@ -181,7 +192,33 @@ export function ListeEntrees<T extends Record<string, string>>({
       {/* ---------- Liste ----------
           Lignes jointives, séparées d'un filet : on parcourt une liste, on
           ne feuillette pas des cartes. */}
-      {items.length === 0 ? (
+      {/* PENDANT LA GÉNÉRATION, dire que quelque chose se passe.
+          Le seul signe était le libellé du bouton passé à « Rédaction… »,
+          en haut à droite et en petit corps : une liste qui reste vide dix
+          secondes sans rien annoncer se lit comme une panne, et l'auteur
+          reclique. Le repère reprend la forme de celui de l'éditeur — même
+          geste, même signal. */}
+      {enCours ? (
+        <div
+          className="flex flex-col items-center gap-3 px-6 py-10"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="border-ai bg-ai-surface text-body-compact text-ai-text ptn-entree-ligne inline-flex items-center gap-3 border-2 px-5 py-3 font-medium">
+            <span className="ptn-points" aria-hidden>
+              <i />
+              <i />
+              <i />
+            </span>
+            L’assistant rédige — veuillez patienter
+          </span>
+          {items.length > 0 && (
+            <span className="text-caption text-helper">
+              Les propositions remplaceront la liste actuelle.
+            </span>
+          )}
+        </div>
+      ) : items.length === 0 ? (
         <p className="text-body text-helper px-6 py-10 text-center">{videTexte}</p>
       ) : (
         <ol>
@@ -277,42 +314,82 @@ export function ListeEntrees<T extends Record<string, string>>({
 
       {/* ---------- Saisie ----------
           En modale : une entrée s'écrit d'un geste, entièrement, ou pas du
-          tout. C'est ce qui empêche d'en laisser trois vides au compteur. */}
-      <Modal
-        open={edite !== null}
-        modalHeading={edite === -1 ? ajouterLabel : `Modifier ${prefixe}${(edite ?? 0) + 1}`}
-        modalLabel={titre}
-        primaryButtonText={edite === -1 ? "Ajouter" : "Enregistrer"}
-        secondaryButtonText="Annuler"
-        primaryButtonDisabled={!complet}
-        onRequestClose={() => setEdite(null)}
-        onRequestSubmit={valider}
-      >
-        <div className="flex flex-col gap-5 pb-4">
-          {champs.map((c) =>
-            c.long ? (
-              <TextArea
-                key={c.cle}
-                id={`entree-${c.cle}`}
-                labelText={c.libelle}
-                placeholder={c.placeholder}
-                rows={3}
-                value={brouillon[c.cle] ?? ""}
-                onChange={(e) => setBrouillon({ ...brouillon, [c.cle]: e.target.value } as T)}
-              />
-            ) : (
-              <TextInput
-                key={c.cle}
-                id={`entree-${c.cle}`}
-                labelText={c.libelle}
-                placeholder={c.placeholder}
-                value={brouillon[c.cle] ?? ""}
-                onChange={(e) => setBrouillon({ ...brouillon, [c.cle]: e.target.value } as T)}
-              />
-            ),
-          )}
-        </div>
-      </Modal>
+          tout. C'est ce qui empêche d'en laisser trois vides au compteur.
+
+          RENDUE PAR PORTAIL, sur `document.body`, et non là où elle est
+          écrite. `.bodyContent` du parcours porte l'animation d'entrée
+          d'étape, qui anime l'OPACITÉ : un élément animé de la sorte crée
+          un contexte d'empilement, et le `z-index: 9000` de la modale n'a
+          plus cours au-delà. Elle se retrouvait peinte SOUS le panneau de
+          l'assistant et sous le bandeau d'étape — on voyait le fil de
+          discussion au travers, et le voile ne couvrait pas l'écran.
+
+          Mesuré : modale z=9000 dans un contexte créé par un parent à
+          opacity=0. Ce n'est pas propre à un poste. */}
+      {typeof document !== "undefined" &&
+        createPortal(
+        <Modal
+          open={edite !== null}
+          modalHeading={edite === -1 ? ajouterLabel : `Modifier ${prefixe}${(edite ?? 0) + 1}`}
+          modalLabel={titre}
+          primaryButtonText={edite === -1 ? "Ajouter" : "Enregistrer"}
+          secondaryButtonText="Annuler"
+          primaryButtonDisabled={!complet}
+          onRequestClose={() => setEdite(null)}
+          onRequestSubmit={valider}
+        >
+          <div className="flex flex-col gap-5 pb-4">
+            {/* Les amorces, avant les champs : c'est le moment où l'on
+                cherche par quoi commencer. Proposées seulement à la
+                CRÉATION — sur une entrée déjà écrite, elles écraseraient
+                le texte de l'auteur sans le lui dire. */}
+            {gabarits && gabarits.length > 0 && edite === -1 && (
+              <div className="border-subtle bg-layer border p-3">
+                <p className="text-caption text-secondary mb-2">
+                  Partir d’une amorce — la forme est posée, le contenu entre crochets reste à
+                  écrire.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {gabarits.map((g) => (
+                    <button
+                      key={g.label}
+                      type="button"
+                      onClick={() => setBrouillon({ ...brouillon, ...g.valeurs } as T)}
+                      className="border-subtle bg-background text-caption text-primary hover:border-strong hover:bg-layer-hover ptn-carte-liste border px-3 py-1.5"
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {champs.map((c) =>
+              c.long ? (
+                <TextArea
+                  key={c.cle}
+                  id={`entree-${c.cle}`}
+                  labelText={c.libelle}
+                  placeholder={c.placeholder}
+                  rows={3}
+                  value={brouillon[c.cle] ?? ""}
+                  onChange={(e) => setBrouillon({ ...brouillon, [c.cle]: e.target.value } as T)}
+                />
+              ) : (
+                <TextInput
+                  key={c.cle}
+                  id={`entree-${c.cle}`}
+                  labelText={c.libelle}
+                  placeholder={c.placeholder}
+                  value={brouillon[c.cle] ?? ""}
+                  onChange={(e) => setBrouillon({ ...brouillon, [c.cle]: e.target.value } as T)}
+                />
+              ),
+            )}
+          </div>
+        </Modal>,
+          document.body,
+        )}
     </div>
   );
 }

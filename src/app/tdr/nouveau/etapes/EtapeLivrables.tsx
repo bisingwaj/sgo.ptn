@@ -18,7 +18,7 @@ import { Select } from "@/components/wizard/WizardFields";
 import { tdrApi, ApiError } from "@/lib/api";
 import type { State } from "../etat";
 import { useAssistant } from "../assistant-contexte";
-import { DELIVERABLE_FORMATS, REPORTING_RHYTHMS } from "../referentiel-ecran";
+import { DELIVERABLE_FORMATS, GABARITS_LIVRABLE, REPORTING_RHYTHMS } from "../referentiel-ecran";
 import { ListeEntrees } from "./ListeEntrees";
 
 export function EtapeLivrables({
@@ -107,6 +107,7 @@ export function EtapeLivrables({
         ajouterLabel="Ajouter un livrable"
         videTexte="Aucun livrable pour l’instant. Ajoutez-en un, ou demandez une proposition à l’assistant."
         labelGenerer="Proposer des livrables"
+        gabarits={GABARITS_LIVRABLE}
         enCours={enCours}
         desactive={!state.tdrId}
         desactiveRaison="Disponible une fois le brouillon ouvert."

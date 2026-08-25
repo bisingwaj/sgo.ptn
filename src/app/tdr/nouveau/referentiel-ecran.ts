@@ -130,3 +130,89 @@ export const REPORTING_RHYTHMS = [
   { value: "monthly", label: "Mensuel — au-delà de six mois" },
   { value: "milestone", label: "À chaque jalon, sans périodicité fixe" },
 ];
+
+
+/**
+ * Amorces de saisie — objectifs et livrables.
+ *
+ * POURQUOI DES AMORCES ET NON DES EXEMPLES. Devant une page blanche, le
+ * défaut le plus fréquent n'est pas la faute de style : c'est l'énoncé qui
+ * oublie son critère, donc l'objectif qu'on ne pourra pas constater. Une
+ * amorce porte la FORME attendue — un verbe d'action, une grandeur, un
+ * horizon — et laisse l'auteur poser le fond.
+ *
+ * Les crochets sont voulus et visibles : ils disent ce qui reste à
+ * remplir. Aucune amorce ne contient de valeur plausible — ni montant, ni
+ * date, ni institution nommée. Un gabarit qui livrerait « 1 000
+ * institutions connectées » se retrouverait tel quel dans un dossier
+ * transmis, et la règle du dépôt proscrit d'inventer ce qui ressemble à
+ * une donnée réelle.
+ *
+ * Elles ne sont PAS de l'assistance : aucun modèle n'intervient, rien
+ * n'est marqué comme assisté. C'est une substitution de texte.
+ */
+export const GABARITS_OBJECTIF: Array<{ label: string; valeurs: Record<string, string> }> = [
+  {
+    label: "Doter d’une capacité",
+    valeurs: {
+      title: "Doter [l’institution] de [capacité] à l’issue du marché",
+      criteria: "[Capacité] en service et recettée, constatée au [horizon]",
+    },
+  },
+  {
+    label: "Étendre une couverture",
+    valeurs: {
+      title: "Étendre [le service] à [périmètre] sur la durée du marché",
+      criteria: "[Nombre] de [unité] couverts, mesuré au [horizon]",
+    },
+  },
+  {
+    label: "Former et transférer",
+    valeurs: {
+      title: "Former [public visé] à [compétence] et transférer les acquis",
+      criteria: "[Nombre] de personnes formées et évaluées, au [horizon]",
+    },
+  },
+  {
+    label: "Mettre en conformité",
+    valeurs: {
+      title: "Mettre [l’objet] en conformité avec [norme ou référentiel]",
+      criteria: "Conformité constatée par [instance de contrôle], au [horizon]",
+    },
+  },
+];
+
+export const GABARITS_LIVRABLE: Array<{ label: string; valeurs: Record<string, string> }> = [
+  {
+    label: "Rapport de démarrage",
+    valeurs: {
+      title: "Rapport de démarrage",
+      format: "Document validé par l’UGP",
+      deadline: "M+[n]",
+    },
+  },
+  {
+    label: "Ouvrage réceptionné",
+    valeurs: {
+      title: "[Ouvrage] réceptionné",
+      format: "Procès-verbal de réception",
+      deadline: "M+[n]",
+    },
+  },
+  {
+    label: "Rapport final",
+    valeurs: {
+      title: "Rapport final de mission",
+      format: "Document validé par l’UGP",
+      deadline: "M+[n]",
+    },
+  },
+  {
+    label: "Dossier de récolement",
+    valeurs: {
+      title: "Dossier des ouvrages exécutés",
+      format: "Plans et notes de récolement",
+      deadline: "M+[n]",
+    },
+  },
+];

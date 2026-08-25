@@ -23,13 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import {
-  AiGenerate,
-  ChevronDown,
-  Chat,
-  List,
-  Undo,
-} from "@carbon/icons-react";
+import { AiGenerate, Chat, ChevronDown, List, Undo, WarningAltFilled } from "@carbon/icons-react";
 
 interface Props {
   valeur: string;
@@ -42,6 +36,15 @@ interface Props {
   onGenerer: () => void;
   /** Ouvre l'assistant pour guider la demande. */
   onOuvrirAssistant: () => void;
+  /**
+   * Échec de la dernière génération.
+   *
+   * Rendu DANS la barre d'outils, à gauche du bouton qui l'a produit —
+   * et non sous le champ, où il tombait à des centaines de pixels du
+   * geste à refaire, après un texte parfois long. Un message d'erreur se
+   * lit là où se trouve l'action qui le lève.
+   */
+  erreur?: string | null;
   /** Rend la valeur d'avant la dernière reprise. */
   onAnnuler?: () => void;
   enCours?: boolean;
@@ -57,6 +60,7 @@ export function EditeurTexte({
   parLigne,
   onGenerer,
   onOuvrirAssistant,
+  erreur,
   onAnnuler,
   enCours,
   desactive,
@@ -138,9 +142,21 @@ export function EditeurTexte({
           </button>
         )}
 
-        <span className="text-caption text-helper mono ml-auto tabular-nums" aria-live="polite">
-          {mots} mot{mots > 1 ? "s" : ""} · {signes} signe{signes > 1 ? "s" : ""}
-        </span>
+        {erreur ? (
+          // Le compteur cède la place : deux informations concurrentes au
+          // même endroit, c'est celle qui demande une décision qui passe.
+          <span
+            role="alert"
+            className="text-caption text-danger-text ml-auto inline-flex items-center gap-1.5"
+          >
+            <WarningAltFilled size={14} className="shrink-0" aria-hidden />
+            {erreur}
+          </span>
+        ) : (
+          <span className="text-caption text-helper mono ml-auto tabular-nums" aria-live="polite">
+            {mots} mot{mots > 1 ? "s" : ""} · {signes} signe{signes > 1 ? "s" : ""}
+          </span>
+        )}
 
         {/* Bouton scindé : le clic direct engendre, la flèche donne la main.
             Deux gestes distincts pour deux intentions distinctes. */}

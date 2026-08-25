@@ -17,6 +17,7 @@ import { WarningAltFilled } from "@carbon/icons-react";
 import { tdrApi, ApiError } from "@/lib/api";
 import type { State } from "../etat";
 import { useAssistant } from "../assistant-contexte";
+import { GABARITS_OBJECTIF } from "../referentiel-ecran";
 import { ListeEntrees } from "./ListeEntrees";
 
 export function EtapeObjectifs({
@@ -98,6 +99,7 @@ export function EtapeObjectifs({
         ajouterLabel="Ajouter un objectif"
         videTexte="Aucun objectif pour l’instant. Ajoutez-en un, ou demandez une proposition à l’assistant."
         labelGenerer="Proposer des objectifs"
+        gabarits={GABARITS_OBJECTIF}
         enCours={enCours}
         desactive={!state.tdrId}
         desactiveRaison="Disponible une fois le brouillon ouvert."
