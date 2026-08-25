@@ -133,6 +133,10 @@ function hydrate(
     reference: tdr.reference,
     tdrTypeCode: tdr.tdrTypeCode,
     ptbaActivityId: tdr.ptbaActivityId ?? "",
+    // À la reprise, un dossier sans ligne au plan EST un dossier hors plan :
+    // le drapeau se déduit, il n'a pas à être enregistré. Sans cela, la
+    // reprise rouvrirait l'étape 02 en refus, sur un choix déjà fait.
+    sansRattachement: !tdr.ptbaActivityId,
     componentFilter: tdr.ptbaActivity?.componentCode ?? "",
     beneficiaryOrganisationId: tdr.beneficiaryOrganisationId ?? "",
     title: tdr.title,
@@ -437,9 +441,9 @@ function Parcours() {
         label: "Rattachement",
         sub: "La ligne du plan annuel dont ce marché relève",
         validate: (s) =>
-          s.ptbaActivityId
+          s.ptbaActivityId || s.sansRattachement
             ? null
-            : "Rattachez une activité PTBA : sans ligne au plan, il n’y a pas d’enveloppe.",
+            : "Rattachez une activité PTBA, ou cochez que ce dossier n’en relève pas.",
         render: (s, set) => (
           <EtapeRattachement
             state={s}
@@ -465,7 +469,12 @@ function Parcours() {
           if (s.tdrId) {
             await persist(s, {
               title: s.title,
-              ptbaActivityId: s.ptbaActivityId,
+              // NULL, ET NON CHAÎNE VIDE. L'écran garde `""` pour dire
+              // « rien de retenu » — c'est ce qu'un champ de formulaire
+              // porte — mais le serveur attend un UUID ou rien. La chaîne
+              // vide échouait à la validation : un dossier déclaré hors
+              // plan ne passait pas l'étape suivante.
+              ptbaActivityId: s.ptbaActivityId || null,
               beneficiaryOrganisationId: s.beneficiaryOrganisationId || null,
             });
             return;
@@ -473,7 +482,7 @@ function Parcours() {
           const draft = await tdrApi.createDraft({
             tdrTypeCode: s.tdrTypeCode,
             title: s.title.trim(),
-            ptbaActivityId: s.ptbaActivityId,
+            ...(s.ptbaActivityId ? { ptbaActivityId: s.ptbaActivityId } : {}),
           });
           s.tdrId = draft.id;
           s.reference = draft.reference;
@@ -918,9 +927,17 @@ function Parcours() {
     return (
       <div className={styles.success}>
         <CheckmarkFilled size={32} aria-hidden />
-        <span className={styles.eyebrow}>TRANSMIS À L’UGP</span>
+        <span className={styles.eyebrow}>DOSSIER TRANSMIS À L’INSTRUCTION</span>
         <h1>{submitted.reference}</h1>
         <p>{submitted.title}</p>
+        {/* Ce que la transmission a CHANGÉ, dit en clair : c'est ce que
+            l'auteur vient d'engager, et il n'y a plus de retour sans un
+            renvoi de l'UGP. Le mot « transmis » seul laissait croire à un
+            simple envoi de fichier. */}
+        <p className={styles.successNote}>
+          Le dossier quitte votre brouillon et rejoint la file d’instruction de l’UGP. Il n’est
+          plus modifiable tant qu’il ne vous est pas retourné.
+        </p>
         <dl className={styles.successMeta}>
           <div><dt>Méthode de passation</dt><dd>{submitted.procurementMethodCode ?? "—"}</dd></div>
           <div>
@@ -990,7 +1007,7 @@ function Parcours() {
           </button>
         ) : null
       }
-      finishLabel="Transmettre à l’UGP"
+      finishLabel="Transmettre le dossier à l’instruction"
       asideOpen={assistantOuvert}
       aside={
         <AgentPanel
@@ -1583,15 +1600,20 @@ function DocumentFinal({ tdrId }: { tdrId: string | null }) {
               ` · ${manquantes} section${manquantes > 1 ? "s" : ""} sans contenu`}
           </p>
         </div>
+        {/* GÉNÉRER LE DOCUMENT est une action à part entière, distincte de
+            la transmission — et elle ne change RIEN au dossier. « PDF » et
+            « DOCX » seuls ne disaient pas qu'on obtenait le TDR composé :
+            on les prenait pour un réglage d'affichage, et l'on croyait le
+            document accessible seulement après avoir transmis. */}
         <div className={styles.documentActions}>
           <button
             type="button"
-            className={styles.btnGhost}
+            className={styles.btnSecondary}
             onClick={() => void recuperer("pdf")}
             disabled={occupe !== null}
           >
             <IconeDocument size={14} aria-hidden />
-            {occupe === "pdf" ? "Composition…" : "PDF"}
+            {occupe === "pdf" ? "Composition…" : "Générer le TDR (PDF)"}
           </button>
           <button
             type="button"
@@ -1600,7 +1622,7 @@ function DocumentFinal({ tdrId }: { tdrId: string | null }) {
             disabled={occupe !== null}
           >
             <IconeDocument size={14} aria-hidden />
-            {occupe === "docx" ? "Composition…" : "DOCX"}
+            {occupe === "docx" ? "Composition…" : "Version modifiable (DOCX)"}
           </button>
         </div>
       </div>

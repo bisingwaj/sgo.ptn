@@ -210,6 +210,18 @@ export class TdrAssistService {
       );
       grounded.push(`Activité PTBA — ${a.code} · ${a.title}`);
       grounded.push(`Composante — ${a.componentCode}`);
+    } else {
+      // DIT, ET NON TU. Sans cette phrase, le contexte se contentait
+      // d'omettre l'activité — et un modèle qui ne lit aucune ligne de plan
+      // là où le corpus lui apprend qu'il y en a toujours une est tenté d'en
+      // supposer une. L'absence est une information ; elle s'énonce.
+      lines.push(
+        "Ce dossier ne se rattache à AUCUNE activité du Plan de Travail et Budget Annuel : " +
+          "c'est un cas d'exception assumé par son auteur. N'invente ni code d'activité, ni " +
+          "composante, ni enveloppe de rattachement, et ne présente pas le marché comme " +
+          "relevant d'une ligne du plan.",
+      );
+      grounded.push('Activité PTBA — aucune (dossier hors plan)');
     }
 
     // La couverture peut porter sur plusieurs provinces ; à défaut, celle de

@@ -70,6 +70,19 @@ export interface State {
   esCategory: string;
   esRisks: string[];
   /** Champs auxquels l'assistant a contribue — marque persistante */
+  /**
+   * Le dossier ne relève d'aucune ligne du plan.
+   *
+   * L'exception, non la règle : la quasi-totalité des marchés se rattache
+   * au PTBA, dont l'enveloppe les plafonne. Certains n'en relèvent pas —
+   * un atelier financé hors plan, une mission ponctuelle — et le parcours
+   * les refusait tous, sans issue.
+   *
+   * N'EST PAS PERSISTÉ TEL QUEL : c'est `ptbaActivityId` à `null` qui fait
+   * foi côté serveur. Ce drapeau ne sert qu'à distinguer, à l'écran, le
+   * choix assumé de l'étape simplement pas encore faite.
+   */
+  sansRattachement: boolean;
   aiAssistedFields: string[];
 
   consentMep: boolean;
@@ -86,7 +99,7 @@ export const INITIAL: State = {
   startDate: "", durationMonths: "", provinceCodes: [], expertise: "", effortDays: "", keyProfiles: [],
   budgetTotalUsd: "", budgetIdaUsd: "", budgetAfdUsd: "", budgetGovUsd: "",
   clauses: [], indicators: [], risks: [],
-  esCategory: "", esRisks: [], aiAssistedFields: [],
+  esCategory: "", esRisks: [], sansRattachement: false, aiAssistedFields: [],
   consentMep: false, consentRgpd: false,
   blockers: [],
 };

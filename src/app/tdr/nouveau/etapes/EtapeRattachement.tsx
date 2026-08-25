@@ -17,7 +17,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Note } from "@/components/wizard/WizardFields";
+import { CheckRow, Note } from "@/components/wizard/WizardFields";
 import { useAuth } from "@/components/auth/AuthContext";
 import type { ComponentApi, PtbaActivityApi, TdrTypeApi } from "@/lib/api";
 import { withComposedTitle, type State } from "../etat";
@@ -92,7 +92,33 @@ export function EtapeRattachement({
         </Note>
       )}
 
-      {activities.length === 0 ? (
+      {/* L'EXCEPTION, POSÉE AVANT LA LISTE.
+          Elle vaut d'être vue d'emblée par qui sait déjà que son dossier
+          n'a pas de ligne au plan : la placer sous une liste de vingt
+          activités reviendrait à la cacher. Cocher efface le rattachement
+          retenu — laisser les deux serait garder une enveloppe dont on
+          vient de dire qu'elle ne s'applique pas. */}
+      <CheckRow
+        checked={state.sansRattachement}
+        onChange={(next) =>
+          set(
+            recompose({
+              ...state,
+              sansRattachement: next,
+              ptbaActivityId: next ? "" : state.ptbaActivityId,
+            }),
+          )
+        }
+        title="Ce dossier ne relève d’aucune ligne du plan"
+        description="Cas d’exception. Le budget se saisit alors sans plafond opposable, et le dossier ne consomme l’enveloppe d’aucune activité."
+      />
+
+      {state.sansRattachement ? (
+        <Note tone="warning" title="Dossier hors plan annuel">
+          Aucune enveloppe ne borne ce marché, et rien ne le rattache au cadre budgétaire de
+          l’exercice. L’instruction le verra tel quel.
+        </Note>
+      ) : activities.length === 0 ? (
         <Note tone="warning" title="Aucune activité au plan de l’exercice">
           Un TDR se rattache obligatoirement à une ligne du PTBA : sans elle, il n’y a pas
           d’enveloppe, donc pas de marché possible. L’activité doit être inscrite au plan

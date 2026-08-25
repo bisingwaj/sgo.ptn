@@ -66,17 +66,32 @@ export function EtapeBudget({
           Quel budget ce marché engage-t-il ?
         </h3>
         <p className="text-body-lg text-secondary mt-3">
-          Le montant se prend sur l’enveloppe de la ligne du plan, que d’autres marchés
-          partagent. Il commande aussi la méthode de passation.
+          {state.sansRattachement
+            ? "Ce dossier ne relève d’aucune ligne du plan : aucune enveloppe ne le borne. Le montant commande la méthode de passation."
+            : "Le montant se prend sur l’enveloppe de la ligne du plan, que d’autres marchés partagent. Il commande aussi la méthode de passation."}
         </p>
       </header>
 
-      <SituationLigne
-        enveloppe={enveloppe}
-        enCours={enveloppeEnCours}
-        activity={activity}
-        demande={total}
-      />
+      {/* SANS RATTACHEMENT, PAS DE SITUATION DE LIGNE À MONTRER.
+          Le bloc afficherait un cadre vide là où l'on attend des chiffres,
+          ce qui se lit comme une donnée manquante plutôt que comme une
+          absence voulue. Un avertissement le dit à sa place. */}
+      {state.sansRattachement ? (
+        <div className="border-warning bg-warning-surface border-l-2 px-4 py-3">
+          <p className="text-body text-primary">Aucun plafond opposable</p>
+          <p className="text-body-compact text-secondary mt-1 max-w-[68ch]">
+            Le montant n’est comparé à aucune enveloppe et n’entame celle d’aucune activité.
+            C’est l’instruction qui appréciera.
+          </p>
+        </div>
+      ) : (
+        <SituationLigne
+          enveloppe={enveloppe}
+          enCours={enveloppeEnCours}
+          activity={activity}
+          demande={total}
+        />
+      )}
 
       <ChampTotal state={state} set={set} type={type} enveloppe={enveloppe} />
 

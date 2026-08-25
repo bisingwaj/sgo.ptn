@@ -349,6 +349,38 @@
   }
 }
 
+/* Générer le document : l'action MARQUÉE des deux, mais sans l'accent du
+   bouton de transmission — elle ne change pas l'état du dossier, et deux
+   boutons de même poids à la dernière étape feraient hésiter sur celui qui
+   engage. Bordure appuyée plutôt que fond plein. */
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--cds-border-strong, #8d8d8d);
+  background: var(--cds-background, #fff);
+  color: var(--cds-text-primary, #161616);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover, #e8e8e8);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ptn-accent);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 /* ===== États hors parcours ===== */
 
 .gate,

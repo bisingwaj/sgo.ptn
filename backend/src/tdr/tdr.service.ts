@@ -449,8 +449,18 @@ export class TdrService {
     const blockers: string[] = [];
     const warnings: string[] = [];
 
+    // HORS PLAN : un avertissement, non un refus.
+    //
+    // Le rattachement au PTBA reste la règle, et l'écran le présente comme
+    // tel. Mais certains dossiers n'en relèvent pas — un atelier financé
+    // hors plan, une mission ponctuelle — et les bloquer tous rendait le
+    // parcours impraticable pour eux. L'exception passe donc, et se VOIT :
+    // l'instruction lit l'avertissement et apprécie.
     if (!tdr.ptbaActivityId) {
-      blockers.push('Aucune activité PTBA rattachée : sans ligne au plan, l’activité n’a pas d’enveloppe.');
+      warnings.push(
+        'Ce dossier ne relève d’aucune ligne du PTBA : aucune enveloppe ne le plafonne, ' +
+          'et il n’entame le budget d’aucune activité. À vérifier à l’instruction.',
+      );
     }
     if (!tdr.context?.trim()) blockers.push('Le contexte n’est pas rédigé.');
     if (tdr.objectives.length === 0) blockers.push('Aucun objectif défini.');
