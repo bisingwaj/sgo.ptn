@@ -57,7 +57,13 @@ export function Input(props: InputProps) {
   return <input {...props} className={`${styles.input} ${props.className ?? ""}`} />;
 }
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+/**
+ * Une interface qui n'ajoute aucun membre équivaut à son sur-type, et le
+ * lint le refuse à juste titre : elle laisse croire à une extension qui
+ * n'existe pas. `Input` au-dessus en ajoute un, `Textarea` non — un alias
+ * dit exactement cela.
+ */
+type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 export function Textarea(props: TextareaProps) {
   return <textarea {...props} className={`${styles.textarea} ${props.className ?? ""}`} />;
