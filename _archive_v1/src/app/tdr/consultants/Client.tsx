@@ -13,7 +13,7 @@ const STEPS: WizardStep[] = [
     render: (ctx) => (
       <div className={f.section}>
         <div className={f.fieldGrid + " " + f.cols2}>
-          <Field label="Intitulé du marché" value="AMOA Plateforme nationale d'identité numérique" />
+          <Field label="Intitulé du marché/Activité" value="AMOA Plateforme nationale d'identité numérique" />
           <Field label="Composante" value="C2 · Fondations Numériques" select />
           <Field label="Ligne PTBA" value="A2.3.1" />
           <Field label="Activité PTBA" value="Identité numérique nationale" />

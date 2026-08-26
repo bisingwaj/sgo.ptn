@@ -325,7 +325,7 @@ export class TdrAgentService {
     lignes.push(
       `Référence : ${tdr.reference} · type ${tdr.tdrTypeCode} — ${tdr.tdrType.name}`,
     );
-    dit('Intitulé du marché', tdr.title);
+    dit('Intitulé du marché/Activité', tdr.title);
 
     if (tdr.ptbaActivity) {
       const a = tdr.ptbaActivity;

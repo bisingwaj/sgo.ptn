@@ -43,7 +43,7 @@ export function EtapeIdentification({
       )}
 
       <Field
-        label="Intitulé du marché"
+        label="Intitulé du marché/Activité"
         required
         helper={
           composed

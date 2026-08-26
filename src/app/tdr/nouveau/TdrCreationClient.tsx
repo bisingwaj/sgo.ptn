@@ -1414,7 +1414,7 @@ function Recap({
     <div className={styles.recap}>
       <RecapBloc titre="Type & rattachement" etape="01–03">
         <RecapLigne cle="Type" val={type ? `${type.code} · ${type.name}` : "—"} />
-        <RecapLigne cle="Intitulé du marché" val={state.title || "—"} />
+        <RecapLigne cle="Intitulé du marché/Activité" val={state.title || "—"} />
         <RecapLigne
           cle="Activité PTBA"
           val={activity ? `${activity.code} · ${activity.title}` : "—"}
