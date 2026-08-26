@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
+import { AiService } from '../ai/ai.service';
 
 /** Ce que voit le rédacteur : tout sauf les octets. */
 export interface PieceResume {
@@ -78,10 +79,27 @@ export class TdrAttachmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly ai: AiService,
   ) {}
 
+  /** Le FORMAT se prête-t-il à une lecture par un modèle ? */
   static estLisible(mimeType: string): boolean {
     return TdrAttachmentService.FORMATS[mimeType]?.lisible ?? false;
+  }
+
+  /**
+   * La pièce est-elle RÉELLEMENT soumise à l'assistant ?
+   *
+   * Deux conditions, et l'écran ne doit en promettre aucune à la légère :
+   * que le format s'y prête, et que le modèle configuré sache le lire. Le
+   * second point manquait, si bien qu'un PDF s'affichait comme lu par
+   * l'assistant devant un modèle qui ne reçoit que du texte.
+   */
+  private async estSoumise(mimeType: string): Promise<boolean> {
+    if (!TdrAttachmentService.estLisible(mimeType)) return false;
+    if (!this.ai.isConfigured) return false;
+    const c = await this.ai.capacites();
+    return mimeType === 'application/pdf' ? c.fichier : c.image;
   }
 
   /**
@@ -142,10 +160,12 @@ export class TdrAttachmentService {
       },
       orderBy: { uploadedAt: 'asc' },
     });
-    return pieces.map((p) => ({
-      ...p,
-      lisibleParAssistant: TdrAttachmentService.estLisible(p.mimeType),
-    }));
+    // Une seule interrogation des capacités pour toute la liste : elle est
+    // en cache, mais la boucler resterait un aveu de négligence.
+    const soumises = await Promise.all(
+      pieces.map((p) => this.estSoumise(p.mimeType)),
+    );
+    return pieces.map((p, i) => ({ ...p, lisibleParAssistant: soumises[i] }));
   }
 
   async verser(

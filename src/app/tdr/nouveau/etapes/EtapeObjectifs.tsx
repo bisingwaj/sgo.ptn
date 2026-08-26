@@ -12,56 +12,111 @@
  * deux fois sans savoir laquelle des deux comptait.
  */
 
-import { useState } from "react";
-import { WarningAltFilled } from "@carbon/icons-react";
+import { useEffect, useState } from "react";
 import { tdrApi, ApiError } from "@/lib/api";
 import type { State } from "../etat";
-import { useAssistant } from "../assistant-contexte";
+import { messageDEchec, useAssistant } from "../assistant-contexte";
 import { GABARITS_OBJECTIF } from "../referentiel-ecran";
 import { ListeEntrees } from "./ListeEntrees";
 
 export function EtapeObjectifs({
   state,
   set,
+  persist,
 }: {
   state: State;
   set: (s: State) => void;
+  /**
+   * Enregistre sans attendre le changement d'étape.
+   *
+   * Même défaut que sur les champs de texte : une liste proposée par
+   * l'assistant ne partait au serveur qu'au bouton « Suivant », et le rail
+   * des étapes n'enregistre rien. Une écriture de l'agent déclenchait alors
+   * une relecture qui rapportait la liste de la BASE — sans les entrées
+   * qu'on venait d'obtenir.
+   */
+  persist?: (s: State, patch: Record<string, unknown>) => Promise<void>;
 }) {
   const assistant = useAssistant();
-  const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+
+  // L'état de travail est UNIQUE et vit dans le contexte : le bouton d'une
+  // étape et le fil ne pouvaient pas se voir, et lançaient deux demandes
+  // sur le même dossier sans que rien ne le signale.
+  const travail = assistant.travail;
+  const nôtre = travail?.origine === "champ" && travail.champ === "objectives";
+  const ailleurs = Boolean(travail) && !nôtre;
+
+  /** Un message d'échec qui s'installe cesse d'être lu. Voir `EtapeTexte`. */
+  useEffect(() => {
+    if (!erreur) return;
+    const t = setTimeout(() => setErreur(null), 12_000);
+    return () => clearTimeout(t);
+  }, [erreur]);
 
   const proposer = async () => {
     if (!state.tdrId) return;
-    setEnCours(true);
+    const signal = assistant.demarrer({
+      origine: "champ",
+      champ: "objectives",
+      libelleChamp: "Objectifs SMART",
+      phase: "envoi",
+    });
+    if (!signal) return;
     setErreur(null);
+    assistant.ouvrirEnLigne("Proposer des objectifs", "objectives");
     try {
       const r = await tdrApi.assistObjectives(state.tdrId);
       // Les propositions s'ajoutent à ce qui est déjà là : l'auteur qui a
       // écrit deux objectifs et en demande d'autres ne veut pas voir les
       // siens disparaître.
-      set({
+      const suivant = {
         ...state,
         objectives: [...state.objectives, ...r.proposal],
         aiAssistedFields: state.aiAssistedFields.includes("objectives")
           ? state.aiAssistedFields
           : [...state.aiAssistedFields, "objectives"],
-      });
-      assistant.consignerEnLigne(
-        "Proposer des objectifs SMART",
-        r.proposal.map((o, i) => `O${i + 1} · ${o.title} — ${o.criteria}`).join("\n"),
-        "objectives",
-      );
+      };
+      set(suivant);
+      // Au serveur tout de suite : voir `persist`.
+      void persist?.(suivant, {
+        objectives: suivant.objectives,
+        aiAssisted: suivant.aiAssistedFields,
+      })?.catch(() => undefined);
+      // La bulle a été ouverte AVANT l'appel : on ne fait que la clore.
+      // Elle était créée après coup, si bien que le fil restait immobile
+      // pendant toute l'attente puis tout apparaissait d'un bloc — on ne
+      // pouvait donc pas savoir où une génération avait échoué.
+      assistant.majDerniere((b) => ({
+        ...b,
+        encours: false,
+        texte: r.proposal.map((o, i) => `O${i + 1} · ${o.title} — ${o.criteria}`).join("\n"),
+        actes: [
+          ...b.actes,
+          {
+            genre: "ecriture",
+            libelle: `${r.proposal.length} objectifs ajoutés à la liste`,
+            champ: "objectives",
+          },
+        ],
+      }));
     } catch (e) {
-      setErreur(
+      const brut =
         e instanceof ApiError && e.status === 503
           ? "L’assistance n’est pas configurée sur ce serveur. Les objectifs restent à saisir à la main."
           : e instanceof Error
             ? e.message
-            : "La proposition n’a pas abouti.",
-      );
+            : "La proposition n’a pas abouti.";
+      // Le message dit quoi FAIRE. Voir `messageDEchec`.
+      const message = messageDEchec(brut);
+      setErreur(message);
+      assistant.majDerniere((b) => ({
+        ...b,
+        encours: false,
+        actes: [...b.actes, { genre: "refus", libelle: message }],
+      }));
     } finally {
-      setEnCours(false);
+      assistant.terminer();
     }
   };
 
@@ -100,7 +155,10 @@ export function EtapeObjectifs({
         videTexte="Aucun objectif pour l’instant. Ajoutez-en un, ou demandez une proposition à l’assistant."
         labelGenerer="Proposer des objectifs"
         gabarits={GABARITS_OBJECTIF}
-        enCours={enCours}
+        enCours={nôtre}
+        occupeAilleurs={ailleurs}
+        onArreter={assistant.interrompre}
+        erreur={erreur}
         desactive={!state.tdrId}
         desactiveRaison="Disponible une fois le brouillon ouvert."
         onGenerer={() => void proposer()}
@@ -125,12 +183,6 @@ export function EtapeObjectifs({
         ]}
       />
 
-      {erreur && (
-        <p className="text-caption text-danger-text flex items-start gap-2">
-          <WarningAltFilled size={16} className="mt-0.5 shrink-0" aria-hidden />
-          {erreur}
-        </p>
-      )}
     </div>
   );
 }

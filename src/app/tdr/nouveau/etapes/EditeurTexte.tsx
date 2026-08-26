@@ -23,7 +23,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { AiGenerate, Chat, ChevronDown, List, Undo, WarningAltFilled } from "@carbon/icons-react";
+import { List, StopFilled, WarningAltFilled } from "@carbon/icons-react";
+import { BoutonAssistance, optionsCommunes } from "./BoutonAssistance";
 
 interface Props {
   valeur: string;
@@ -48,8 +49,32 @@ interface Props {
   /** Rend la valeur d'avant la dernière reprise. */
   onAnnuler?: () => void;
   enCours?: boolean;
+  /**
+   * Interrompt la génération.
+   *
+   * Une génération engagée se subissait jusqu'au bout : vingt secondes
+   * pendant lesquelles la saisie est fermée, sans autre issue que
+   * d'attendre. Un travail qu'on ne peut pas arrêter n'est pas un outil,
+   * c'est une contrainte.
+   */
+  onArreter?: () => void;
+  /**
+   * Ce que l'assistant est en train de faire, en clair.
+   *
+   * « L'assistant rédige » était dit d'emblée et restait figé, y compris
+   * pendant les sept secondes — mesurées — où le modèle réfléchit sans
+   * écrire un mot. Un repère qui ne bouge pas ne prouve rien.
+   */
+  etat?: string;
   desactive?: boolean;
   desactiveRaison?: string;
+  /**
+   * L'assistant travaille AILLEURS — sur un autre champ, ou depuis le fil.
+   *
+   * Le bouton se désactive alors, et le dit. Sans cela, deux demandes
+   * partaient de front vers le même dossier.
+   */
+  occupeAilleurs?: boolean;
 }
 
 export function EditeurTexte({
@@ -63,8 +88,11 @@ export function EditeurTexte({
   erreur,
   onAnnuler,
   enCours,
+  onArreter,
+  etat,
   desactive,
   desactiveRaison,
+  occupeAilleurs,
 }: Props) {
   const zone = useRef<HTMLTextAreaElement>(null);
   const [menu, setMenu] = useState(false);
@@ -108,7 +136,15 @@ export function EditeurTexte({
   }, [valeur]);
 
   const mots = valeur.trim() ? valeur.trim().split(/\s+/).length : 0;
-  const signes = valeur.length;
+
+  /** La phase, en un mot, pour le bouton. Le détail va au repère flottant. */
+  const etatCourt = !enCours
+    ? undefined
+    : etat?.startsWith("L’assistant réfléchit")
+      ? "Réflexion…"
+      : etat?.startsWith("Lecture") || etat?.startsWith("Dossier lu")
+        ? "Lecture…"
+        : "Rédaction…";
 
   /** Préfixe les lignes sélectionnées, ou la ligne courante. */
   const puces = () => {
@@ -127,111 +163,72 @@ export function EditeurTexte({
   };
 
   return (
-    <div className="border-subtle bg-background focus-within:border-strong flex w-full flex-col border shadow-sm">
+    <div
+      className={`bg-background flex w-full flex-col border shadow-sm transition-colors ${
+        // Le cadre dit qui écrit. Pendant une génération, la surface porte
+        // le liseré de l'IA : c'est le signe le plus large et le plus
+        // périphérique qu'on puisse donner, et il se voit sans être lu.
+        enCours ? "border-ai" : "border-subtle focus-within:border-strong"
+      }`}
+    >
       {/* ---------- Barre d'outils ---------- */}
       <div className="border-subtle bg-layer flex flex-wrap items-center gap-1 border-b px-2 py-1.5">
         {parLigne && (
           <button
             type="button"
             onClick={puces}
+            disabled={enCours}
             title="Mettre en liste — une entrée par ligne"
             aria-label="Mettre en liste"
-            className="ptn-carte-liste text-secondary hover:bg-layer-hover hover:text-primary inline-flex h-8 w-8 items-center justify-center"
+            className="ptn-carte-liste text-secondary hover:bg-layer-hover hover:text-primary inline-flex h-8 w-8 items-center justify-center disabled:opacity-40"
           >
             <List size={16} aria-hidden />
           </button>
         )}
 
         {erreur ? (
-          // Le compteur cède la place : deux informations concurrentes au
-          // même endroit, c'est celle qui demande une décision qui passe.
+          /* L'échec se lit COLLÉ au bouton qui le lève, et il demande un
+             geste plutôt que de constater une panne. Le compteur cède la
+             place : de deux informations au même endroit, c'est celle qui
+             appelle une décision qui passe. */
           <span
             role="alert"
-            className="text-caption text-danger-text ml-auto inline-flex items-center gap-1.5"
+            className="text-caption text-danger-text ml-auto inline-flex items-center gap-1.5 pl-2"
           >
             <WarningAltFilled size={14} className="shrink-0" aria-hidden />
             {erreur}
           </span>
+        ) : enCours ? (
+          /* Rien ici pendant la génération. Compter les mots d'un texte qui
+             s'écrit n'apprend rien, et l'état complet est sur le repère
+             flottant — le redire ici l'affichait deux fois à l'écran. */
+          <span className="ml-auto" />
         ) : (
+          /* Les signes ont été retirés : personne ne rédige un TDR à la
+             frappe près, et deux nombres côte à côte se lisent moins vite
+             qu'un seul. Le mot est l'unité dont parle l'auteur. */
           <span className="text-caption text-helper mono ml-auto tabular-nums" aria-live="polite">
-            {mots} mot{mots > 1 ? "s" : ""} · {signes} signe{signes > 1 ? "s" : ""}
+            {mots} mot{mots > 1 ? "s" : ""}
           </span>
         )}
 
-        {/* Bouton scindé : le clic direct engendre, la flèche donne la main.
-            Deux gestes distincts pour deux intentions distinctes. */}
-        <div className="relative ml-2 flex">
-          <button
-            type="button"
-            onClick={onGenerer}
-            disabled={enCours || desactive}
-            title={desactive ? desactiveRaison : "Rédiger à partir du dossier"}
-            className="bg-ai hover:bg-ai-hover text-on-color text-caption ptn-carte-liste inline-flex items-center gap-2 px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:hover:bg-ai disabled:opacity-40"
-          >
-            <AiGenerate size={16} aria-hidden />
-            {/* « Reprendre » ne disait pas ce qu'il faisait. Sur un champ
-                déjà écrit, l'assistant améliore ce qui est là ; sur un champ
-                vide, il rédige. Le retour arrière, lui, est au menu. */}
-            {enCours ? "Rédaction…" : valeur.trim() ? "Améliorer" : "Générer"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMenu((v) => !v)}
-            disabled={desactive}
-            aria-haspopup="menu"
-            aria-expanded={menu}
-            aria-label="Autres options d’assistance"
-            className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste border-l-on-color/25 inline-flex items-center border-l px-1.5 py-1.5 disabled:cursor-not-allowed disabled:hover:bg-ai disabled:opacity-40"
-          >
-            <ChevronDown size={16} aria-hidden />
-          </button>
-
-          {menu && (
-            <div
-              role="menu"
-              className="border-subtle bg-background ptn-entree-ligne absolute top-full right-0 z-10 mt-1 w-72 border shadow-lg"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className="hover:bg-layer flex w-full items-start gap-3 px-4 py-3 text-left"
-                onClick={() => {
-                  setMenu(false);
-                  onOuvrirAssistant();
-                }}
-              >
-                <Chat size={16} className="text-ai mt-0.5 shrink-0" aria-hidden />
-                <span>
-                  <span className="text-body text-primary block">Guider l’assistant</span>
-                  <span className="text-caption text-helper block">
-                    Dire précisément ce que vous attendez, et relire tout ce qui a été fait
-                    sur ce dossier.
-                  </span>
-                </span>
-              </button>
-
-              {onAnnuler && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="hover:bg-layer border-subtle flex w-full items-start gap-3 border-t px-4 py-3 text-left"
-                  onClick={() => {
-                    setMenu(false);
-                    onAnnuler();
-                  }}
-                >
-                  <Undo size={16} className="text-secondary mt-0.5 shrink-0" aria-hidden />
-                  <span>
-                    <span className="text-body text-primary block">Revenir à mon texte</span>
-                    <span className="text-caption text-helper block">
-                      Rétablit ce qui était écrit avant la dernière génération.
-                    </span>
-                  </span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        <BoutonAssistance
+          libelle={valeur.trim() ? "Améliorer" : "Générer"}
+          onGenerer={onGenerer}
+          enCours={enCours}
+          libelleEnCours={
+            etatCourt ?? "Rédaction…"
+          }
+          bloque={desactive || occupeAilleurs}
+          bloqueRaison={
+            occupeAilleurs
+              ? "L’assistant travaille déjà sur ce dossier. Attendez qu’il ait fini, ou arrêtez-le."
+              : desactiveRaison
+          }
+          menuOuvert={menu}
+          setMenuOuvert={setMenu}
+          options={optionsCommunes({ onOuvrirAssistant, onAnnuler })}
+        />
       </div>
 
       {/* ---------- Page ----------
@@ -255,21 +252,36 @@ export function EditeurTexte({
             un repère dit que ce n'est pas fini. */}
         {enCours && (
           <div
-            className="pointer-events-none sticky bottom-4 flex justify-center"
+            className="sticky bottom-4 flex justify-center"
             role="status"
             aria-live="polite"
           >
             {/* Assez grand pour se voir. En `text-caption` sur un liseré
                 fin, le repère passait inaperçu au milieu d'un texte qui
                 défile — or c'est le seul signe que la saisie est fermée à
-                dessein et non bloquée. */}
-            <span className="border-ai bg-ai-surface text-body-compact text-ai-text ptn-entree-ligne inline-flex items-center gap-3 border-2 px-5 py-3 font-medium shadow-md">
+                dessein et non bloquée.
+
+                Il porte maintenant DEUX choses qu'il n'avait pas : ce que
+                l'assistant fait à cet instant, et de quoi l'arrêter. Sans
+                le second, une génération engagée se subissait. */}
+            <span className="border-ai bg-ai-surface text-body-compact text-ai-text ptn-entree-ligne inline-flex items-center gap-3 border-2 py-2 pr-2 pl-5 font-medium shadow-md">
               <span className="ptn-points" aria-hidden>
                 <i />
                 <i />
                 <i />
               </span>
-              L’assistant rédige — veuillez patienter
+              {etat ?? "L’assistant rédige — veuillez patienter"}
+              {onArreter && (
+                <button
+                  type="button"
+                  onClick={onArreter}
+                  title="Arrêter la génération"
+                  className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-inherit transition-colors"
+                >
+                  <StopFilled size={14} aria-hidden />
+                  Arrêter
+                </button>
+              )}
             </span>
           </div>
         )}

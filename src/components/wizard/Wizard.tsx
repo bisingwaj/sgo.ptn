@@ -123,6 +123,14 @@ export interface WizardProps<T = unknown> {
   aside?: ReactNode;
   asideOpen?: boolean;
   /**
+   * Le panneau prend la moitié de la place au lieu de sa colonne.
+   *
+   * La largeur appartient à la grille, non au panneau : celui-ci ne peut
+   * pas s'élargir tout seul, et le bouton d'extension ne changeait que son
+   * pictogramme. La décision reste au panneau, la mise en page ici.
+   */
+  asideEtendu?: boolean;
+  /**
    * Modification poussée de l'extérieur.
    *
    * Le Wizard détient l'état du dossier ; un panneau latéral qui écrit en
@@ -162,6 +170,7 @@ export function Wizard<T>({
   finishLabel = "Accéder à mon tableau de bord",
   aside,
   asideOpen = false,
+  asideEtendu = false,
   patch,
   onFinish,
   onDraftChange,
@@ -358,7 +367,9 @@ export function Wizard<T>({
         {headerTrailing && <div className={styles.headerTrailing}>{headerTrailing}</div>}
       </header>
 
-      <div className={styles.workspace} data-aside={aside ? (asideOpen ? "ouvert" : "replie") : undefined}>
+      <div className={styles.workspace} data-aside={
+          aside ? (asideOpen ? (asideEtendu ? "etendu" : "ouvert") : "replie") : undefined
+        }>
         {/* ===== Rail des étapes =====
             Vertical plutôt qu'horizontal : au-delà de cinq ou six étapes,
             une rangée écrase les libellés jusqu'à l'illisible. Le numéro

@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { lireCapacites, type CapacitesModele } from './capacites';
 
 /** Un tour de conversation, au format des API compatibles OpenAI. */
 /**
@@ -62,6 +63,9 @@ export interface GenerationRequest {
   temperature?: number;
   /** Exiger une réponse JSON stricte */
   json?: boolean;
+  /** Voir `ChatRequest.raisonnement` : la réflexion coûte, elle ne rapporte
+   * rien sur une rédaction dont la consigne porte déjà tout. */
+  raisonnement?: 'aucun' | 'defaut';
 }
 
 export interface ChatRequest {
@@ -75,6 +79,29 @@ export interface ChatRequest {
    * entière.
    */
   timeoutMs?: number;
+
+  /**
+   * Faut-il laisser le modèle RÉFLÉCHIR avant de répondre ?
+   *
+   * Le modèle en place est un modèle à raisonnement, et chez ce
+   * fournisseur `max_tokens` couvre la réflexion autant que le texte. Sur
+   * une rédaction de section, mesuré le 25 août 2026 à consigne
+   * identique :
+   *
+   *   défaut          50,7 s — 1531 jetons de réflexion — 1959 caractères
+   *   effort « low »  42,8 s —  127                     — 2233
+   *   désactivée      20,2 s —    0                     — 1659
+   *
+   * Deux fois et demie plus rapide, pour un texte de même ampleur. Rédiger
+   * une section n'est pas un problème à résoudre : la consigne, l'ancrage
+   * et les repères sont DÉJÀ dans l'invite, et le modèle n'a rien à
+   * déduire. La réflexion n'y achetait que de l'attente — et, quand elle
+   * dérapait, elle mangeait tout le plafond et il ne sortait pas un mot.
+   *
+   * L'agent, lui, la garde : il choisit des outils et enchaîne des tours,
+   * ce qui est bien une délibération.
+   */
+  raisonnement?: 'aucun' | 'defaut';
 }
 
 export interface GenerationResult {
@@ -99,9 +126,21 @@ export interface GenerationResult {
  * `texte` porte un fragment à afficher au fil de l'eau. `outil` porte un
  * fragment d'appel d'outil : le fournisseur envoie le nom d'abord, puis les
  * arguments par morceaux, qu'il faut réassembler avant de les lire.
+ *
+ * `reflexion` dit qu'un modèle à raisonnement PENSE, sans livrer ce qu'il
+ * pense. Mesuré sur `deepseek-v4-flash-0731` : 383 fragments arrivent avec
+ * `content: ""` et un `reasoning` non vide, soit 7,4 secondes sur une
+ * génération de 15,9 — près de la moitié de l'attente. Le filtre
+ * `if (delta?.content)` les écartait tous, et l'écran restait muet pendant
+ * que le fournisseur, lui, parlait sans discontinuer.
+ *
+ * L'évènement ne porte QUE la mesure, jamais le texte de la réflexion :
+ * elle n'a rien à faire dans un champ ni dans une pièce contractuelle. Ce
+ * qui remonte est de quoi dire « il travaille, et voici depuis quand ».
  */
 export type StreamEvent =
   | { type: 'texte'; delta: string }
+  | { type: 'reflexion'; caracteres: number }
   | {
       type: 'outil';
       index: number;
@@ -134,7 +173,47 @@ export class AiService {
   /** Un tour de conversation est court ; composer une section ne l'est pas. */
   private static readonly TIMEOUT_DEFAUT = 60_000;
 
+  /**
+   * Capacités du modèle, lues une fois et gardées.
+   *
+   * Le catalogue ne bouge pas d'une requête à l'autre et l'écran interroge
+   * cette route à chaque ouverture du parcours : la relire à chaque fois
+   * ajouterait un aller-retour vers un tiers sur un chemin chaud, pour une
+   * réponse identique. Le cache expire tout de même — un fournisseur peut
+   * publier une variante multimodale du même identifiant, et il ne faut pas
+   * qu'un redémarrage soit nécessaire pour en profiter.
+   */
+  private capacitesEnCache: {
+    a: number;
+    valeur: Promise<CapacitesModele>;
+  } | null = null;
+
+  private static readonly CACHE_CAPACITES = 30 * 60 * 1000;
+
   constructor(private readonly config: ConfigService) {}
+
+  /**
+   * Ce que le modèle configuré sait faire, pour que l'écran n'offre que ce
+   * qui marche. Voir `capacites.ts` — la capacité se lit, elle ne se
+   * suppose pas.
+   */
+  capacites(): Promise<CapacitesModele> {
+    const maintenant = Date.now();
+    if (
+      this.capacitesEnCache &&
+      maintenant - this.capacitesEnCache.a < AiService.CACHE_CAPACITES
+    ) {
+      return this.capacitesEnCache.valeur;
+    }
+    const valeur = lireCapacites(this.model).catch((e: unknown) => {
+      // Une promesse rejetée mise en cache rejetterait pour toute la durée
+      // du cache. On la vide donc, et l'appel suivant réessaie.
+      this.capacitesEnCache = null;
+      throw e;
+    });
+    this.capacitesEnCache = { a: maintenant, valeur };
+    return valeur;
+  }
 
   get isConfigured(): boolean {
     return Boolean(this.config.get<string>('OPENROUTER_API_KEY'));
@@ -155,6 +234,19 @@ export class AiService {
       );
     }
     return key;
+  }
+
+  /**
+   * Le réglage de raisonnement, dans la forme attendue par OpenRouter.
+   *
+   * Rendu vide quand on garde le défaut : envoyer `{}` ou une valeur
+   * neutre serait interprété par certains fournisseurs, et le silence est
+   * la seule façon sûre de ne rien changer.
+   */
+  private static raisonnement(
+    mode: 'aucun' | 'defaut' | undefined,
+  ): Record<string, unknown> {
+    return mode === 'aucun' ? { reasoning: { enabled: false } } : {};
   }
 
   private headers(apiKey: string): Record<string, string> {
@@ -262,6 +354,7 @@ export class AiService {
         temperature: request.temperature ?? 0.3,
         max_tokens: request.maxTokens ?? 1200,
         ...(request.tools?.length ? { tools: request.tools } : {}),
+        ...AiService.raisonnement(request.raisonnement),
         messages: AiService.cacheSystem(request.messages),
       },
       request.timeoutMs ?? AiService.TIMEOUT_DEFAUT,
@@ -319,6 +412,7 @@ export class AiService {
         max_tokens: request.maxTokens ?? 1200,
         stream: true,
         ...(request.tools?.length ? { tools: request.tools } : {}),
+        ...AiService.raisonnement(request.raisonnement),
         messages: AiService.cacheSystem(request.messages),
       },
       request.timeoutMs ?? AiService.TIMEOUT_DEFAUT,
@@ -331,6 +425,7 @@ export class AiService {
 
     const decoder = new TextDecoder();
     let tampon = '';
+    let reflexion = 0;
 
     // Les fragments arrivent découpés arbitrairement : une ligne SSE peut
     // être coupée en deux lectures. On accumule et on ne traite que les
@@ -353,6 +448,11 @@ export class AiService {
           choices?: Array<{
             delta?: {
               content?: string | null;
+              /**
+               * Les modèles à raisonnement livrent leur réflexion ici, et
+               * laissent `content` à la chaîne vide tant qu'ils pensent.
+               */
+              reasoning?: string | null;
               tool_calls?: Array<{
                 index: number;
                 id?: string;
@@ -375,6 +475,15 @@ export class AiService {
         const delta = choix?.delta;
 
         if (delta?.content) yield { type: 'texte', delta: delta.content };
+
+        // La réflexion est comptée, jamais rendue. Le compteur cumulé
+        // permet à l'appelant d'espacer ce qu'il met sur le fil : le
+        // fournisseur en envoie des centaines de fragments, l'auteur n'a
+        // besoin que de savoir que ça avance.
+        if (delta?.reasoning) {
+          reflexion += delta.reasoning.length;
+          yield { type: 'reflexion', caracteres: reflexion };
+        }
 
         for (const appel of delta?.tool_calls ?? []) {
           yield {
@@ -417,6 +526,7 @@ export class AiService {
         temperature: request.temperature ?? 0.3,
         max_tokens: request.maxTokens ?? 1200,
         ...(request.json ? { response_format: { type: 'json_object' } } : {}),
+        ...AiService.raisonnement(request.raisonnement),
         messages: AiService.cacheSystem([
           { role: 'system', content: request.system },
           { role: 'user', content: request.user },

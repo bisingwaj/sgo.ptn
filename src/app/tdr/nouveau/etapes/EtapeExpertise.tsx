@@ -32,9 +32,12 @@ import { EtapeTexte } from "./EtapeTexte";
 export function EtapeExpertise({
   state,
   set,
+  persist,
 }: {
   state: State;
   set: (s: State) => void;
+  /** Voir `EtapeTexte.persist` : ce que l'assistant écrit part sans attendre. */
+  persist?: (s: State, patch: Record<string, unknown>) => Promise<void>;
 }) {
   const retenus = state.keyProfiles.length;
 
@@ -49,6 +52,7 @@ export function EtapeExpertise({
 
   return (
     <EtapeTexte
+      persist={persist}
       champ={CHAMPS_TEXTE.expertise}
       state={state}
       set={set}

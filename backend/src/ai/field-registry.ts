@@ -55,6 +55,18 @@ export interface FieldSpec {
   /** Ce que le champ contient, dit au modèle */
   description: string;
   /** Étape du parcours qui le porte, pour situer l'écriture à l'écran */
+  /**
+   * L'étape du parcours où ce champ se corrige, numéro compris.
+   *
+   * Le numéro N'EST PAS décoratif : c'est ce que l'auteur lit dans le rail,
+   * et c'est la seule façon de retrouver un champ parmi dix-huit écrans.
+   * Ces libellés dataient du wizard groupé — l'assistant annonçait « étape
+   * Objectifs & livrables » alors que les deux avaient été scindées en 08
+   * et 09, et « Calendrier & expertise » n'existait plus depuis que 13 et
+   * 14 avaient été séparées.
+   *
+   * À tenir à jour avec `steps[]` de `TdrCreationClient`.
+   */
   etape: string;
   /**
    * Nom du champ tel qu'un humain le lit.
@@ -85,7 +97,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'context',
     libelle: 'Contexte',
     kind: 'texte',
-    etape: 'Cadrage',
+    etape: '04 · Contexte',
     max: 40000,
     description:
       "Contexte du dossier : ce qui motive l'activité, son rattachement à la composante et au plan annuel. Deux à trois paragraphes.",
@@ -94,7 +106,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'justification',
     libelle: 'Justification',
     kind: 'texte',
-    etape: 'Cadrage',
+    etape: '05 · Justification',
     max: 30000,
     description:
       'Justification : pourquoi ce marché maintenant, et ce que son report coûterait. Un à deux paragraphes.',
@@ -103,7 +115,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'beneficiaries',
     libelle: 'Bénéficiaires visés',
     kind: 'texte',
-    etape: 'Cadrage',
+    etape: '06 · Bénéficiaires',
     max: 16000,
     description:
       "Bénéficiaires visés : les populations servies, non l'institution maître d'ouvrage. Quantifier si possible.",
@@ -112,7 +124,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'expectedResults',
     libelle: 'Résultats attendus',
     kind: 'texte',
-    etape: 'Objectifs & livrables',
+    etape: '07 · Résultats attendus',
     max: 24000,
     description:
       'Résultats attendus : ce qui sera constaté, avec son horizon. Un par ligne.',
@@ -121,7 +133,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'objectives',
     libelle: 'Objectifs',
     kind: 'liste_objectifs',
-    etape: 'Objectifs & livrables',
+    etape: '08 · Objectifs SMART',
     description:
       "Objectifs SMART. Chacun porte un énoncé ouvert par un verbe d'action à l'infinitif, et un critère de succès mesurable.",
   },
@@ -129,7 +141,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'deliverables',
     libelle: 'Livrables attendus',
     kind: 'liste_livrables',
-    etape: 'Objectifs & livrables',
+    etape: '09 · Livrables',
     description:
       'Livrables. Chacun porte un intitulé, un format court, et une échéance en délai relatif au démarrage (J+15, S+4, M+6) — jamais de date ferme.',
   },
@@ -137,7 +149,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'approach',
     libelle: 'Approche',
     kind: 'texte',
-    etape: 'Méthodologie',
+    etape: '10 · Approche',
     max: 30000,
     description: 'Approche générale : la démarche retenue, son phasage.',
   },
@@ -145,7 +157,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'methodology',
     libelle: 'Méthodologie',
     kind: 'texte',
-    etape: 'Méthodologie',
+    etape: '11 · Méthodologie',
     max: 30000,
     description:
       'Méthodes et outils : standards, référentiels, instruments mobilisés.',
@@ -154,7 +166,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'constraints',
     libelle: 'Contraintes',
     kind: 'texte',
-    etape: 'Méthodologie',
+    etape: '12 · Contraintes',
     max: 24000,
     description:
       'Contraintes : dépendances, ressources critiques, fenêtres de décision.',
@@ -163,7 +175,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'expertise',
     libelle: 'Expertise requise',
     kind: 'texte',
-    etape: 'Calendrier & expertise',
+    etape: '14 · Expertise',
     max: 24000,
     description:
       "Expertise requise : qualifications et expérience attendues de l'institution ou de l'équipe.",
@@ -174,14 +186,14 @@ export const FIELDS: FieldSpec[] = [
     cle: 'startDate',
     libelle: 'Démarrage souhaité',
     kind: 'date',
-    etape: 'Calendrier & expertise',
+    etape: '13 · Calendrier & couverture',
     description: 'Démarrage souhaité, au format AAAA-MM-JJ.',
   },
   {
     cle: 'durationMonths',
     libelle: 'Durée du marché',
     kind: 'entier',
-    etape: 'Calendrier & expertise',
+    etape: '13 · Calendrier & couverture',
     description:
       'Durée du marché en mois. Elle borne les échéances des livrables.',
   },
@@ -189,7 +201,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'effortDays',
     libelle: 'Volume d’effort',
     kind: 'entier',
-    etape: 'Calendrier & expertise',
+    etape: '13 · Calendrier & couverture',
     description:
       "Volume d'effort en jours-homme, unité de facturation d'un marché de prestation.",
   },
@@ -203,7 +215,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'budgetTotalUsd',
     libelle: 'Budget total',
     kind: 'montant',
-    etape: 'Budget',
+    etape: '15 · Budget',
     description:
       "Budget total du marché, en USD. À n'écrire que si l'auteur le dicte ou s'il figure dans une pièce du dossier.",
   },
@@ -211,21 +223,21 @@ export const FIELDS: FieldSpec[] = [
     cle: 'budgetIdaUsd',
     libelle: 'Part IDA',
     kind: 'montant',
-    etape: 'Budget',
+    etape: '15 · Budget',
     description: "Part financée par l'IDA, en USD.",
   },
   {
     cle: 'budgetAfdUsd',
     libelle: 'Part AFD',
     kind: 'montant',
-    etape: 'Budget',
+    etape: '15 · Budget',
     description: "Part financée par l'AFD, en USD.",
   },
   {
     cle: 'budgetGovUsd',
     libelle: 'Part Gouvernement',
     kind: 'montant',
-    etape: 'Budget',
+    etape: '15 · Budget',
     description: 'Part financée par le Gouvernement, en USD.',
   },
 
@@ -234,7 +246,7 @@ export const FIELDS: FieldSpec[] = [
     cle: 'beneficiaryOrganisation',
     libelle: 'Maîtrise d’ouvrage bénéficiaire',
     kind: 'organisation',
-    etape: 'Rattachement',
+    etape: '03 · Identification',
     description:
       "Maîtrise d'ouvrage bénéficiaire : l'entité POUR laquelle l'activité est conduite. Donnez son CODE au référentiel (ANCY, ONIP, ARPTC…), que `lister_organisations` énumère. À ne pas confondre avec les bénéficiaires visés, qui sont des populations.",
   },

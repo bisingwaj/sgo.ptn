@@ -12,30 +12,60 @@
  * ici, sous la liste, et non dans chaque entrée.
  */
 
-import { useState } from "react";
-import { WarningAltFilled } from "@carbon/icons-react";
+import { useEffect, useState } from "react";
 import { Select } from "@/components/wizard/WizardFields";
 import { tdrApi, ApiError } from "@/lib/api";
 import type { State } from "../etat";
-import { useAssistant } from "../assistant-contexte";
+import { messageDEchec, useAssistant } from "../assistant-contexte";
 import { DELIVERABLE_FORMATS, GABARITS_LIVRABLE, REPORTING_RHYTHMS } from "../referentiel-ecran";
 import { ListeEntrees } from "./ListeEntrees";
 
 export function EtapeLivrables({
   state,
   set,
+  persist,
 }: {
   state: State;
   set: (s: State) => void;
+  /**
+   * Enregistre sans attendre le changement d'étape.
+   *
+   * Même défaut que sur les champs de texte : une liste proposée par
+   * l'assistant ne partait au serveur qu'au bouton « Suivant », et le rail
+   * des étapes n'enregistre rien. Une écriture de l'agent déclenchait alors
+   * une relecture qui rapportait la liste de la BASE — sans les entrées
+   * qu'on venait d'obtenir.
+   */
+  persist?: (s: State, patch: Record<string, unknown>) => Promise<void>;
 }) {
   const assistant = useAssistant();
-  const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+
+  // L'état de travail est UNIQUE et vit dans le contexte : le bouton d'une
+  // étape et le fil ne pouvaient pas se voir, et lançaient deux demandes
+  // sur le même dossier sans que rien ne le signale.
+  const travail = assistant.travail;
+  const nôtre = travail?.origine === "champ" && travail.champ === "deliverables";
+  const ailleurs = Boolean(travail) && !nôtre;
+
+  /** Un message d'échec qui s'installe cesse d'être lu. Voir `EtapeTexte`. */
+  useEffect(() => {
+    if (!erreur) return;
+    const t = setTimeout(() => setErreur(null), 12_000);
+    return () => clearTimeout(t);
+  }, [erreur]);
 
   const proposer = async () => {
     if (!state.tdrId) return;
-    setEnCours(true);
+    const signal = assistant.demarrer({
+      origine: "champ",
+      champ: "deliverables",
+      libelleChamp: "Livrables",
+      phase: "envoi",
+    });
+    if (!signal) return;
     setErreur(null);
+    assistant.ouvrirEnLigne("Proposer des livrables", "deliverables");
     try {
       const r = await tdrApi.assistDeliverables(state.tdrId);
       if (r.proposal.length === 0) {
@@ -43,35 +73,65 @@ export function EtapeLivrables({
         // laisser croire à une panne — le plus souvent, les objectifs
         // manquent, et un livrable qui ne sert aucun objectif ne se commande
         // pas.
-        setErreur(
-          "L’assistant n’a rien proposé. Les livrables découlent des objectifs : vérifiez que l’étape précédente en porte au moins un.",
-        );
+        const rien =
+          "L’assistant n’a rien proposé. Les livrables découlent des objectifs : vérifiez que l’étape précédente en porte au moins un.";
+        setErreur(rien);
+        assistant.majDerniere((b) => ({
+          ...b,
+          encours: false,
+          actes: [...b.actes, { genre: "refus", libelle: rien }],
+        }));
         return;
       }
-      set({
+      const suivant = {
         ...state,
         deliverables: [...state.deliverables, ...r.proposal],
         aiAssistedFields: state.aiAssistedFields.includes("deliverables")
           ? state.aiAssistedFields
           : [...state.aiAssistedFields, "deliverables"],
-      });
-      assistant.consignerEnLigne(
-        "Proposer des livrables",
-        r.proposal
+      };
+      set(suivant);
+      // Au serveur tout de suite : voir `persist`.
+      void persist?.(suivant, {
+        deliverables: suivant.deliverables,
+        aiAssisted: suivant.aiAssistedFields,
+      })?.catch(() => undefined);
+      // La bulle a été ouverte AVANT l'appel : on ne fait que la clore.
+      // Elle était créée après coup, si bien que le fil restait immobile
+      // pendant toute l'attente puis tout apparaissait d'un bloc — on ne
+      // pouvait donc pas savoir où une génération avait échoué.
+      assistant.majDerniere((b) => ({
+        ...b,
+        encours: false,
+        texte: r.proposal
           .map((d, i) => `L${i + 1} · ${d.title}${d.deadline ? ` — ${d.deadline}` : ""}`)
           .join("\n"),
-        "deliverables",
-      );
+        actes: [
+          ...b.actes,
+          {
+            genre: "ecriture",
+            libelle: `${r.proposal.length} livrables ajoutés à la liste`,
+            champ: "deliverables",
+          },
+        ],
+      }));
     } catch (e) {
-      setErreur(
+      const brut =
         e instanceof ApiError && e.status === 503
           ? "L’assistance n’est pas configurée sur ce serveur. Les livrables restent à saisir à la main."
           : e instanceof Error
             ? e.message
-            : "La proposition n’a pas abouti.",
-      );
+            : "La proposition n’a pas abouti.";
+      // Le message dit quoi FAIRE. Voir `messageDEchec`.
+      const message = messageDEchec(brut);
+      setErreur(message);
+      assistant.majDerniere((b) => ({
+        ...b,
+        encours: false,
+        actes: [...b.actes, { genre: "refus", libelle: message }],
+      }));
     } finally {
-      setEnCours(false);
+      assistant.terminer();
     }
   };
 
@@ -108,7 +168,10 @@ export function EtapeLivrables({
         videTexte="Aucun livrable pour l’instant. Ajoutez-en un, ou demandez une proposition à l’assistant."
         labelGenerer="Proposer des livrables"
         gabarits={GABARITS_LIVRABLE}
-        enCours={enCours}
+        enCours={nôtre}
+        occupeAilleurs={ailleurs}
+        onArreter={assistant.interrompre}
+        erreur={erreur}
         desactive={!state.tdrId}
         desactiveRaison="Disponible une fois le brouillon ouvert."
         onGenerer={() => void proposer()}
@@ -129,12 +192,6 @@ export function EtapeLivrables({
         ]}
       />
 
-      {erreur && (
-        <p className="text-caption text-danger-text flex items-start gap-2">
-          <WarningAltFilled size={16} className="mt-0.5 shrink-0" aria-hidden />
-          {erreur}
-        </p>
-      )}
 
       {/* Modalités valant pour tout le marché, et non livrable par livrable. */}
       <div className="border-subtle grid gap-6 border-t pt-6 sm:grid-cols-2">

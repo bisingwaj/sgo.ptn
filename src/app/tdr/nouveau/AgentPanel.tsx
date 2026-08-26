@@ -16,20 +16,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parlerAgent, type AgentEvent, type TourDeParole } from "@/lib/agent-stream";
 import { TexteEnrichi } from "@/components/ui/TexteEnrichi";
-import { apercuDePiece, tdrApi, type PieceJointeApi } from "@/lib/api";
+import {
+  aiApi,
+  apercuDePiece,
+  tdrApi,
+  type CapacitesIa,
+  type PieceJointeApi,
+} from "@/lib/api";
 import {
   AiGenerate,
   Attachment,
   Close,
   Document,
   DocumentPdf,
+  Maximize,
+  Minimize,
   SendAlt,
+  StopFilled,
   Undo,
   WarningAltFilled,
 } from "@carbon/icons-react";
 import { IconButton, InlineLoading } from "@carbon/react";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { useAssistant, type Bulle, type Ecriture } from "./assistant-contexte";
+import { useAssistant, type Bulle, type Ecriture, type Travail } from "./assistant-contexte";
 
 /** Une écriture faite par l'assistant, et de quoi la défaire. */
 export type { Ecriture } from "./assistant-contexte";
@@ -106,24 +115,42 @@ export function AgentPanel({
   onAnnuler: (e: Ecriture) => void;
   etapeCourante: string;
 }) {
-  // Le fil vit dans le contexte : une génération lancée depuis un champ s'y
-  // inscrit aussi, et le panneau n'en est qu'une vue.
-  const { ouvert, fermer, bulles, setBulles, champCourant } = useAssistant();
+  // Le fil ET l'état de travail vivent dans le contexte : une génération
+  // lancée depuis un champ s'y inscrit aussi, et le panneau n'en est qu'une
+  // vue. C'est ce qui permet de le fermer sans rien interrompre.
+  const {
+    ouvert,
+    fermer,
+    etendu,
+    basculerEtendu,
+    bulles,
+    setBulles,
+    champCourant,
+    travail,
+    occupe,
+    demarrer,
+    majTravail,
+    terminer,
+    interrompre,
+    majDerniere,
+  } = useAssistant();
+
   const [saisie, setSaisie] = useState("");
-  const [occupe, setOccupe] = useState(false);
   const [apercu, setApercu] = useState<{ champ: string; texte: string } | null>(null);
 
   const filRef = useRef<HTMLDivElement>(null);
   const saisieRef = useRef<HTMLTextAreaElement>(null);
-  const abandonRef = useRef<AbortController | null>(null);
 
   // Le fil suit la génération : un texte qui s'écrit hors de vue ne sert
   // à rien.
   useEffect(() => {
     filRef.current?.scrollTo({ top: filRef.current.scrollHeight, behavior: "smooth" });
-  }, [bulles, apercu]);
+  }, [bulles, apercu, travail]);
 
-  useEffect(() => () => abandonRef.current?.abort(), []);
+  // NOTE — il n'y a PLUS de nettoyage qui interrompe au démontage.
+  // Le contrôleur vit dans le contexte, si bien que fermer le panneau ne
+  // tue plus la demande en cours. C'était le contraire de ce que le module
+  // annonce depuis le début : « on peut le fermer sans rien perdre ».
 
   // La saisie grandit avec son contenu jusqu'à un plafond, comme dans une
   // interface de conversation. Une seule ligne avec ascenseur dès le
@@ -133,18 +160,22 @@ export function AgentPanel({
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 192)}px`;
-  }, [saisie]);
+  }, [saisie, etendu]);
 
   const envoyer = useCallback(
     async (instruction: string) => {
-      if (!tdrId || occupe || !instruction.trim()) return;
+      if (!tdrId || !instruction.trim()) return;
+
+      // Le verrou est partagé : si une rédaction lancée depuis un champ
+      // court déjà, elle vise peut-être le même champ que cette demande.
+      const signal = demarrer({ origine: "fil", phase: "envoi" });
+      if (!signal) return;
 
       const historique: TourDeParole[] = bulles
         .filter((b) => b.texte.trim())
         .map((b) => ({ role: b.role, content: b.texte }));
 
       setSaisie("");
-      setOccupe(true);
       setApercu(null);
       setBulles((b) => [
         ...b,
@@ -152,24 +183,21 @@ export function AgentPanel({
         { role: "assistant", texte: "", actes: [], ecritures: [], encours: true },
       ]);
 
-      const controleur = new AbortController();
-      abandonRef.current = controleur;
-
-      const majDerniere = (f: (b: Bulle) => Bulle) =>
-        setBulles((tout) => tout.map((b, i) => (i === tout.length - 1 ? f(b) : b)));
-
       try {
-        for await (const ev of parlerAgent(tdrId, instruction, historique, controleur.signal)) {
-          appliquer(ev, majDerniere, setApercu, onEcriture);
+        for await (const ev of parlerAgent(tdrId, instruction, historique, signal)) {
+          appliquer(ev, majDerniere, setApercu, onEcriture, majTravail);
         }
       } finally {
-        majDerniere((b) => ({ ...b, encours: false }));
+        majDerniere((b) => ({
+          ...b,
+          encours: false,
+          interrompu: signal.aborted || undefined,
+        }));
         setApercu(null);
-        setOccupe(false);
-        abandonRef.current = null;
+        terminer();
       }
     },
-    [tdrId, occupe, bulles, onEcriture, setBulles],
+    [tdrId, bulles, onEcriture, setBulles, demarrer, terminer, majDerniere, majTravail],
   );
 
   // Fermé, il n'occupe rien : plus de poignée flottante en permanence.
@@ -181,24 +209,69 @@ export function AgentPanel({
 
   return (
     <aside
-      className="border-subtle bg-background flex h-full max-h-full w-full min-h-0 flex-col border-l"
+      className={`border-subtle bg-background flex h-full max-h-full w-full min-h-0 flex-col border-l ${
+        // Étendu, le panneau se détache : une ombre portée et un liseré
+        // plus marqué disent qu'il passe DEVANT le parcours et non à côté.
+        etendu ? "shadow-2xl" : ""
+      }`}
       aria-label="Assistant du dossier"
     >
-      {/* ---------- En-tête ---------- */}
+      {/* ---------- En-tête ----------
+          Deux lignes seulement, et la seconde change de nature pendant le
+          travail : elle disait l'étape en cours, elle dit maintenant ce que
+          l'assistant fait. C'est la même place, pour l'information la plus
+          utile à cet instant. */}
       <header className="border-subtle flex items-center gap-3 border-b px-4 py-3">
-        <span className="bg-ai-surface text-ai flex h-8 w-8 shrink-0 items-center justify-center">
+        <span
+          className={`bg-ai-surface text-ai flex h-8 w-8 shrink-0 items-center justify-center ${
+            occupe ? "ptn-battement" : ""
+          }`}
+        >
           <AiGenerate size={18} aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
           <span className="text-body text-primary block font-medium">Assistant du dossier</span>
-          <span className="text-caption text-helper block truncate">
-            {champCourant ?? etapeCourante}
-          </span>
+          {travail ? (
+            <span
+              className="text-caption text-ai-text flex items-center gap-2 truncate"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="ptn-points" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              {libelleEtat(travail)}
+            </span>
+          ) : (
+            <span className="text-caption text-helper block truncate">
+              {champCourant ?? etapeCourante}
+            </span>
+          )}
         </span>
+
+        {/* Un fil de conversation est illisible dans un rail de 380 px dès
+            qu'il porte un récapitulatif ou une liste. L'auteur l'étend le
+            temps de lire, puis le rend à sa colonne. */}
+        <button
+          type="button"
+          onClick={basculerEtendu}
+          aria-label={etendu ? "Réduire l’assistant" : "Étendre l’assistant"}
+          title={etendu ? "Réduire à la colonne" : "Étendre sur la page"}
+          className="ptn-carte-liste text-secondary hover:bg-layer hover:text-primary flex h-8 w-8 items-center justify-center"
+        >
+          {etendu ? <Minimize size={16} aria-hidden /> : <Maximize size={16} aria-hidden />}
+        </button>
         <button
           type="button"
           onClick={fermer}
           aria-label="Fermer l’assistant"
+          title={
+            occupe
+              ? "Fermer — l’assistant poursuit son travail"
+              : "Fermer l’assistant"
+          }
           className="ptn-carte-liste text-secondary hover:bg-layer hover:text-primary flex h-8 w-8 items-center justify-center"
         >
           <Close size={16} aria-hidden />
@@ -212,180 +285,257 @@ export function AgentPanel({
         // lieu de defiler, et pousse la zone de saisie hors du cadre.
         className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4"
       >
-        {vide && (
-          <div className="flex flex-col gap-4 py-6">
-            <p className="text-body text-secondary">
-              Dites-lui ce que vous attendez. Il écrit directement dans les champs du dossier
-              et signale ce qu’il a touché.
-            </p>
-            <p className="text-caption text-helper border-subtle border-l-2 pl-3">
-              Il transcrit ce que vous dictez, montants et dates compris, mais n’en propose
-              aucun de lui-même. Le type d’activité, le rattachement au plan et les
-              attestations de conformité restent à vous : ils se décident, ils ne se
-              rédigent pas.
-            </p>
-            <div className="flex flex-col gap-2">
-              {SUGGESTIONS.map((sug) => (
-                <button
-                  key={sug}
-                  type="button"
-                  onClick={() => void envoyer(sug)}
-                  disabled={!tdrId}
-                  className="ptn-carte-liste border-subtle text-body text-primary hover:border-ai hover:bg-ai-surface border px-3 py-2.5 text-left disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {sug}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {bulles.map((b, i) =>
-          b.role === "user" ? (
-            <div key={i} className="flex justify-end">
-              <p className="bg-layer text-body text-primary ptn-entree-ligne max-w-[85%] px-3 py-2">
-                {b.texte}
+        <div className={etendu ? "mx-auto flex w-full max-w-[72ch] flex-col gap-5" : "contents"}>
+          {vide && (
+            <div className="flex flex-col gap-4 py-6">
+              <p className="text-body text-secondary">
+                Dites-lui ce que vous attendez. Il écrit directement dans les champs du dossier
+                et signale ce qu’il a touché.
               </p>
-            </div>
-          ) : (
-            <div key={i} className="ptn-entree-ligne flex flex-col gap-2">
-              {/* Ce que l'assistant fait, à mesure : sans cela l'auteur
-                  regardait un écran immobile pendant vingt secondes. */}
-              {b.actes.length > 0 && (
-                <ul className="flex flex-col gap-1">
-                  {b.actes.map((a, j) => (
-                    <li
-                      key={j}
-                      className={`text-caption flex items-center gap-2 ${
-                        a.genre === "refus" ? "text-danger-text" : "text-helper"
-                      }`}
-                    >
-                      <i
-                        aria-hidden
-                        className={`inline-block h-1.5 w-1.5 shrink-0 ${
-                          a.genre === "refus" ? "bg-danger" : "bg-ai"
-                        }`}
-                      />
-                      {a.libelle}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {/* Le balisage du modèle est RENDU, non montré : un récapitulatif
-                  se parcourt mieux avec des puces et des intitulés en gras.
-                  Ne vaut que pour la conversation — une valeur de champ n'en
-                  porte aucun, le document n'en rendant pas. */}
-              {b.texte && <TexteEnrichi>{b.texte}</TexteEnrichi>}
-
-              {b.encours && !b.texte && b.actes.length === 0 && (
-                <span className="text-caption text-helper" aria-label="L’assistant travaille">
-                  L’assistant travaille…
-                </span>
-              )}
-
-              {b.ecritures.map((e) => (
-                <div
-                  key={e.champ}
-                  className="border-ai bg-ai-surface flex flex-wrap items-center gap-2 border px-3 py-2"
-                >
-                  <span className="text-caption text-ai-text flex-1">
-                    Écrit dans <strong>{libelleChamp(e.champ)}</strong> · étape {e.etape}
-                  </span>
+              <p className="text-caption text-helper border-subtle border-l-2 pl-3">
+                Il transcrit ce que vous dictez, montants et dates compris, mais n’en propose
+                aucun de lui-même. Le type d’activité, le rattachement au plan et les
+                attestations de conformité restent à vous : ils se décident, ils ne se
+                rédigent pas.
+              </p>
+              <div className="flex flex-col gap-2">
+                {SUGGESTIONS.map((sug) => (
                   <button
+                    key={sug}
                     type="button"
-                    onClick={() => onAnnuler(e)}
-                    className="ptn-carte-liste border-ai text-ai-text text-caption inline-flex items-center gap-1.5 border px-2 py-1"
+                    onClick={() => void envoyer(sug)}
+                    disabled={!tdrId || occupe}
+                    className="ptn-carte-liste border-subtle text-body text-primary hover:border-ai hover:bg-ai-surface border px-3 py-2.5 text-left disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <Undo size={13} aria-hidden /> Annuler
+                    {sug}
                   </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          ),
-        )}
+          )}
 
-        {/* Le texte tel qu'il s'écrit dans le champ, avant même d'y être
-            enregistré. C'est ce qui remplace l'écran immobile. */}
-        {apercu && (
-          <div className="border-ai bg-ai-surface border p-3">
-            <span className="text-caption text-ai-text block">
-              Écriture dans <strong>{libelleChamp(apercu.champ)}</strong>
-            </span>
-            <p className="text-body text-primary mt-1 whitespace-pre-wrap">{apercu.texte}</p>
-          </div>
-        )}
+          {bulles.map((b, i) =>
+            b.role === "user" ? (
+              <div key={i} className="flex justify-end">
+                <p className="bg-layer text-body text-primary ptn-entree-ligne max-w-[85%] px-3 py-2">
+                  {b.texte}
+                </p>
+              </div>
+            ) : (
+              <div key={i} className="ptn-entree-ligne flex flex-col gap-2">
+                {/* Ce que l'assistant fait, à mesure : sans cela l'auteur
+                    regardait un écran immobile pendant vingt secondes. Une
+                    action lancée depuis un CHAMP s'y inscrit désormais de la
+                    même façon, et non plus d'un bloc à la fin. */}
+                {b.actes.length > 0 && (
+                  <ul className="flex flex-col gap-1">
+                    {b.actes.map((a, j) => (
+                      <li
+                        key={j}
+                        className={`text-caption flex items-start gap-2 ${
+                          a.genre === "refus" ? "text-danger-text" : "text-helper"
+                        }`}
+                      >
+                        <i
+                          aria-hidden
+                          className={`mt-1.5 inline-block h-1.5 w-1.5 shrink-0 ${
+                            a.genre === "refus" ? "bg-danger" : "bg-ai"
+                          }`}
+                        />
+                        {a.libelle}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* Le balisage du modèle est RENDU, non montré : un récapitulatif
+                    se parcourt mieux avec des puces et des intitulés en gras.
+                    Ne vaut que pour la conversation — une valeur de champ n'en
+                    porte aucun, le document n'en rendant pas. */}
+                {b.texte && <TexteEnrichi>{b.texte}</TexteEnrichi>}
+
+                {b.encours && !b.texte && b.actes.length === 0 && (
+                  <span
+                    className="text-caption text-helper inline-flex items-center gap-2"
+                    role="status"
+                  >
+                    <span className="ptn-points" aria-hidden>
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                    {travail ? libelleEtat(travail) : "L’assistant travaille…"}
+                  </span>
+                )}
+
+                {/* L'auteur a arrêté lui-même : le dire, sinon un tour clos à
+                    mi-phrase se lit comme une panne. */}
+                {b.interrompu && (
+                  <span className="text-caption text-helper border-subtle border-l-2 pl-3">
+                    Vous avez arrêté l’assistant. Ce qui précède a été conservé.
+                  </span>
+                )}
+
+                {/* La coupure au plafond de jetons, dite pour ce qu'elle est.
+                    Elle passait pour une fin normale : le texte s'arrêtait en
+                    milieu de phrase et rien ne l'expliquait. */}
+                {b.tronque && !b.interrompu && (
+                  <span className="text-caption text-ai-text border-ai bg-ai-surface border-l-2 px-3 py-2">
+                    La rédaction s’est arrêtée avant sa fin, faute de place.
+                    Elle se poursuit depuis le champ concerné, sans rien réécrire.
+                  </span>
+                )}
+
+                {b.ecritures.map((e) => (
+                  <div
+                    key={e.champ}
+                    className="border-ai bg-ai-surface flex flex-wrap items-center gap-2 border px-3 py-2"
+                  >
+                    <span className="text-caption text-ai-text flex-1">
+                      Écrit dans <strong>{libelleChamp(e.champ)}</strong> · étape {e.etape}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onAnnuler(e)}
+                      className="ptn-carte-liste border-ai text-ai-text text-caption hover:bg-background inline-flex items-center gap-1.5 border px-2 py-1 transition-colors"
+                    >
+                      <Undo size={13} aria-hidden /> Annuler
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ),
+          )}
+
+          {/* Le texte tel qu'il s'écrit dans le champ, avant même d'y être
+              enregistré. C'est ce qui remplace l'écran immobile. */}
+          {apercu && (
+            <div className="border-ai bg-ai-surface border p-3">
+              <span className="text-caption text-ai-text block">
+                Écriture dans <strong>{libelleChamp(apercu.champ)}</strong>
+              </span>
+              <p className="text-body text-primary mt-1 whitespace-pre-wrap">{apercu.texte}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ---------- Saisie ----------
           Un seul contenant : le bouton vit DANS le champ. Deux rectangles
           côte à côte se désolidarisaient dès que le texte grandissait. */}
       <form
-        className="border-subtle p-3"
+        className="border-subtle border-t p-3"
         onSubmit={(e) => {
           e.preventDefault();
           void envoyer(saisie);
         }}
       >
-        <div className="border-strong bg-field focus-within:border-ai flex flex-col gap-2 border px-3 py-2">
-          {/* Les pièces AU-DESSUS de la saisie, dans le même cadre : elles
-              accompagnent la conversation entière, pas le message qu'on est
-              en train d'écrire. Une vignette plutôt qu'un nom de fichier —
-              on reconnaît un document d'un coup d'œil, jamais à son
-              extension. */}
-          <PiecesJointes tdrId={tdrId} />
-
-          <div className="flex items-end gap-2">
-          <textarea
-            ref={saisieRef}
-            value={saisie}
-            onChange={(e) => setSaisie(e.target.value)}
-            placeholder={tdrId ? "Que voulez-vous ?" : "Ouvrez d’abord le brouillon."}
-            rows={1}
-            disabled={!tdrId || occupe}
-            onKeyDown={(e) => {
-              // Entrée envoie, Maj+Entrée passe à la ligne : c'est l'usage
-              // dans une zone de conversation.
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void envoyer(saisie);
-              }
-            }}
-            className="ptn-zone-redaction text-body text-primary placeholder:text-placeholder max-h-48 flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1 outline-none"
-          />
-          {/* Infobulle alignée au-dessus : le bouton est au bas de l'écran,
-              une bulle posée dessous serait hors du cadre. Elle porte le
-              raccourci, qui ne se devine pas. */}
-          <IconButton
-            type="submit"
-            align="top-right"
-            size="sm"
-            label={
-              occupe
-                ? "L’assistant répond…"
-                : "Envoyer — Entrée pour envoyer, Maj+Entrée pour aller à la ligne"
-            }
-            disabled={!tdrId || occupe || !saisie.trim()}
-            className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste mb-0.5 flex !h-8 !max-h-8 !min-h-8 !w-8 !max-w-8 !min-w-8 shrink-0 items-center justify-center !p-0 disabled:hover:bg-ai disabled:opacity-30"
+        <div className={etendu ? "mx-auto w-full max-w-[72ch]" : undefined}>
+          <div
+            className={`bg-field flex flex-col gap-2 border px-3 py-2 transition-colors ${
+              // Le cadre dit que ça travaille. C'était le seul endroit de
+              // l'écran où rien ne bougeait : le champ de saisie restait
+              // identique, désactivé, sans qu'on sache si l'envoi était
+              // parti. Le liseré de l'IA lève le doute sans un mot.
+              occupe ? "border-ai" : "border-strong focus-within:border-ai"
+            }`}
           >
-            {occupe ? (
-              <span className="ptn-points" aria-hidden>
-                <i />
-                <i />
-                <i />
-              </span>
-            ) : (
-              <SendAlt size={16} aria-hidden />
-            )}
-          </IconButton>
+            {/* Les pièces AU-DESSUS de la saisie, dans le même cadre : elles
+                accompagnent la conversation entière, pas le message qu'on est
+                en train d'écrire. Une vignette plutôt qu'un nom de fichier —
+                on reconnaît un document d'un coup d'œil, jamais à son
+                extension. */}
+            <PiecesJointes tdrId={tdrId} />
+
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={saisieRef}
+                value={saisie}
+                onChange={(e) => setSaisie(e.target.value)}
+                placeholder={
+                  !tdrId
+                    ? "Ouvrez d’abord le brouillon."
+                    : occupe
+                      ? "L’assistant travaille…"
+                      : "Que voulez-vous ?"
+                }
+                rows={1}
+                disabled={!tdrId || occupe}
+                onKeyDown={(e) => {
+                  // Entrée envoie, Maj+Entrée passe à la ligne : c'est l'usage
+                  // dans une zone de conversation.
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void envoyer(saisie);
+                  }
+                }}
+                className="ptn-zone-redaction text-body text-primary placeholder:text-placeholder max-h-48 flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1 outline-none"
+              />
+
+              {/* PENDANT LE TRAVAIL, LE BOUTON D'ENVOI DEVIENT L'ARRÊT.
+                  Une demande engagée se subissait jusqu'au bout — et le
+                  bouton, simplement grisé, n'offrait aucune issue. Le geste
+                  est au même endroit, ce qui est exactement ce qu'on veut
+                  quand on veut que cela cesse. */}
+              {occupe ? (
+                <IconButton
+                  align="top-right"
+                  size="sm"
+                  label="Arrêter l’assistant"
+                  onClick={interrompre}
+                  className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste mb-0.5 flex !h-8 !max-h-8 !min-h-8 !w-8 !max-w-8 !min-w-8 shrink-0 items-center justify-center !p-0"
+                >
+                  <StopFilled size={16} aria-hidden />
+                </IconButton>
+              ) : (
+                /* Infobulle alignée au-dessus : le bouton est au bas de
+                   l'écran, une bulle posée dessous serait hors du cadre.
+                   Elle porte le raccourci, qui ne se devine pas. */
+                <IconButton
+                  type="submit"
+                  align="top-right"
+                  size="sm"
+                  label="Envoyer — Entrée pour envoyer, Maj+Entrée pour aller à la ligne"
+                  disabled={!tdrId || !saisie.trim()}
+                  className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste mb-0.5 flex !h-8 !max-h-8 !min-h-8 !w-8 !max-w-8 !min-w-8 shrink-0 items-center justify-center !p-0 disabled:hover:bg-ai disabled:opacity-30"
+                >
+                  <SendAlt size={16} aria-hidden />
+                </IconButton>
+              )}
+            </div>
           </div>
+          <p className="text-caption text-helper mt-2">
+            L’assistant peut se tromper. Tout ce qu’il écrit reste à relire.
+          </p>
         </div>
-        <p className="text-caption text-helper mt-2">
-          L’assistant peut se tromper. Tout ce qu’il écrit reste à relire.
-        </p>
       </form>
     </aside>
   );
+}
+
+/**
+ * Ce que l'assistant fait, en une ligne.
+ *
+ * Il n'y avait qu'un seul libellé, « L'assistant travaille », affiché du
+ * clic à la fin. Or les phases sont réellement distinctes et se mesurent :
+ * le modèle lit le dossier, puis réfléchit — sept secondes sans écrire un
+ * mot — puis rédige. Un repère unique sur trois états ne renseigne sur
+ * aucun, et un écran qui ne bouge pas se lit comme une panne.
+ */
+function libelleEtat(t: Travail): string {
+  if (t.detail) return t.detail;
+  switch (t.phase) {
+    case "envoi":
+      return t.libelleChamp
+        ? `Lecture du dossier — ${t.libelleChamp}`
+        : "Lecture du dossier…";
+    case "reflexion":
+      return "Réflexion en cours…";
+    case "outil":
+      return "Consultation du dossier…";
+    default:
+      return t.libelleChamp ? `Rédaction — ${t.libelleChamp}` : "Rédaction en cours…";
+  }
 }
 
 // ====================================================================
@@ -513,6 +663,7 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
   const [pieces, setPieces] = useState<Array<PieceJointeApi & { fichier?: File }>>([]);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [capacites, setCapacites] = useState<CapacitesIa | null>(null);
   const champRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -522,6 +673,35 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
       .then(setPieces)
       .catch(() => undefined);
   }, [tdrId]);
+
+  /**
+   * Le modèle configuré sait-il seulement LIRE une pièce ?
+   *
+   * Il ne le savait pas, et personne ne le lui demandait. Vérifié le
+   * 25 août 2026 : le modèle en place déclare la seule entrée texte, et un
+   * bloc image envoyé au fournisseur rend « 404 — No endpoints found that
+   * support image input », ce qui fait échouer L'APPEL ENTIER. Une seule
+   * image versée au dossier suffisait donc à casser la conversation tant
+   * qu'on ne la retirait pas — sans que rien n'en dise la cause.
+   *
+   * Le bouton n'est pas MASQUÉ pour autant : une commande qui disparaît
+   * laisse croire à une régression. Il est désactivé, et il dit pourquoi.
+   * Le jour où la configuration change de modèle, il se rallume tout seul :
+   * la capacité est lue au catalogue du fournisseur, jamais codée ici.
+   */
+  useEffect(() => {
+    aiApi
+      .capacites()
+      .then(setCapacites)
+      .catch(() => undefined);
+  }, []);
+
+  // Tant que la réponse n'est pas là, on n'affirme rien : ni ouvert, ni
+  // fermé. Fermer sur une latence serait aussi faux qu'ouvrir sur rien.
+  const ferme = capacites !== null && !capacites.pieces;
+  const motif =
+    capacites?.motifPiecesFermees ??
+    "L’assistant ne peut pas lire de pièce jointe avec la configuration actuelle.";
 
   const verser = async (fichiers: FileList | null) => {
     if (!tdrId || !fichiers?.length) return;
@@ -564,7 +744,7 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
         onChange={(e) => void verser(e.target.files)}
       />
 
-      {(pieces.length > 0 || erreur) && (
+      {(pieces.length > 0 || erreur || (ferme && pieces.length > 0)) && (
         <div className="flex flex-col gap-1.5">
           {pieces.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -572,6 +752,13 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
                 <Piece key={p.id} piece={p} tdrId={tdrId} onRetirer={(id) => void retirer(id)} />
               ))}
             </div>
+          )}
+          {/* Des pièces sont AU DOSSIER alors que le modèle ne les lit pas.
+              Le taire laisserait croire qu'elles pèsent sur ce qu'il écrit. */}
+          {ferme && pieces.length > 0 && (
+            <p className="text-caption text-helper border-subtle border-l-2 pl-2">
+              {motif}
+            </p>
           )}
           {erreur && <p className="text-caption text-danger-text">{erreur}</p>}
         </div>
@@ -582,8 +769,20 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
           secondaire. L'intitulé revient au survol ET au focus — jamais au
           seul survol, sans quoi il n'existe pas au clavier. */}
       <Tooltip
-        label={occupe ? "Lecture de la pièce en cours…" : "Joindre une pièce au dossier"}
-        hint={tdrId ? undefined : "Disponible une fois le brouillon ouvert"}
+        label={
+          ferme
+            ? "Pièces jointes indisponibles"
+            : occupe
+              ? "Lecture de la pièce en cours…"
+              : "Joindre une pièce au dossier"
+        }
+        hint={
+          ferme
+            ? motif
+            : tdrId
+              ? undefined
+              : "Disponible une fois le brouillon ouvert"
+        }
         // Le panneau est collé au bord droit : dessous, jamais à côté.
         side="bottom"
         // L'ancre se règle sur le BOUTON, non sur la largeur du panneau.
@@ -595,8 +794,14 @@ function PiecesJointes({ tdrId }: { tdrId: string | null }) {
         <button
           type="button"
           onClick={() => champRef.current?.click()}
-          disabled={!tdrId || occupe}
-          aria-label={occupe ? "Lecture de la pièce en cours" : "Joindre une pièce"}
+          disabled={!tdrId || occupe || ferme}
+          aria-label={
+            ferme
+              ? `Joindre une pièce — indisponible : ${motif}`
+              : occupe
+                ? "Lecture de la pièce en cours"
+                : "Joindre une pièce"
+          }
           className="border-subtle text-secondary hover:bg-layer-hover hover:text-primary disabled:text-disabled ptn-carte-liste inline-flex h-8 w-8 shrink-0 items-center justify-center border disabled:cursor-not-allowed"
         >
           {occupe ? (
@@ -616,13 +821,22 @@ function appliquer(
   majDerniere: (f: (b: Bulle) => Bulle) => void,
   setApercu: React.Dispatch<React.SetStateAction<{ champ: string; texte: string } | null>>,
   onEcriture: (e: Ecriture) => void,
+  majTravail: (m: Partial<Travail>) => void,
 ): void {
   switch (ev.type) {
     case "travail":
+      // L'état de tête suit CE QUE L'ASSISTANT FAIT, en plus de le
+      // consigner au fil : le fil peut être défilé loin de sa fin, et
+      // l'en-tête, lui, est toujours visible.
+      majTravail({ phase: "outil", detail: ev.libelle });
       majDerniere((b) => ({ ...b, actes: [...b.actes, { genre: "travail", libelle: ev.libelle }] }));
       break;
 
     case "apercu":
+      majTravail({
+        phase: "redaction",
+        detail: `Écriture dans « ${libelleChamp(ev.champ)} »`,
+      });
       // Remplacement et non accumulation : le serveur envoie le texte entier,
       // déjà débarrassé de son balisage, pour que cet aperçu montre
       // exactement ce qui sera enregistré. Un nettoyage raccourcit le texte
@@ -651,6 +865,7 @@ function appliquer(
       break;
 
     case "texte":
+      majTravail({ phase: "redaction", detail: undefined });
       majDerniere((b) => ({ ...b, texte: b.texte + ev.delta }));
       break;
 

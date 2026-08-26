@@ -7,6 +7,26 @@ import { FIELDS, sansBalisage } from './field-registry';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
+/**
+ * Évènements d'une rédaction en flux.
+ *
+ * Déclaré ici et exporté : `src/lib/agent-stream.ts` en tient le miroir,
+ * et deux vocabulaires qui divergent se paient en champs qui ne se
+ * remplissent pas sans que rien ne le dise.
+ *
+ * `phase` est la réponse au silence mesuré : le modèle pense pendant sept
+ * secondes avant d'écrire son premier mot, et l'écran n'en savait rien.
+ * `tronque` est la réponse à la coupure : une fin normale et une coupure
+ * au plafond de jetons se ressemblaient trait pour trait.
+ */
+export type AssistStreamEvent =
+  | { type: 'ancrage'; groundedOn: string[]; mode: 'reprise' | 'redaction' }
+  | { type: 'phase'; phase: 'reflexion' | 'redaction'; avancement?: number }
+  | { type: 'texte'; delta: string }
+  /** `texte` porte la valeur définitive, débarrassée de tout balisage */
+  | { type: 'fin'; texte: string; tronque: boolean }
+  | { type: 'erreur'; message: string };
+
 export interface Proposal<T> {
   proposal: T;
   model: string;
@@ -67,6 +87,27 @@ const TYPE_NATURE: Record<string, string> = {
 @Injectable()
 export class TdrAssistService {
   private readonly logger = new Logger(TdrAssistService.name);
+
+  /**
+   * Plafond de jetons d'une rédaction de section.
+   *
+   * MESURÉ le 25 août 2026 contre le fournisseur, sur une consigne de
+   * « Contexte » réaliste. Chez OpenRouter, `max_tokens` couvre le
+   * RAISONNEMENT autant que le texte, et le modèle en place raisonne
+   * abondamment :
+   *
+   *   à  900 → 586 de réflexion, 314 de texte, `finish_reason: length`,
+   *            phrase coupée au milieu — à tous les coups ;
+   *   à 3000 → 426 de réflexion, 645 de texte, `finish_reason: stop`,
+   *            384 mots, section achevée.
+   *
+   * On garde une marge franche : la réflexion varie d'une consigne à
+   * l'autre, et un plafond juste suffisant redeviendrait insuffisant à la
+   * première section un peu dense. Le coût ne s'y oppose pas — 0,08 USD
+   * par million de jetons produits, soit six dix-millièmes de dollar la
+   * génération. Le plafond de 900 n'économisait rien du tout ; il coupait.
+   */
+  private static readonly PLAFOND_REDACTION = 3000;
 
   /**
    * Isole l'objet JSON d'une réponse.
@@ -216,9 +257,9 @@ export class TdrAssistService {
       // là où le corpus lui apprend qu'il y en a toujours une est tenté d'en
       // supposer une. L'absence est une information ; elle s'énonce.
       lines.push(
-        "Ce dossier ne se rattache à AUCUNE activité du Plan de Travail et Budget Annuel : " +
+        'Ce dossier ne se rattache à AUCUNE activité du Plan de Travail et Budget Annuel : ' +
           "c'est un cas d'exception assumé par son auteur. N'invente ni code d'activité, ni " +
-          "composante, ni enveloppe de rattachement, et ne présente pas le marché comme " +
+          'composante, ni enveloppe de rattachement, et ne présente pas le marché comme ' +
           "relevant d'une ligne du plan.",
       );
       grounded.push('Activité PTBA — aucune (dossier hors plan)');
@@ -369,6 +410,7 @@ export class TdrAssistService {
     const result = await this.ai.generate({
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
       maxTokens: 700,
+      raisonnement: 'aucun',
       user: `Rédigez la section « Contexte et justification » de ce TDR.
 
 ${text}${live}
@@ -423,6 +465,7 @@ La section « Contexte » précède celle-ci dans le document et a déjà expos�
     const result = await this.ai.generate({
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
       maxTokens: 600,
+      raisonnement: 'aucun',
       user: `${instruction}
 
 Éléments du dossier :
@@ -463,6 +506,7 @@ Répondez par le texte seul, sans titre ni commentaire.`,
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
       json: true,
       maxTokens: 1600,
+      raisonnement: 'aucun',
       user: `Proposez les objectifs de ce TDR.
 
 ${text}${live}${contextBlock}
@@ -534,6 +578,7 @@ Répondez par un objet JSON de la forme :
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
       json: true,
       maxTokens: 1600,
+      raisonnement: 'aucun',
       user: `Proposez les livrables de ce TDR.
 
 ${text}${live}${objectivesBlock}${durationBlock}
@@ -723,29 +768,63 @@ Répondez par le texte seul, sans titre ni commentaire, et SANS AUCUN BALISAGE :
     champ: string,
     actor: AuthenticatedUser,
     ctx: RequestContext,
-  ): AsyncGenerator<
-    | { type: 'ancrage'; groundedOn: string[]; mode: 'reprise' | 'redaction' }
-    | { type: 'texte'; delta: string }
-    /** `texte` porte la valeur définitive, débarrassée de tout balisage */
-    | { type: 'fin'; texte: string }
-    | { type: 'erreur'; message: string }
-  > {
+  ): AsyncGenerator<AssistStreamEvent> {
     const prep = await this.prepareField(tdrId, champ);
     yield { type: 'ancrage', groundedOn: prep.grounded, mode: prep.mode };
 
-    const modele = 'inconnu';
+    const modele = this.ai.model;
     let accumule = '';
+    let motifArret: string | undefined;
+    // Le fournisseur envoie des CENTAINES de fragments de réflexion. Les
+    // mettre tous sur le fil noierait le réseau pour une information qui ne
+    // change pas : on n'en garde qu'un de temps en temps.
+    let dernierJalon = 0;
+    let aPense = false;
+
     try {
       for await (const ev of this.ai.stream({
         messages: [
           { role: 'system', content: prep.system },
           { role: 'user', content: prep.user },
         ],
-        maxTokens: 900,
+        // MESURÉ, non deviné. `max_tokens` compte les jetons de RAISONNEMENT
+        // chez ce fournisseur, et le modèle courant en consomme 400 à 600
+        // avant d'écrire un mot. À 900, une section de « Contexte » —
+        // 645 jetons de texte pour 426 de réflexion — était coupée à tous
+        // les coups : `finish_reason: length`, phrase interrompue en son
+        // milieu. Le plafond n'économisait rien : la génération coûte six
+        // dix-millièmes de dollar.
+        maxTokens: TdrAssistService.PLAFOND_REDACTION,
+        // Rédiger n'est pas délibérer : voir `ChatRequest.raisonnement`.
+        raisonnement: 'aucun',
       })) {
         if (ev.type === 'texte') {
+          // Le premier mot met fin à la réflexion : l'écran doit basculer
+          // d'état à cet instant précis, et non à la fin.
+          if (aPense && !accumule.trim() && ev.delta.trim()) {
+            yield { type: 'phase', phase: 'redaction' };
+          }
           accumule += ev.delta;
           yield { type: 'texte', delta: ev.delta };
+        } else if (ev.type === 'reflexion') {
+          aPense = true;
+          if (ev.caracteres - dernierJalon >= 400) {
+            dernierJalon = ev.caracteres;
+            yield {
+              type: 'phase',
+              phase: 'reflexion',
+              avancement: ev.caracteres,
+            };
+          } else if (dernierJalon === 0) {
+            dernierJalon = ev.caracteres;
+            yield {
+              type: 'phase',
+              phase: 'reflexion',
+              avancement: ev.caracteres,
+            };
+          }
+        } else if (ev.type === 'fin') {
+          motifArret = ev.finishReason;
         }
       }
     } catch (e) {
@@ -758,11 +837,113 @@ Répondez par le texte seul, sans titre ni commentaire, et SANS AUCUN BALISAGE :
     }
 
     await this.record(tdrId, `champ:${champ}`, modele, actor, ctx);
+
+    // Une coupure au plafond ne se distinguait EN RIEN d'une fin normale :
+    // le texte partait tronqué, sans que rien ne le dise. C'est le défaut
+    // que l'auteur décrivait — « ça s'arrête en milieu de phrase et
+    // personne n'est prévenu ». Le motif d'arrêt voyage désormais jusqu'à
+    // l'écran, qui peut proposer de poursuivre plutôt que de tout refaire.
+    const tronque = motifArret === 'length';
+    if (tronque) {
+      this.logger.warn(
+        `Rédaction de ${champ} coupée au plafond de jetons — ${accumule.length} caractères produits.`,
+      );
+    }
+
     // Le texte définitif accompagne la fin. Les fragments ont défilé tels
     // qu'ils arrivaient — c'est ce qui donne à voir la rédaction en cours et
     // il ne faut pas y toucher — mais ce qui RESTE dans le champ doit être
     // net : un nettoyage ne peut se faire qu'une fois la paire refermée.
-    yield { type: 'fin', texte: sansBalisage(accumule) };
+    yield { type: 'fin', texte: sansBalisage(accumule), tronque };
+  }
+
+  /**
+   * Poursuit une rédaction coupée, là où elle s'est arrêtée.
+   *
+   * C'est la seule réponse qui « se rétablit d'elle-même ». La difficulté
+   * est la charnière : prié de continuer, un modèle recommence volontiers
+   * sa dernière phrase. On lui donne donc la fin du texte comme AMORCE et
+   * non comme contexte, et l'on recolle sans espace parasite.
+   */
+  async *continueField(
+    tdrId: string,
+    champ: string,
+    debut: string,
+    actor: AuthenticatedUser,
+    ctx: RequestContext,
+  ): AsyncGenerator<AssistStreamEvent> {
+    const prep = await this.prepareField(tdrId, champ);
+    yield { type: 'ancrage', groundedOn: prep.grounded, mode: prep.mode };
+
+    const amorce = debut.trimEnd();
+    if (!amorce) {
+      yield {
+        type: 'erreur',
+        message: 'Rien à poursuivre : le texte de départ est vide.',
+      };
+      return;
+    }
+
+    const user = `${prep.user}
+
+VOUS REPRENEZ UNE RÉDACTION INTERROMPUE. Voici ce qui a déjà été écrit :
+
+«${amorce}»
+
+Poursuivez EXACTEMENT là où cela s'arrête, sans saluer, sans introduire, et
+SANS RÉPÉTER le moindre mot de ce qui précède — pas même la phrase en cours.
+Votre réponse sera collée bout à bout avec ce texte : commencez donc par le
+caractère qui suit immédiatement, quitte à démarrer en milieu de phrase.
+Achevez la section, puis arrêtez-vous.`;
+
+    let suite = '';
+    let motifArret: string | undefined;
+    try {
+      for await (const ev of this.ai.stream({
+        messages: [
+          { role: 'system', content: prep.system },
+          { role: 'user', content: user },
+        ],
+        maxTokens: TdrAssistService.PLAFOND_REDACTION,
+        // Rédiger n'est pas délibérer : voir `ChatRequest.raisonnement`.
+        raisonnement: 'aucun',
+      })) {
+        if (ev.type === 'texte') {
+          suite += ev.delta;
+          yield { type: 'texte', delta: ev.delta };
+        } else if (ev.type === 'reflexion') {
+          yield {
+            type: 'phase',
+            phase: 'reflexion',
+            avancement: ev.caracteres,
+          };
+        } else if (ev.type === 'fin') {
+          motifArret = ev.finishReason;
+        }
+      }
+    } catch (e) {
+      yield {
+        type: 'erreur',
+        message: e instanceof Error ? e.message : 'La reprise n’a pas abouti.',
+      };
+      return;
+    }
+
+    await this.record(tdrId, `champ:${champ}:suite`, this.ai.model, actor, ctx);
+
+    // Le raccord. Une suite qui commence par un signe de ponctuation se
+    // colle sans espace ; partout ailleurs il en faut un, sauf si l'amorce
+    // se termine déjà sur une coupure de ligne.
+    const debutSuite = suite.trimStart();
+    const collePlein =
+      /^[,.;:!?…)\]»]/.test(debutSuite) || amorce.endsWith('\n');
+    const entier = collePlein ? amorce + debutSuite : `${amorce} ${debutSuite}`;
+
+    yield {
+      type: 'fin',
+      texte: sansBalisage(entier),
+      tronque: motifArret === 'length',
+    };
   }
 
   async proposeField(
@@ -777,7 +958,12 @@ Répondez par le texte seul, sans titre ni commentaire, et SANS AUCUN BALISAGE :
 
     const result = await this.ai.generate({
       system: prep.system,
-      maxTokens: 900,
+      // Le MÊME plafond que le flux, et pour la même raison mesurée : la
+      // règle du parcours est que le texte d'un champ ne dépend pas de la
+      // porte par laquelle on le demande. Deux plafonds différents la
+      // rompaient en silence — ce chemin-ci coupait là où l'autre non.
+      maxTokens: TdrAssistService.PLAFOND_REDACTION,
+      raisonnement: 'aucun',
       user: prep.user,
     });
 

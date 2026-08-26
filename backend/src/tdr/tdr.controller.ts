@@ -35,7 +35,10 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import type { RequestContext } from '../auth/auth.service';
 
 function contextOf(req: Request): RequestContext {
-  return { ipAddress: req.ip ?? undefined, userAgent: req.get('user-agent') ?? undefined };
+  return {
+    ipAddress: req.ip ?? undefined,
+    userAgent: req.get('user-agent') ?? undefined,
+  };
 }
 
 class TourDeParoleDto {
@@ -50,13 +53,17 @@ class TourDeParoleDto {
 }
 
 export class AgentTurnDto {
-  @ApiProperty({ example: 'Rédige-moi un contexte en rapport avec l’activité PTBA.' })
+  @ApiProperty({
+    example: 'Rédige-moi un contexte en rapport avec l’activité PTBA.',
+  })
   @IsString()
   @MinLength(2, { message: 'Dites ce que vous attendez.' })
   @MaxLength(4000)
   instruction!: string;
 
-  @ApiPropertyOptional({ description: 'Tours précédents, du plus ancien au plus récent' })
+  @ApiPropertyOptional({
+    description: 'Tours précédents, du plus ancien au plus récent',
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
@@ -75,6 +82,28 @@ export class AssistFieldDto {
   @IsString()
   @MaxLength(64)
   champ!: string;
+}
+
+/**
+ * Poursuite d'une rédaction coupée.
+ *
+ * Le texte déjà produit voyage depuis l'écran et non depuis la base : la
+ * proposition n'est PAS persistée — rien n'entre au dossier sans un geste
+ * de l'auteur — et le serveur ne peut donc pas la relire.
+ */
+export class ContinueFieldDto {
+  @ApiProperty({ example: 'methodology' })
+  @IsString()
+  @MaxLength(64)
+  champ!: string;
+
+  @ApiProperty({ example: 'Le présent marché s’inscrit dans…' })
+  @IsString()
+  @MinLength(1, { message: 'Rien à poursuivre.' })
+  @MaxLength(20000, {
+    message: 'Le texte à poursuivre dépasse ce qu’une section peut porter.',
+  })
+  debut!: string;
 }
 
 export class CreateDraftDto {
@@ -119,14 +148,20 @@ export class TdrController {
     description:
       'Hors UGP et bailleurs, la liste est restreinte aux TDR de votre organisation.',
   })
-  list(@CurrentUser() actor: AuthenticatedUser, @Query('statut') status?: string) {
+  list(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query('statut') status?: string,
+  ) {
     return this.tdr.list(actor, { status });
   }
 
   @Get(':id')
   @RequirePermissions('tdr:read')
   @ApiOperation({ summary: 'Consulter un TDR' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
     return this.tdr.findOne(id, actor);
   }
 
@@ -205,6 +240,62 @@ export class TdrController {
     return this.assist.proposeField(id, dto.champ, actor, contextOf(req));
   }
 
+  /**
+   * Sert un générateur d'évènements en SSE.
+   *
+   * Cette plomberie était recopiée à chaque route de flux — en-têtes,
+   * détection de fermeture, filet d'erreur, `res.end()`. Trois copies, et
+   * la quatrième allait s'écrire : elles divergent à la première
+   * correction, et un flux qui ne se termine pas laisse un onglet suspendu
+   * sans que rien ne le dise.
+   *
+   * `X-Accel-Buffering` n'est pas décoratif : sans lui, un proxy garde le
+   * flux en tampon et le rend d'un bloc, ce qui annule tout l'intérêt.
+   */
+  private async diffuser(
+    res: Response,
+    req: Request,
+    source: () => AsyncGenerator<unknown>,
+  ): Promise<void> {
+    res.writeHead(HttpStatus.OK, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    // Un auteur qui interrompt, ferme l'onglet ou quitte l'étape coupe la
+    // connexion : inutile de continuer à écrire dans le vide, et surtout
+    // inutile de continuer à consommer le fournisseur.
+    let ferme = false;
+    req.on('close', () => {
+      ferme = true;
+    });
+
+    const envoyer = (ev: unknown) =>
+      res.write(`data: ${JSON.stringify(ev)}\n\n`);
+
+    try {
+      for await (const ev of source()) {
+        if (ferme) break;
+        envoyer(ev);
+      }
+    } catch (e) {
+      // L'erreur part DANS le flux, pas en code HTTP : les en-têtes sont
+      // déjà écrits. Sans cela, l'écran voyait le flux se terminer sans
+      // rien dire, ce qui est indiscernable d'une réussite muette.
+      if (!ferme) {
+        envoyer({
+          type: 'erreur',
+          message:
+            e instanceof Error ? e.message : 'La proposition n’a pas abouti.',
+        });
+      }
+    } finally {
+      if (!ferme) res.end();
+    }
+  }
+
   @Post(':id/assistance/champ/flux')
   @RequirePermissions('tdr:author')
   @ApiOperation({
@@ -222,35 +313,36 @@ export class TdrController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    res.writeHead(HttpStatus.OK, {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      // Sans cela, un proxy intermédiaire garde le flux en tampon et le
-      // rend d'un bloc : l'effet recherché disparaît.
-      'X-Accel-Buffering': 'no',
-    });
+    await this.diffuser(res, req, () =>
+      this.assist.streamField(id, dto.champ, actor, contextOf(req)),
+    );
+  }
 
-    const envoyer = (ev: unknown) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
-
-    let ferme = false;
-    req.on('close', () => {
-      ferme = true;
-    });
-
-    try {
-      for await (const ev of this.assist.streamField(id, dto.champ, actor, contextOf(req))) {
-        if (ferme) break;
-        envoyer(ev);
-      }
-    } catch (e) {
-      envoyer({
-        type: 'erreur',
-        message: e instanceof Error ? e.message : 'La proposition n’a pas abouti.',
-      });
-    } finally {
-      if (!ferme) res.end();
-    }
+  @Post(':id/assistance/champ/suite')
+  @RequirePermissions('tdr:author')
+  @ApiOperation({
+    summary: 'Poursuivre une rédaction coupée',
+    description:
+      'Reprend là où le texte s’est arrêté, sans le refaire. Sert quand la génération a ' +
+      'buté sur le plafond de jetons : l’auteur garde ce qui a été écrit et n’attend que ' +
+      'la suite. Rien n’est enregistré.',
+  })
+  async assistFieldContinue(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ContinueFieldDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    await this.diffuser(res, req, () =>
+      this.assist.continueField(
+        id,
+        dto.champ,
+        dto.debut,
+        actor,
+        contextOf(req),
+      ),
+    );
   }
 
   @Post(':id/assistance/contexte')
@@ -357,45 +449,15 @@ export class TdrController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    res.writeHead(HttpStatus.OK, {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      // Sans cela, un proxy intermédiaire garde le flux en tampon et le
-      // rend d'un bloc : l'effet recherché disparaît.
-      'X-Accel-Buffering': 'no',
-    });
-
-    const envoyer = (ev: unknown) => res.write(`data: ${JSON.stringify(ev)}
-
-`);
-
-    // Un auteur qui quitte l'étape ferme la connexion : inutile de
-    // continuer à écrire dans le vide.
-    let ferme = false;
-    req.on('close', () => {
-      ferme = true;
-    });
-
-    try {
-      for await (const ev of this.agent.converser(
+    await this.diffuser(res, req, () =>
+      this.agent.converser(
         id,
         dto.instruction,
         dto.historique ?? [],
         actor,
         contextOf(req),
-      )) {
-        if (ferme) break;
-        envoyer(ev);
-      }
-    } catch (e) {
-      envoyer({
-        type: 'erreur',
-        message: e instanceof Error ? e.message : 'L’assistant n’a pas pu répondre.',
-      });
-    } finally {
-      if (!ferme) res.end();
-    }
+      ),
+    );
   }
 
   @Post(':id/soumettre')

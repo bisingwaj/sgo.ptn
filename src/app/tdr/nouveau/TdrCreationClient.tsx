@@ -189,7 +189,7 @@ function Parcours() {
   const { user, loading: authLoading, can } = useAuth();
   // L'ouverture du panneau appartient à l'assistant, plus au parcours : elle
   // se commande depuis la barre d'outils du champ où l'on écrit.
-  const { ouvert: assistantOuvert } = useAssistant();
+  const { ouvert: assistantOuvert, etendu: assistantEtendu } = useAssistant();
 
   const [types, setTypes] = useState<TdrTypeApi[]>([]);
   const [activities, setActivities] = useState<PtbaActivityApi[]>([]);
@@ -238,24 +238,52 @@ function Parcours() {
    */
   const [patch, setPatch] = useState<{ nonce: number; fn: (s: State) => State } | undefined>();
 
-  const alignerSurLaBase = useCallback(async (tdrId: string) => {
+  /**
+   * Recharge depuis la base LES SEULS CHAMPS que l'assistant vient d'écrire.
+   *
+   * Elle rechargeait TOUT, et c'était une perte de données silencieuse.
+   * Une valeur engendrée au bouton ne part au serveur qu'à l'étape
+   * suivante ; il suffisait donc de rédiger un contexte, puis de demander
+   * autre chose au fil, pour que cette relecture rapporte le contexte de la
+   * BASE — vide — et efface le texte fraîchement écrit. L'assistant
+   * annonçait une réussite, et l'auteur voyait un champ vide : c'est le
+   * défaut « il dit qu'il a écrit et je ne vois rien ».
+   *
+   * Deux remèdes, tous deux nécessaires : l'assistance enregistre
+   * désormais sans attendre (voir `EtapeTexte.persist`), et cette
+   * relecture ne touche plus qu'aux champs concernés. Un champ qu'on n'a
+   * pas demandé n'a aucune raison d'être écrasé par la base.
+   *
+   * `champs` vide vaut « tout », pour la reprise d'un brouillon.
+   */
+  const alignerSurLaBase = useCallback(async (tdrId: string, champs?: string[]) => {
     const t = await tdrApi.get(tdrId);
+    const vise = (c: string) => !champs || champs.length === 0 || champs.includes(c);
+    const texte = (cle: keyof typeof t, actuel: string) =>
+      vise(cle as string) ? ((t[cle] as string | null) ?? "") : actuel;
+
     setPatch({
       nonce: Date.now(),
       fn: (s) => ({
         ...s,
-        context: t.context ?? "",
-        justification: t.justification ?? "",
-        beneficiaries: t.beneficiaries ?? "",
-        expectedResults: t.expectedResults ?? "",
-        approach: t.approach ?? "",
-        methodology: t.methodology ?? "",
-        constraints: t.constraints ?? "",
-        expertise: t.expertise ?? "",
-        objectives: t.objectives.map((o) => ({ title: o.title, criteria: o.criteria })),
-        deliverables: t.deliverables.map((d) => ({
-          title: d.title, format: d.format ?? "", deadline: d.deadline ?? "",
-        })),
+        context: texte("context", s.context),
+        justification: texte("justification", s.justification),
+        beneficiaries: texte("beneficiaries", s.beneficiaries),
+        expectedResults: texte("expectedResults", s.expectedResults),
+        approach: texte("approach", s.approach),
+        methodology: texte("methodology", s.methodology),
+        constraints: texte("constraints", s.constraints),
+        expertise: texte("expertise", s.expertise),
+        objectives: vise("objectives")
+          ? t.objectives.map((o) => ({ title: o.title, criteria: o.criteria }))
+          : s.objectives,
+        deliverables: vise("deliverables")
+          ? t.deliverables.map((d) => ({
+              title: d.title, format: d.format ?? "", deadline: d.deadline ?? "",
+            }))
+          : s.deliverables,
+        // La marque de contribution se recharge toujours : elle est en
+        // union côté serveur, elle ne peut donc rien faire perdre.
         aiAssistedFields: t.aiAssistedFields ?? [],
       }),
     });
@@ -534,9 +562,12 @@ function Parcours() {
             }),
           render: (s: State, set: (v: State) => void) => (
             <EtapeTexte
+              // Un champ par instance : voir la note dans `EtapeTexte`.
+              key={cle}
               champ={CHAMPS_TEXTE[cle]}
               state={s}
               set={set}
+              persist={persist}
               gabarit={
                 cle === "context" && typeOf(s)?.contextTemplate
                   ? fillTemplate(
@@ -565,7 +596,7 @@ function Parcours() {
         sub: "Ce que le marché doit permettre d’atteindre",
         validate: (s) => (s.objectives.length === 0 ? "Définissez au moins un objectif." : null),
         commit: (s) => persist(s, { objectives: s.objectives, aiAssisted: s.aiAssistedFields }),
-        render: (s, set) => <EtapeObjectifs state={s} set={set} />,
+        render: (s, set) => <EtapeObjectifs state={s} set={set} persist={persist} />,
       },
 
       // ===== 09 · Livrables =====
@@ -581,7 +612,7 @@ function Parcours() {
             reportingRhythm: s.reportingRhythm || null,
             aiAssisted: s.aiAssistedFields,
           }),
-        render: (s, set) => <EtapeLivrables state={s} set={set} />,
+        render: (s, set) => <EtapeLivrables state={s} set={set} persist={persist} />,
       },
 
       // ===== 10 à 12 · L'exécution attendue =====
@@ -595,7 +626,7 @@ function Parcours() {
         sub: LIBELLES_ETAPE[cle].sub,
         commit: (s: State) => persist(s, { [cle]: s[cle] || null, aiAssisted: s.aiAssistedFields }),
         render: (s: State, set: (v: State) => void) => (
-          <EtapeTexte champ={CHAMPS_TEXTE[cle]} state={s} set={set} />
+          <EtapeTexte key={cle} champ={CHAMPS_TEXTE[cle]} state={s} set={set} persist={persist} />
         ),
       })),
 
@@ -636,7 +667,7 @@ function Parcours() {
             keyProfiles: s.keyProfiles,
             aiAssisted: s.aiAssistedFields,
           }),
-        render: (s, set) => <EtapeExpertise state={s} set={set} />,
+        render: (s, set) => <EtapeExpertise state={s} set={set} persist={persist} />,
       },
 
       // ===== 15 · Budget =====
@@ -1009,13 +1040,16 @@ function Parcours() {
       }
       finishLabel="Transmettre le dossier à l’instruction"
       asideOpen={assistantOuvert}
+      asideEtendu={assistantEtendu}
       aside={
         <AgentPanel
           tdrId={etatCourant?.tdrId ?? null}
           etapeCourante={etapeCourante}
-          onEcriture={() => {
+          onEcriture={(e) => {
             const id = etatCourant?.tdrId;
-            if (id) void alignerSurLaBase(id);
+            // Seul le champ écrit est rechargé : tout recharger effaçait ce
+            // que l'auteur venait d'obtenir ailleurs. Voir `alignerSurLaBase`.
+            if (id) void alignerSurLaBase(id, [e.champ]);
           }}
           onAnnuler={async (e) => {
             const id = etatCourant?.tdrId;
@@ -1024,7 +1058,7 @@ function Parcours() {
             // reste : l'assistant a bien contribué à ce champ, et un
             // relecteur doit continuer de le savoir.
             await tdrApi.update(id, { [e.champ]: e.avant });
-            await alignerSurLaBase(id);
+            await alignerSurLaBase(id, [e.champ]);
           }}
         />
       }

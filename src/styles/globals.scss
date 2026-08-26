@@ -411,6 +411,40 @@ samp,
     }
   }
 
+  // Battement du pictogramme d'assistance pendant qu'il travaille.
+  //
+  // Il ne bouge PAS de place et ne change pas de taille : seule l'opacité
+  // du fond respire. Un pictogramme qui grossit décalerait l'en-tête à
+  // chaque image, et la fondation Motion de Carbon proscrit d'animer ce
+  // qui recalcule une mise en page.
+  //
+  // Le signal se répète sur trois surfaces à la fois — ce pictogramme, le
+  // liseré du cadre de saisie, et les trois points — parce qu'aucune n'est
+  // toujours dans le champ de vision : le fil peut être défilé, l'éditeur
+  // peut être au bas de la page.
+  .ptn-battement {
+    animation: ptn-battement 1.6s var(--ptn-motion-easing-productive) infinite;
+  }
+
+  @keyframes ptn-battement {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+
+  // Sous réduction de mouvement, le battement cesse. Les jetons de durée
+  // suffisent aux autres animations, mais celle-ci est INFINIE : une durée
+  // nulle la ferait clignoter au lieu de l'arrêter.
+  @media (prefers-reduced-motion: reduce) {
+    .ptn-battement {
+      animation: none;
+    }
+  }
+
   @keyframes ptn-points {
     0%,
     60%,

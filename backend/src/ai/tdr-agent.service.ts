@@ -133,6 +133,12 @@ export class TdrAgentService {
                   },
                 ],
               },
+              mode: {
+                type: 'string',
+                enum: ['ajouter', 'remplacer'],
+                description:
+                  "Pour objectives et deliverables UNIQUEMENT. « ajouter » (défaut) place vos entrées à la suite de celles qui existent déjà. « remplacer » efface toutes les entrées existantes — ne l'employez QUE si l'auteur a explicitement demandé de refaire la liste, jamais pour en ajouter.",
+              },
             },
             required: ['champ', 'valeur'],
           },
@@ -378,6 +384,8 @@ export class TdrAgentService {
       '',
       "Écrivez un champ à la fois, et dites en une phrase ce que vous venez d'écrire. Ne réécrivez jamais un champ que l'auteur ne vous a pas désigné.",
       '',
+      "Sur `objectives` et `deliverables`, vos entrées s'AJOUTENT à celles qui existent : n'employez `mode: \"remplacer\"` que si l'auteur demande expressément de refaire la liste. Ne renvoyez donc que les entrées NOUVELLES, jamais celles que le dossier porte déjà — les recopier les mettrait en double.",
+      '',
       "Si l'auteur conteste un texte, retouchez-le et réécrivez le champ. Ne recommencez pas de zéro sans qu'il le demande.",
     ].join('\n');
   }
@@ -587,8 +595,24 @@ export class TdrAgentService {
           };
         }
 
+        // Une liste s'AJOUTE par défaut, elle ne se substitue pas.
+        //
+        // L'écriture effaçait tout et réécrivait : prié d'« ajouter deux
+        // livrables », l'assistant supprimait ceux que l'auteur avait
+        // saisis à la main. Le bouton de l'étape, lui, ajoutait — deux
+        // portes, deux comportements opposés sur la même donnée, et celle
+        // qui détruisait était la moins prévisible. Le remplacement reste
+        // possible, mais il se demande.
+        const mode = args.mode === 'remplacer' ? 'remplacer' : 'ajouter';
+
         const avant = (tdr as unknown as Record<string, unknown>)[cle];
-        await this.ecrire(tdrId, spec.cle, spec.kind, args.valeur);
+        const ecrites = await this.ecrire(
+          tdrId,
+          spec.cle,
+          spec.kind,
+          args.valeur,
+          mode,
+        );
 
         await this.audit.record({
           actorId: actor.userId,
@@ -600,8 +624,19 @@ export class TdrAgentService {
           ...ctx,
         });
 
+        // Ce qui est rendu au modèle dit ce qui a RÉELLEMENT eu lieu.
+        // « Le champ a été écrit » sur une liste ajoutée à une autre le
+        // laissait croire à un remplacement, et il annonçait alors trois
+        // livrables là où le dossier en portait sept.
+        const compte =
+          spec.kind === 'liste_objectifs' || spec.kind === 'liste_livrables'
+            ? mode === 'ajouter'
+              ? ` La liste en compte désormais ${ecrites.total}, dont ${ecrites.ajoutees} que vous venez d'ajouter aux ${ecrites.total - ecrites.ajoutees} déjà présentes.`
+              : ` La liste a été refaite : elle compte ${ecrites.total} entrées.`
+            : '';
+
         return {
-          resultat: `Le champ ${cle} a été écrit.`,
+          resultat: `Le champ ${cle} a été écrit.${compte}`,
           evenement: {
             type: 'ecriture',
             champ: cle,
@@ -617,13 +652,20 @@ export class TdrAgentService {
     }
   }
 
-  /** Écrit la valeur et marque le champ comme ayant reçu une contribution. */
+  /**
+   * Écrit la valeur et marque le champ comme ayant reçu une contribution.
+   *
+   * Rend le compte des entrées pour les listes : le modèle doit pouvoir
+   * dire à l'auteur ce qu'il en est, et non ce qu'il croit avoir fait.
+   */
   private async ecrire(
     tdrId: string,
     cle: string,
     kind: string,
     valeur: unknown,
-  ): Promise<void> {
+    mode: 'ajouter' | 'remplacer' = 'ajouter',
+  ): Promise<{ total: number; ajoutees: number }> {
+    let compte = { total: 0, ajoutees: 0 };
     await this.prisma.$transaction(async (tx) => {
       if (kind === 'texte') {
         // Le modèle répond en balisage léger : utile dans la conversation, où
@@ -671,27 +713,45 @@ export class TdrAgentService {
         });
       } else if (kind === 'liste_objectifs') {
         const rows = normaliseListe(champ(cle)!, valeur);
-        await tx.tdrObjective.deleteMany({ where: { tdrId } });
+        // En ajout, on ne touche pas à l'existant : on compte ce qui est là
+        // pour poser les nouvelles entrées à la suite. `position` doit
+        // rester continue, c'est elle qui ordonne la liste à l'écran et
+        // dans le document.
+        const deja =
+          mode === 'remplacer'
+            ? 0
+            : await tx.tdrObjective.count({ where: { tdrId } });
+        if (mode === 'remplacer') {
+          await tx.tdrObjective.deleteMany({ where: { tdrId } });
+        }
         await tx.tdrObjective.createMany({
           data: rows.map((r, i) => ({
             tdrId,
             title: r.title,
             criteria: r.criteria ?? '',
-            position: i,
+            position: deja + i,
           })),
         });
+        compte = { total: deja + rows.length, ajoutees: rows.length };
       } else {
         const rows = normaliseListe(champ(cle)!, valeur);
-        await tx.tdrDeliverable.deleteMany({ where: { tdrId } });
+        const deja =
+          mode === 'remplacer'
+            ? 0
+            : await tx.tdrDeliverable.count({ where: { tdrId } });
+        if (mode === 'remplacer') {
+          await tx.tdrDeliverable.deleteMany({ where: { tdrId } });
+        }
         await tx.tdrDeliverable.createMany({
           data: rows.map((r, i) => ({
             tdrId,
             title: r.title,
             format: r.format || null,
             deadline: r.deadline || null,
-            position: i,
+            position: deja + i,
           })),
         });
+        compte = { total: deja + rows.length, ajoutees: rows.length };
       }
 
       // La marque dit que l'assistant a contribué à ce champ. Elle subsiste
@@ -708,6 +768,7 @@ export class TdrAgentService {
         });
       }
     });
+    return compte;
   }
 
   private async messagePieces(tdrId: string): Promise<ChatMessage | null> {
@@ -724,9 +785,31 @@ export class TdrAgentService {
     });
     if (pieces.length === 0) return null;
 
-    const lisibles = pieces.filter((p) =>
-      TdrAttachmentService.estLisible(p.mimeType),
-    );
+    // Le format ne suffit pas : encore faut-il que le MODÈLE sache lire.
+    //
+    // Mesuré le 25 août 2026 contre le fournisseur : un bloc `image_url`
+    // envoyé au modèle configuré, qui ne déclare que l'entrée texte, rend
+    // « 404 — No endpoints found that support image input », et l'appel
+    // ENTIER échoue. Autrement dit, une seule image versée au dossier
+    // suffisait à casser la conversation tant qu'on ne la retirait pas :
+    // ni le fil, ni les écritures, plus rien ne fonctionnait, et le
+    // message affiché parlait de la clé et du modèle.
+    //
+    // On ne soumet donc que ce que le modèle peut recevoir. Les autres
+    // pièces restent au dossier — elles y ont leur place — sans jamais
+    // partir chez le fournisseur.
+    const capacites = await this.ai.capacites();
+    const lisibles = pieces.filter((p) => {
+      if (!TdrAttachmentService.estLisible(p.mimeType)) return false;
+      return p.mimeType === 'application/pdf'
+        ? capacites.fichier
+        : capacites.image;
+    });
+
+    // Aucune pièce transmissible : inutile d'annoncer au modèle des pièces
+    // qu'il ne verra pas. Il s'en excuserait, ou pire, il inventerait ce
+    // qu'elles contiennent.
+    if (lisibles.length === 0) return null;
     const morceaux: MorceauMessage[] = [
       {
         type: 'text',
@@ -832,6 +915,7 @@ export class TdrAgentService {
         { id: string; nom: string; args: string; annonce: boolean; vu: number }
       >();
       let motifArret: string | undefined;
+      let aPense = false;
 
       try {
         for await (const ev of this.ai.stream({
@@ -892,6 +976,14 @@ export class TdrAgentService {
             }
 
             appels.set(ev.index, suivant);
+          } else if (ev.type === 'reflexion') {
+            // Le modèle pense. Mesuré sur celui qui est configuré : sept
+            // secondes avant le premier mot, pendant lesquelles le fil ne
+            // disait rien. On le dit — une fois, pas trois cents.
+            if (!aPense) {
+              aPense = true;
+              yield { type: 'travail', libelle: 'Réflexion en cours…' };
+            }
           } else {
             motifArret = ev.finishReason;
           }
@@ -909,9 +1001,31 @@ export class TdrAgentService {
         if (motifArret === 'length') {
           yield {
             type: 'erreur',
-            message: 'La réponse a été coupée. Reformulez plus court.',
+            message:
+              'La réponse a été coupée avant sa fin, faute de place. Relancez : ' +
+              'demandez une section à la fois.',
           };
         }
+        yield { type: 'fin', tours };
+        return;
+      }
+
+      // Une coupure au plafond PENDANT un appel d'outil tronque ses
+      // arguments : le JSON ne se lit plus, `executer` répond « arguments
+      // illisibles » au modèle, et l'auteur ne voyait strictement rien —
+      // ni écriture, ni refus, ni erreur. Le champ restait vide pendant
+      // que l'assistant annonçait l'avoir rempli. Le dire ici, avant
+      // d'exécuter quoi que ce soit.
+      if (motifArret === 'length') {
+        this.logger.warn(
+          `Appel d'outil coupé au plafond de jetons — ${appels.size} appel(s), tour ${tours}.`,
+        );
+        yield {
+          type: 'erreur',
+          message:
+            'La demande d’écriture a été coupée avant d’être complète : rien n’a été ' +
+            'enregistré. Relancez en visant une seule section.',
+        };
         yield { type: 'fin', tours };
         return;
       }

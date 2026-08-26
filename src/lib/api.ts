@@ -1022,6 +1022,32 @@ export interface PieceJointeApi {
   lisibleParAssistant: boolean;
 }
 
+/**
+ * Ce que l'assistance sait faire sur ce serveur.
+ *
+ * Lu au fournisseur, non codé en dur : l'écran n'a pas à connaître les
+ * modèles ni leurs modalités. Il rend ce que le serveur lui dit — et
+ * change de comportement quand la configuration change, sans redéploiement.
+ */
+export interface CapacitesIa {
+  modele: string;
+  intitule?: string;
+  image: boolean;
+  fichier: boolean;
+  outils: boolean;
+  contexte?: number;
+  /** Vrai si les pièces jointes sont réellement soumises au modèle. */
+  pieces: boolean;
+  configuree: boolean;
+  indetermine: boolean;
+  /** Dit à l'auteur POURQUOI, en français. À afficher tel quel. */
+  motifPiecesFermees?: string;
+}
+
+export const aiApi = {
+  capacites: () => api.get<CapacitesIa>("/ai/capacites"),
+};
+
 export const tdrApi = {
   list: (statut?: string) =>
     api.get<TdrListItem[]>(`/tdr${statut ? `?statut=${statut}` : ""}`),

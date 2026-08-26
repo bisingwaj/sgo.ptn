@@ -33,10 +33,26 @@
   --ptn-aside: 380px;
 }
 
+// Étendu : le panneau prend la moitié de la place, sans jamais effacer le
+// parcours.
+//
+// Un fil de conversation est illisible dans 380 px dès qu'il porte un
+// récapitulatif, une liste ou un texte rédigé — c'est-à-dire précisément
+// ce que cet assistant produit. L'auteur l'étend le temps de lire, puis le
+// rend à sa colonne.
+//
+// `min()` plutôt qu'une fraction seule : sur un très grand écran, la
+// moitié ferait une mesure de lecture absurde, et le composeur du fil se
+// retrouverait à un mètre du texte qu'il commente.
+.workspace[data-aside='etendu'] {
+  --ptn-aside: min(52%, 860px);
+}
+
 // Sous 1312 px, le panneau se superpose plutot que de comprimer un
 // formulaire deja etroit.
 @media (max-width: 1312px) {
-  .workspace[data-aside='ouvert'] {
+  .workspace[data-aside='ouvert'],
+  .workspace[data-aside='etendu'] {
     --ptn-aside: 0px;
   }
 }

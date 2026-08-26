@@ -25,14 +25,14 @@ import { createPortal } from "react-dom";
 import { Modal, TextArea, TextInput } from "@carbon/react";
 import {
   Add,
-  AiGenerate,
   ArrowDown,
   ArrowUp,
-  Chat,
-  ChevronDown,
   Edit,
+  StopFilled,
   TrashCan,
+  WarningAltFilled,
 } from "@carbon/icons-react";
+import { BoutonAssistance, optionsCommunes } from "./BoutonAssistance";
 
 export interface ChampEntree {
   cle: string;
@@ -56,6 +56,9 @@ export function ListeEntrees<T extends Record<string, string>>({
   onGenerer,
   onOuvrirAssistant,
   enCours,
+  occupeAilleurs,
+  onArreter,
+  erreur,
   desactive,
   desactiveRaison,
   labelGenerer,
@@ -73,6 +76,18 @@ export function ListeEntrees<T extends Record<string, string>>({
   onGenerer: () => void;
   onOuvrirAssistant: () => void;
   enCours?: boolean;
+  /** L'assistant travaille ailleurs : voir `EditeurTexte`. */
+  occupeAilleurs?: boolean;
+  /** Interrompt la proposition en cours. */
+  onArreter?: () => void;
+  /**
+   * Échec de la dernière proposition.
+   *
+   * Rendu DANS la barre de tête, contre le bouton qui le lève — il était
+   * sous la liste, c'est-à-dire à plusieurs centaines de pixels du geste à
+   * refaire dès que la liste porte quelques entrées.
+   */
+  erreur?: string | null;
   desactive?: boolean;
   desactiveRaison?: string;
   labelGenerer: string;
@@ -138,54 +153,34 @@ export function ListeEntrees<T extends Record<string, string>>({
           <Add size={16} aria-hidden />
         </button>
 
-        <div className="relative ml-auto flex">
-          <button
-            type="button"
-            onClick={onGenerer}
-            disabled={enCours || desactive}
-            title={desactive ? desactiveRaison : undefined}
-            className="bg-ai hover:bg-ai-hover text-on-color text-caption ptn-carte-liste inline-flex items-center gap-2 px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:hover:bg-ai disabled:opacity-40"
+        {erreur && (
+          /* L'échec se lit contre le bouton qui le lève, et il demande un
+             geste : « relancez » plutôt que « échec ». Il s'efface de
+             lui-même — voir l'étape appelante. */
+          <span
+            role="alert"
+            className="text-caption text-danger-text ml-auto inline-flex items-center gap-1.5 pl-2"
           >
-            <AiGenerate size={16} aria-hidden />
-            {enCours ? "Rédaction…" : labelGenerer}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMenu((v) => !v)}
-            disabled={desactive}
-            aria-haspopup="menu"
-            aria-expanded={menu}
-            aria-label="Autres options d’assistance"
-            className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste border-l-on-color/25 inline-flex items-center border-l px-1.5 py-1.5 disabled:cursor-not-allowed disabled:hover:bg-ai disabled:opacity-40"
-          >
-            <ChevronDown size={16} aria-hidden />
-          </button>
+            <WarningAltFilled size={14} className="shrink-0" aria-hidden />
+            {erreur}
+          </span>
+        )}
 
-          {menu && (
-            <div
-              role="menu"
-              className="border-subtle bg-background ptn-entree-ligne absolute top-full right-0 z-10 mt-1 w-72 border shadow-lg"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className="hover:bg-layer flex w-full items-start gap-3 px-4 py-3 text-left"
-                onClick={() => {
-                  setMenu(false);
-                  onOuvrirAssistant();
-                }}
-              >
-                <Chat size={16} className="text-ai mt-0.5 shrink-0" aria-hidden />
-                <span>
-                  <span className="text-body text-primary block">Guider l’assistant</span>
-                  <span className="text-caption text-helper block">
-                    Dire précisément ce que vous attendez, et relire tout ce qui a été fait sur
-                    ce dossier.
-                  </span>
-                </span>
-              </button>
-            </div>
-          )}
+        <div className={erreur ? "flex" : "ml-auto flex"}>
+          <BoutonAssistance
+            libelle={labelGenerer}
+            onGenerer={onGenerer}
+            enCours={enCours}
+            bloque={desactive || occupeAilleurs}
+            bloqueRaison={
+              occupeAilleurs
+                ? "L’assistant travaille déjà sur ce dossier. Attendez qu’il ait fini, ou arrêtez-le."
+                : desactiveRaison
+            }
+            menuOuvert={menu}
+            setMenuOuvert={setMenu}
+            options={optionsCommunes({ onOuvrirAssistant })}
+          />
         </div>
       </div>
 
@@ -211,6 +206,17 @@ export function ListeEntrees<T extends Record<string, string>>({
               <i />
             </span>
             L’assistant rédige — veuillez patienter
+            {onArreter && (
+              <button
+                type="button"
+                onClick={onArreter}
+                title="Arrêter la proposition en cours"
+                className="bg-ai hover:bg-ai-hover text-on-color ptn-carte-liste ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-inherit transition-colors"
+              >
+                <StopFilled size={14} aria-hidden />
+                Arrêter
+              </button>
+            )}
           </span>
           {items.length > 0 && (
             <span className="text-caption text-helper">
