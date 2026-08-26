@@ -204,14 +204,37 @@ Deux modules portent leurs propres règles, dans `.claude/skills/` :
 parcours, assistance IA et ses interdits, pièges de refactorisation). Les
 charger avant d'intervenir sur ces domaines.
 
-### Chantier ouvert — l'assistance rédactionnelle
+### L'assistance rédactionnelle — repris le 25 août 2026
 
-La génération **s'interrompt en milieu de phrase et ne reprend pas**. Le
-diagnostic est posé et l'outillage de vérification consigné dans
-[documents/reprise-assistant-ia.md](documents/reprise-assistant-ia.md) :
-`streamField` ignore le motif d'arrêt du fournisseur, si bien qu'une coupure
-sur limite de jetons ne se distingue pas d'une fin normale. À lire avant de
-toucher à `backend/src/ai/`.
+La coupure en milieu de phrase est **traitée**, et la cause n'était pas celle
+qu'on croyait. Détail mesuré dans
+[documents/reprise-assistant-ia.md](documents/reprise-assistant-ia.md), à lire
+avant de toucher à `backend/src/ai/`. Les quatre faits à retenir :
+
+1. **`max_tokens` compte les jetons de RAISONNEMENT** chez OpenRouter, et le
+   modèle en place est un modèle à raisonnement. À 900, il en brûlait 586
+   avant d'écrire : la coupure était certaine. Une reprise pouvait même
+   consommer tout le plafond et rendre **zéro caractère**, ce qui effaçait le
+   champ pendant que l'assistant annonçait une réussite.
+2. **Rédiger n'est pas délibérer.** La réflexion est coupée
+   (`raisonnement: 'aucun'`) sur les chemins de rédaction : 2,5× plus rapide,
+   texte de même ampleur. L'agent la garde — lui choisit des outils.
+3. **Une capacité de modèle se LIT, elle ne se suppose pas.**
+   `GET /ai/capacites` interroge le catalogue du fournisseur. Le modèle
+   configuré ne lit que du texte : une pièce jointe le faisait répondre 404 et
+   cassait la conversation entière. Le bouton est désactivé **en disant
+   pourquoi**, et se rallumera seul si l'on change de modèle.
+4. **L'assistant a UN état de travail**, dans `assistant-contexte`. Le bouton
+   d'un champ et le fil ne pouvaient pas se voir et écrivaient de front dans
+   le même champ.
+
+**Ce que l'assistant écrit part au serveur IMMÉDIATEMENT** — le `commit`
+d'étape ne suffit pas, le rail des étapes n'enregistre rien, et une relecture
+du dossier écrasait alors le texte fraîchement engendré.
+
+Reste ouvert : la poursuite après coupure (`/assistance/champ/suite`) est
+écrite mais jamais déclenchée en conditions réelles, et les listes n'ont pas
+d'arrêt effectif (routes bloquantes, non des flux).
 
 ### Non fait
 

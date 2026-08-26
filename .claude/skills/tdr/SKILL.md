@@ -156,6 +156,33 @@ cela ajoute de l'attente à de l'attente.
 l'appeler avant toute reprise. Sans lui, prié d'améliorer un texte, il
 demandait à l'auteur de le lui recopier.
 
+**UN SEUL ÉTAT DE TRAVAIL.** `assistant-contexte` porte `travail` — origine,
+champ visé, phase, et le contrôleur d'interruption. Les deux surfaces le
+lisent et s'y désactivent. Le fil était partagé, l'ACTIVITÉ ne l'était pas :
+on lançait une rédaction au bouton pendant que le fil écrivait dans le même
+champ. `demarrer()` rend `null` si une demande court déjà — c'est le verrou,
+et il est dans le contexte pour qu'on ne puisse pas l'oublier.
+
+**Ce que l'assistant écrit part au serveur SANS ATTENDRE.** Le `commit` d'une
+étape ne se déclenche qu'au bouton « Suivant » ; le rail n'enregistre rien.
+Une écriture de l'agent déclenche `alignerSurLaBase`, qui relit la base — et
+effaçait le texte engendré resté en mémoire. La relecture ne porte plus que
+sur **les champs réellement écrits**.
+
+**Rédiger n'est pas délibérer.** `raisonnement: 'aucun'` sur les chemins de
+rédaction : chez ce fournisseur `max_tokens` couvre la réflexion, qui dévorait
+le plafond et coupait le texte. L'agent la garde — il choisit des outils.
+
+**Une liste s'AJOUTE.** `ecrire_champ` prend `mode: 'ajouter' | 'remplacer'`,
+et le défaut est l'ajout. Il effaçait tout et réécrivait : « ajoute deux
+livrables » supprimait ceux que l'auteur avait saisis. Le bouton de l'étape,
+lui, ajoutait — deux portes, deux comportements opposés sur la même donnée.
+
+**Une capacité de modèle se LIT.** `GET /ai/capacites`, depuis le catalogue du
+fournisseur. Ne jamais coder en dur qu'une fonctionnalité marche : le modèle
+configuré ne lit pas les pièces jointes, et les lui envoyer faisait échouer
+l'appel ENTIER par un 404.
+
 **Toute contribution laisse une marque.** `aiAssistedFields`, en union, jamais
 en retrait — l'auteur peut réécrire par-dessus, la contribution a eu lieu, et
 le document produit la rend.
@@ -230,6 +257,11 @@ tête sont retirés à la composition — le document porte sa propre puce.
 | **Règle CSS hors couche** | `:focus-visible` de `globals.scss` bat toute utilitaire Tailwind. Neutraliser par une règle de même nature |
 | **Enfant flex sans `min-h-0`** | Grandit avec son contenu au lieu de défiler, et pousse ses voisins hors du cadre |
 | **Carbon `min-block-size`** | L'emporte sur `h-8` : un carré s'étire en rectangle. Neutraliser explicitement |
+| **Jetons de raisonnement** | `max_tokens` les COMPTE chez OpenRouter. Un plafond « suffisant » ne l'est pas : le modèle peut tout consommer en réflexion et rendre zéro caractère |
+| **Une fin vide écrasait le champ** | `fin` avec un texte vide était écrit tel quel : le texte de l'auteur disparaissait et l'assistant annonçait une réussite. Ne jamais écrire une proposition vide |
+| **Contrôle négatif sans témoin** | Un jeton expiré rend un 401 dont le corps se lit comme un dossier vide. Toute lecture d'API doit vérifier un champ TÉMOIN — la référence, par exemple — avant de conclure à l'absence |
+| **Panneau démonté = flux tué** | Le contrôleur vivait dans `AgentPanel`, que `if (!ouvert) return null` démonte. Fermer l'assistant interrompait la génération, à rebours de ce que le module promet. Il vit dans le contexte |
+| **Largeur d'un panneau** | Elle appartient à la grille du `Wizard`, pas au panneau : celui-ci ne peut pas s'élargir seul, et le bouton ne changeait que son pictogramme |
 
 ---
 

@@ -4,7 +4,7 @@ Note de travail, écrite pour ouvrir un fil dédié à la **génération qui
 s'interrompt**. Elle porte ce qui a été établi, ce qui reste à faire, et
 l'outillage à ne pas refabriquer.
 
-Dernière mise à jour : 25 août 2026.
+Dernière mise à jour : 25 août 2026 — diagnostic mesuré, non plus présumé.
 
 ---
 
@@ -12,6 +12,131 @@ Dernière mise à jour : 25 août 2026.
 
 > « La génération s'arrête en milieu de phrase et ne reprend pas. Elle ne se
 > rétablit pas d'elle-même. Il faut tout recommencer. »
+
+### Diagnostic ÉTABLI — mesuré sur le fournisseur, le 25 août 2026
+
+La présomption consignée plus bas visait le bon suspect — `maxTokens: 900` —
+mais pour la mauvaise raison. Ce ne sont pas les sections qui sont longues.
+
+**`deepseek/deepseek-v4-flash-0731` est un modèle à raisonnement, et
+`max_tokens` compte les jetons de raisonnement.** Le plafond n'est donc pas
+un budget de texte : c'est un budget de réflexion PUIS de texte, et la
+réflexion se sert la première.
+
+Reproduit sur la vraie route du fournisseur, avec une consigne de « Contexte »
+réaliste :
+
+| `max_tokens` | raisonnement | texte visible | `finish_reason` | résultat |
+|---|---|---|---|---|
+| **900** (valeur en place) | 586 | 314 | **`length`** | coupé sur « …la nécessité de poser » |
+| **3000** | 426 | 645 | `stop` | 384 mots, phrase achevée |
+
+Une section de « Contexte » demande donc environ **1 100 à 1 250 jetons au
+total**. À 900, la coupure n'est pas un risque : elle est certaine.
+
+Le coût ne s'y oppose pas — 0,04 / 0,08 USD par million de jetons, soit
+environ **0,0006 USD la génération**. Le plafond de 900 n'économisait rien.
+
+### Le second défaut, mesuré au passage : la moitié de l'attente est muette
+
+Le modèle émet **383 fragments portant `reasoning` avec `content: ""`**.
+`AiService.stream` filtre sur `if (delta?.content)` — la chaîne vide est
+fausse — et ne transmet donc **rien du tout** pendant toute cette phase.
+
+Mesuré, chronomètre en main, sur une génération de 15,9 s :
+
+```
+1er signe de raisonnement   :  4,3 s   (invisible : rien n'est transmis)
+1er mot visible à l'écran   :  7,4 s   <-- silence total jusque-là
+fin du flux                 : 15,9 s
+```
+
+**Près de la moitié de l'attente se passe devant un écran qui ne dit rien**,
+alors que le fournisseur, lui, parle sans interruption. C'est ce que l'auteur
+décrit comme un manque de fluidité et d'indication de l'étape en cours.
+
+### Le troisième : les pièces jointes ne peuvent pas fonctionner
+
+Relevé au catalogue OpenRouter : `deepseek/deepseek-v4-flash-0731` déclare
+`input_modalities: ["text"]`. Ni image, ni fichier. `messagePieces`
+(`tdr-agent.service.ts`) compose pourtant des blocs `image_url` et `file`.
+Des trois modèles examinés, seul `anthropic/claude-sonnet-4.5` accepte un
+PDF ; `deepseek-v4-flash-vision-exp` lit les images mais pas les fichiers.
+
+**Décision de l'auteur** : garder DeepSeek, et DÉSACTIVER le bouton en
+disant le motif réel plutôt que de le masquer. La capacité se lira au
+catalogue du fournisseur et non en dur, de sorte qu'un changement de modèle
+en configuration rallume le bouton sans toucher au code.
+
+### Comment le vérifier à nouveau
+
+```bash
+curl -s https://openrouter.ai/api/v1/models \
+  | python3 -c "import json,sys; d=json.load(sys.stdin)['data']; \
+      m=[x for x in d if x['id']=='deepseek/deepseek-v4-flash-0731'][0]; \
+      print(m['architecture']['input_modalities'], m['context_length'])"
+```
+
+Le catalogue est public : aucune clé n'est nécessaire pour lire les
+capacités. La clé ne sert qu'à l'appel de génération lui-même.
+
+---
+
+## 1 ter. Ce qui a été livré le 25 août 2026
+
+### Le remède, et pourquoi il n'était pas celui qu'on croyait
+
+Relever le plafond ne suffisait pas : à 3000, une REPRISE consommait
+l'intégralité du budget en réflexion et rendait **zéro caractère**, avec
+`tronque: true`. Le champ était alors effacé et l'assistant annonçait une
+réussite — c'est le défaut « il dit qu'il a écrit et je ne vois rien ».
+
+La réflexion est donc **coupée** sur les chemins de rédaction
+(`ChatRequest.raisonnement: 'aucun'`). Rédiger n'est pas délibérer : la
+consigne, l'ancrage et les repères sont déjà dans l'invite. Mesuré à
+consigne identique :
+
+| réglage | durée | raisonnement | texte |
+|---|---|---|---|
+| défaut | 50,7 s | 1531 | 1959 car |
+| `effort: low` | 42,8 s | 127 | 2233 car |
+| **`enabled: false`** | **20,2 s** | **0** | 1659 car |
+
+Le cas qui rendait zéro caractère rend désormais 1791 caractères,
+`tronque: false`, en 16,6 s. **L'agent garde sa réflexion** : lui choisit
+des outils et enchaîne des tours, ce qui est une vraie délibération.
+
+### Les six défauts traités
+
+| Défaut | Remède | Vérifié |
+|---|---|---|
+| Coupure en milieu de phrase | `finishReason` propagé jusqu'à `fin.tronque`, plafond à 3000, réflexion coupée | 0 → 1791 car |
+| Perte du texte engendré | `persist` immédiat + `alignerSurLaBase(id, [champ])` ciblé | survit au rechargement |
+| Deux surfaces qui s'ignorent | `travail` UNIQUE dans `assistant-contexte` | bouton désactivé pendant que le fil écrit |
+| Impossible d'arrêter | `AbortController` dans le contexte, deux boutons | texte partiel conservé |
+| Le fil muet pendant l'action | `ouvrirEnLigne` + mises à jour au fil de l'eau | actes visibles à 900 ms |
+| Listes écrasées par l'agent | `mode: 'ajouter'` par défaut sur `ecrire_champ` | 10 → 11, les dix intacts |
+
+### Ce qui reste ouvert
+
+1. **La poursuite après coupure** (`POST /assistance/champ/suite`) est
+   écrite et branchée, mais elle n'a **pas encore été déclenchée en vrai** :
+   depuis que la réflexion est coupée, `tronque` ne se produit plus sur les
+   cas d'essai. À provoquer en abaissant `PLAFOND_REDACTION` le temps d'un
+   test.
+2. **Le raccord de la poursuite** — la règle de recollage
+   (`continueField`) n'a pas été éprouvée sur un vrai texte coupé.
+3. **`ListeEntrees` n'a pas de bouton d'arrêt effectif** : les routes de
+   liste sont des POST bloquants, non des flux. `assistant.interrompre`
+   coupe l'affichage, pas la requête.
+4. **Les autres écrans** (`/assistant`, hors parcours TDR) n'ont reçu
+   aucune de ces corrections.
+
+---
+
+---
+
+## 1 bis. La présomption d'origine, conservée pour mémoire
 
 ### Diagnostic établi — forte présomption, non encore prouvée
 
