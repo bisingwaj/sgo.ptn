@@ -354,6 +354,40 @@ export function AgentPanel({
                     porte aucun, le document n'en rendant pas. */}
                 {b.texte && <TexteEnrichi>{b.texte}</TexteEnrichi>}
 
+                {/* LES SOURCES VIVENT ICI, ET NULLE PART AILLEURS.
+                    Sous la réponse, avant que l'auteur ne décide d'en
+                    reprendre le texte — c'est là que la provenance sert. Le
+                    dossier, lui, n'en porte aucune : le document est une
+                    pièce contractuelle, il ne rend pas d'hyperlien, et
+                    `sansBalisage` retire les adresses des champs.
+
+                    Le lien s'ouvre dans un onglet neuf : on consulte une
+                    source SANS quitter une rédaction en cours. */}
+                {b.sources && b.sources.length > 0 && (
+                  <div className="border-ai mt-1 flex flex-col gap-1.5 border-l-2 pl-3">
+                    <span className="text-caption text-helper">
+                      {b.sources.length === 1
+                        ? "Source consultée sur internet"
+                        : `${b.sources.length} sources consultées sur internet`}
+                    </span>
+                    <ul className="flex flex-col gap-1">
+                      {b.sources.map((src) => (
+                        <li key={src.url}>
+                          <a
+                            href={src.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-caption text-accent hover:underline"
+                            title={src.url}
+                          >
+                            {src.titre}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {b.encours && !b.texte && b.actes.length === 0 && (
                   <span
                     className="text-caption text-helper inline-flex items-center gap-2"
@@ -862,6 +896,19 @@ function appliquer(
         ...b,
         actes: [...b.actes, { genre: "refus", libelle: motifLisible(ev.champ, ev.motif) }],
       }));
+      break;
+
+    // Les sources s'ACCUMULENT sur le tour : l'agent peut chercher deux fois
+    // avant de répondre, et n'afficher que la dernière recherche laisserait
+    // croire que la première n'a pas eu lieu. Dédoublonnées par adresse,
+    // pour la même raison que côté serveur.
+    case "sources":
+      majTravail({ phase: "outil", detail: `Recherche : ${ev.question}` });
+      majDerniere((b) => {
+        const vues = new Set((b.sources ?? []).map((s) => s.url));
+        const neuves = ev.sources.filter((s) => !vues.has(s.url));
+        return { ...b, sources: [...(b.sources ?? []), ...neuves] };
+      });
       break;
 
     case "texte":

@@ -68,6 +68,20 @@ export interface GenerationRequest {
   raisonnement?: 'aucun' | 'defaut';
 }
 
+/**
+ * Une source consultée sur le web, telle que le fournisseur la rend.
+ *
+ * Elle vit dans la CONVERSATION, jamais dans le dossier. Une pièce
+ * contractuelle ne porte pas d'hyperlien : le document ne rend aucun
+ * balisage, et une URL y serait écrite en toutes lettres au milieu d'une
+ * phrase. L'auteur voit d'où vient l'information au moment où il décide
+ * de la reprendre — c'est là que ça se joue.
+ */
+export interface SourceWeb {
+  titre: string;
+  url: string;
+}
+
 export interface ChatRequest {
   messages: ChatMessage[];
   tools?: ToolSpec[];
@@ -102,6 +116,26 @@ export interface ChatRequest {
    * ce qui est bien une délibération.
    */
   raisonnement?: 'aucun' | 'defaut';
+
+  /**
+   * Nombre de résultats web à joindre à l'invite. Absent : aucune recherche.
+   *
+   * LE GREFFON SE DÉCLENCHE À CHAQUE APPEL OÙ IL EST DEMANDÉ, que le modèle
+   * en ait besoin ou non. Mesuré le 27 août 2026, sur la même question
+   * triviale — « réponds par le mot bonjour » :
+   *
+   *   sans recherche      0,000147 USD    4,1 s
+   *   avec recherche      0,017869 USD    5,7 s    3593 jetons injectés
+   *
+   * Cent vingt-deux fois plus cher pour dire bonjour. C'est pourquoi la
+   * recherche n'est jamais activée globalement : elle est un OUTIL que
+   * l'agent appelle quand il en a besoin, et ce champ n'est renseigné que
+   * sur cet appel-là.
+   *
+   * Le coût suit le nombre de résultats — 1 : 0,0085 · 3 : 0,0182 ·
+   * 5 : 0,0192 USD.
+   */
+  rechercheWeb?: number;
 }
 
 export interface GenerationResult {
@@ -118,6 +152,8 @@ export interface GenerationResult {
   toolCalls?: ToolCall[];
   /** Jetons consommés, quand le fournisseur les renvoie */
   usage?: { prompt: number; completion: number };
+  /** Sources consultées, quand la recherche web a été demandée */
+  citations?: SourceWeb[];
 }
 
 /**
@@ -355,6 +391,13 @@ export class AiService {
         max_tokens: request.maxTokens ?? 1200,
         ...(request.tools?.length ? { tools: request.tools } : {}),
         ...AiService.raisonnement(request.raisonnement),
+        // Le greffon plutôt que le suffixe `:online` du modèle : même effet,
+        // et il laisse borner le nombre de résultats — dont le coût dépend
+        // directement. Seule la voie NON DIFFUSÉE le porte : la recherche est
+        // un outil que l'agent appelle, jamais un régime général.
+        ...(request.rechercheWeb
+          ? { plugins: [{ id: 'web', max_results: request.rechercheWeb }] }
+          : {}),
         messages: AiService.cacheSystem(request.messages),
       },
       request.timeoutMs ?? AiService.TIMEOUT_DEFAUT,
@@ -363,7 +406,15 @@ export class AiService {
 
     const payload = (await response.json()) as {
       choices?: Array<{
-        message?: { content?: string | null; tool_calls?: ToolCall[] };
+        message?: {
+          content?: string | null;
+          tool_calls?: ToolCall[];
+          /** Sources, quand le greffon de recherche a tourné */
+          annotations?: Array<{
+            type?: string;
+            url_citation?: { title?: string; url?: string };
+          }>;
+        };
         finish_reason?: string;
       }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -391,7 +442,34 @@ export class AiService {
             completion: payload.usage.completion_tokens ?? 0,
           }
         : undefined,
+      citations: AiService.sources(choice?.message?.annotations),
     };
+  }
+
+  /**
+   * Extrait les sources d'une réponse, dédoublonnées par URL.
+   *
+   * Le fournisseur rend parfois la même page sous deux adresses de langue
+   * — le `/en/` et le `/fr/` d'un même document de la Banque mondiale.
+   * Les afficher toutes deux laisserait croire à deux sources concordantes
+   * là où il n'y en a qu'une.
+   */
+  private static sources(
+    annotations?: Array<{
+      type?: string;
+      url_citation?: { title?: string; url?: string };
+    }>,
+  ): SourceWeb[] | undefined {
+    if (!annotations?.length) return undefined;
+    const vues = new Set<string>();
+    const sortie: SourceWeb[] = [];
+    for (const a of annotations) {
+      const url = a.url_citation?.url?.trim();
+      if (!url || vues.has(url)) continue;
+      vues.add(url);
+      sortie.push({ titre: a.url_citation?.title?.trim() || url, url });
+    }
+    return sortie.length ? sortie : undefined;
   }
 
   /**

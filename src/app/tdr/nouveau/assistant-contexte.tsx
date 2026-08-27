@@ -40,6 +40,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { SourceWeb } from "@/lib/agent-stream";
 
 export interface Ecriture {
   champ: string;
@@ -84,6 +85,14 @@ export interface Bulle {
   }>;
   /** Écritures de ce tour, pour l'annulation */
   ecritures: Ecriture[];
+  /**
+   * Ce que l'assistant est allé lire sur le web pendant ce tour.
+   *
+   * Rendues sous la réponse, jamais dans le dossier : l'auteur doit voir
+   * sur quoi la proposition s'appuie AVANT de la reprendre, et le document
+   * qui partira chez le bailleur ne porte aucune adresse.
+   */
+  sources?: SourceWeb[];
   encours?: boolean;
   /** Marque une action lancée depuis un champ, non depuis le fil. */
   enLigne?: boolean;

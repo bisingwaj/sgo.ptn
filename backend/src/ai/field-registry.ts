@@ -497,7 +497,35 @@ export function sansBalisage(texte: string): string {
   // c'est une convention d'écriture technique, pas de rédaction.
   //
   // LE DIÈSE PART. « ## Contexte » n'a aucun sens sur une pièce imprimée.
-  return sortie
+  // LES LIENS MARKDOWN PARTENT, LE LIBELLÉ RESTE.
+  //
+  // Depuis que l'agent sait chercher sur internet, il répond en markdown :
+  // « d'après le [Règlement de Passation](https://thedocs.worldbank.org/...) ».
+  // Le document ne rend AUCUN balisage — `document-plan.ts` ne connaît que
+  // paragraphe, liste et définitions — et l'adresse s'y écrirait donc en
+  // toutes lettres au milieu d'une phrase, sur une pièce contractuelle.
+  //
+  // La provenance n'est pas perdue pour autant : elle vit dans la
+  // conversation, où l'auteur la lit avant de reprendre le texte.
+  const sansLiens = sortie
+    .replace(/\[([^\]]*)\]\((https?:[^)\s]+)\)/g, '$1')
+    .replace(/(^|[\s(])(https?:\/\/[^\s)]+)/g, '$1');
+
+  // Le retrait laisse ses traces : « Voir  pour le détail » avec deux
+  // espaces, « (avec ) » avec une parenthèse vide. Invisible à l'écran,
+  // visible à l'impression — et ces textes s'impriment.
+  const resserre = sansLiens
+    .replace(/\(\s*\)/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    // La virgule et le point seulement. Le deux-points, le point-virgule et
+    // les points d'exclamation et d'interrogation GARDENT leur espace : le
+    // français l'exige, et le resserrer ici déferait ce que la composition
+    // du document fait par ailleurs.
+    .replace(/ ([,.])/g, '$1')
+    .replace(/\( /g, '(')
+    .replace(/ \)/g, ')');
+
+  return resserre
     .split('\n')
     .map((l) =>
       l.replace(/^( {0,3})\*(\s+)/, '$1-$2').replace(/^ {0,3}#{1,6}\s+/, ''),

@@ -21,8 +21,22 @@ export type AgentEvent =
   | { type: "apercu"; champ: string; texte: string }
   | { type: "ecriture"; champ: string; etape: string; valeur: unknown; avant: unknown }
   | { type: "refus"; champ: string; motif: string }
+  /**
+   * Ce que l'agent est allé consulter sur le web.
+   *
+   * Les sources vivent dans la CONVERSATION et n'entrent jamais dans le
+   * dossier : une pièce contractuelle ne porte pas d'hyperlien. L'auteur
+   * les lit au moment où il décide de reprendre le texte proposé.
+   */
+  | { type: "sources"; question: string; sources: SourceWeb[] }
   | { type: "fin"; tours: number }
   | { type: "erreur"; message: string };
+
+/** Une page consultée, telle que l'assistant la rapporte. */
+export interface SourceWeb {
+  titre: string;
+  url: string;
+}
 
 export interface TourDeParole {
   role: "user" | "assistant";
