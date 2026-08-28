@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { texteEnv } from "@/lib/env";
 import { ApiErrorSchema, type Guardrail } from "@/lib/schemas/common";
 
 /**
@@ -16,7 +17,7 @@ import { ApiErrorSchema, type Guardrail } from "@/lib/schemas/common";
  * ---------------------------------------------------------------------------
  */
 
-const NEST_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+const NEST_API = texteEnv(process.env.NEXT_PUBLIC_API_URL, "http://localhost:3001/api");
 const MOCK_API = "/api/v1";
 
 type Source = "nest" | "mock";

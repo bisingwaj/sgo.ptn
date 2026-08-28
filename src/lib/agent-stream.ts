@@ -10,9 +10,10 @@
  * annulerait tout l'intérêt.
  */
 
+import { texteEnv } from "./env";
 import { getAccessToken, api } from "./api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api";
+const API_BASE = texteEnv(process.env.NEXT_PUBLIC_API_URL, "http://localhost:3333/api");
 
 export type AgentEvent =
   | { type: "texte"; delta: string }

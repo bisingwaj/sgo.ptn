@@ -36,6 +36,12 @@ yarn-error.log*
 # la production attend, et un secret manquant ne se voit qu'au démarrage.
 !.env.example
 !.env.prod.example
+# `.env.production` est versionné, lui, et ce n'est pas un oubli : il ne
+# porte que des variables `NEXT_PUBLIC_*`, que Next inscrit dans le code
+# envoyé au navigateur. Elles sont publiques par construction. Les
+# versionner évite qu'une construction dépende d'une configuration posée
+# hors du dépôt. Aucun secret ne doit y entrer.
+!.env.production
 
 # vercel
 .vercel
