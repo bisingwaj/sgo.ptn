@@ -31,14 +31,25 @@
  * ---------------------------------------------------------------------------
  * CE QUI DÉTERMINE LE STATUT
  *
- * Un module est `active` quand ses écrans lisent le VRAI serveur. Au 28 août
+ * Un module est `active` quand ses écrans lisent le VRAI serveur. Au 29 août
  * 2026, le backend NestJS expose : `auth`, `admin/comptes`, `documents`,
- * `marketplace`, `ptba`, `referentiel`, `referentiel-tdr`, `tdr`, `ai`,
- * `assistant`. Tout le reste tient sur des fixtures locales.
+ * `marketplace`, `passation`, `ptba`, `referentiel`, `referentiel-tdr`,
+ * `tdr`, `tdr-attachment`, `tdr-document`, `ai`, `assistant`.
+ *
+ * `passation` manquait à cette liste, et l'omission a des conséquences :
+ * c'est LUI qui sert `/passation/a-instruire`, `/anos/en-cours` et
+ * `/anos/:id/decision`. Le module ne porte pas le nom de l'écran qu'il
+ * alimente — chercher un dossier « ano » dans `backend/src` n'en trouve
+ * aucun, et on conclut à tort que l'écran tient sur des fixtures.
  *
  * Ne pas inscrire ici un module « presque prêt ». Le registre décrit ce qui
  * EST, jamais ce qui va être — sinon il devient à son tour une promesse
  * qu'on ne tient pas.
+ *
+ * L'INVERSE EST VRAI AUSSI : un écran branché peut rester voilé. Le statut
+ * dit ce qu'on MONTRE, non ce qui existe. Le voile se lève alors par
+ * décision, non par développement — et la ligne doit le dire, faute de quoi
+ * le prochain lecteur refera le travail déjà fait.
  * ---------------------------------------------------------------------------
  */
 
@@ -89,6 +100,19 @@ export const FONCTIONNALITES: readonly Fonctionnalite[] = [
   {
     chemin: "/ano",
     libelle: "Avis de non-objection",
+    // VOILÉ PAR DÉCISION, NON PAR MANQUE. Cet écran lit le vrai serveur
+    // depuis le 26 août 2026 : `passationApi.anosEnCours()` pour la file,
+    // `deciderAno()` pour la décision, et la chaîne entière a été éprouvée
+    // — un TTL de la Banque mondiale a accordé une non-objection à travers
+    // lui, puis l'avis a paru au marketplace.
+    //
+    // Il reste voilé le temps qu'on le montre : c'est un choix d'exposition.
+    // Le lever ne demande AUCUN développement — seulement de passer ce
+    // statut à `active`.
+    //
+    // Conséquence tant qu'il est voilé : la chaîne s'interrompt entre la
+    // demande d'ANO et la publication de l'avis, et `/bailleur/ano`, qui
+    // redirige ici, est voilé avec lui. Le bailleur ne peut pas décider.
     statut: "en-developpement",
     detail:
       "Le circuit de demande et de délivrance des ANO, revue préalable comprise. La décision reste au bailleur.",
