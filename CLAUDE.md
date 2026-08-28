@@ -201,10 +201,23 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 
 ### Compétences chargées automatiquement
 
-Deux modules portent leurs propres règles, dans `.claude/skills/` :
-`ptba` (plafonds, cycle de l'exercice, invariants) et `tdr` (architecture du
-parcours, assistance IA et ses interdits, pièges de refactorisation). Les
-charger avant d'intervenir sur ces domaines.
+Sept compétences vivent dans `.claude/skills/`. Les charger avant
+d'intervenir sur leur domaine.
+
+| Compétence | Porte |
+|---|---|
+| `ptba` | Plafonds, cycle de l'exercice, invariants du plan annuel |
+| `tdr` | Architecture du parcours, les 18 étapes, l'assistance et ses interdits |
+| `redaction-assistee` | **La doctrine d'enrichissement.** Densités mesurées, ce qui ne se règle pas par une consigne. À charger en premier sur ce domaine |
+| `preambule-institutionnel` | Les 848 mots fixes des TDR de l'UGPTN, à composer et jamais à engendrer |
+| `consignes-champs` | Les 8 consignes, leurs cibles, leur variation par type d'activité |
+| `registre-institutionnel` | Les marques de machine, le lexique réel, les susceptibilités politiques |
+| `structure-document` | Le plan confronté aux TDR réels, le tableau budgétaire |
+
+Les cinq dernières reposent sur des mesures prises le 28 août 2026 sur quatre
+TDR réels de l'UGPTN. **Le fait à retenir** : le préambule institutionnel est
+identique à 100 % d'un dossier à l'autre — 848 mots que la plateforme ne
+compose pas, et qu'aucun modèle ne doit rédiger.
 
 ### L'assistance rédactionnelle — repris le 25 août 2026
 
