@@ -33,6 +33,7 @@ import {
   type SessionUser,
 } from "@/lib/api";
 import { useProfile } from "@/components/profile/ProfileContext";
+import { nombreEnv } from "@/lib/env";
 import type { ProfileKey } from "@/lib/profiles";
 import styles from "./AuthContext.module.scss";
 
@@ -63,7 +64,7 @@ export function toProfileKey(profile: ProfileKeyApi): ProfileKey {
  * confidentiel EAS/HS ne peut pas laisser une session ouverte sur un poste
  * abandonné.
  */
-const IDLE_MINUTES = Number(process.env.NEXT_PUBLIC_SESSION_IDLE_MINUTES ?? 30);
+const IDLE_MINUTES = nombreEnv(process.env.NEXT_PUBLIC_SESSION_IDLE_MINUTES, 30);
 const IDLE_MS = IDLE_MINUTES * 60_000;
 const WARNING_BEFORE_MS = 2 * 60_000;
 

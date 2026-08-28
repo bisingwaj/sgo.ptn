@@ -10,7 +10,9 @@
  * `httpOnly` + `SameSite=Strict`, avec protection CSRF côté serveur.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api";
+import { texteEnv } from "./env";
+
+const API_BASE = texteEnv(process.env.NEXT_PUBLIC_API_URL, "http://localhost:3333/api");
 const REFRESH_STORAGE_KEY = "ptn-rdc.refreshToken";
 
 let accessToken: string | null = null;
@@ -1119,17 +1121,11 @@ export const tdrApi = {
       groundedOn: string[];
       mode?: "redaction" | "reprise";
     }>(`/tdr/${id}/assistance/champ`, { champ }),
-  assistContext: (id: string) =>
-    api.post<{ proposal: string; model: string; groundedOn: string[] }>(
-      `/tdr/${id}/assistance/contexte`,
-    ),
-  assistJustification: (id: string) =>
-    api.post<{
-      proposal: string;
-      model: string;
-      groundedOn: string[];
-      mode: "redaction" | "reprise";
-    }>(`/tdr/${id}/assistance/justification`),
+  // `assistContext` et `assistJustification` ont été retirées : aucun
+  // composant ne les appelait, et leurs plafonds — 700 et 600 jetons —
+  // coupaient le texte en milieu de phrase. Les huit champs de texte
+  // passent par `assistField` et son flux, plafonnés à 3 000.
+  // Les routes serveur correspondantes restent à supprimer côté backend.
   assistObjectives: (id: string) =>
     api.post<{
       proposal: Array<{ title: string; criteria: string }>;

@@ -1,4 +1,5 @@
 import { FIELDS } from '../ai/field-registry';
+import { PREAMBULE_INSTITUTIONNEL } from './preambule-institutionnel';
 /**
  * Plan du document de termes de référence.
  *
@@ -239,20 +240,42 @@ const listeOuProse = (v: string | null | undefined): Bloc => {
 export function composerPlan(tdr: DossierComplet): PlanDocument {
   const sections: Section[] = [];
 
+  /**
+   * Le préambule institutionnel précède le contexte rédigé.
+   *
+   * Ces 848 mots sont identiques dans tous les TDR de l'UGPTN — mesuré à
+   * 100,0 %, octet pour octet, sur trois dossiers de la composante C3. Les
+   * confier au modèle serait payer une génération pour un texte connu, et
+   * accepter que ses chiffres du PAD dérivent.
+   *
+   * Le champ `context` du dossier ne porte donc QUE la part spécifique à la
+   * mission. C'est ce que sa consigne demande, et c'est pourquoi elle paraît
+   * courte : elle ne couvre pas le préambule, elle le suit.
+   *
+   * Le titre suit celui des dossiers réels — « Contexte et Justification »,
+   * une seule section — alors que le plan en comptait deux.
+   */
   sections.push({
     numero: '1',
-    titre: 'Contexte',
-    blocs: [prose(tdr.context)],
+    titre: 'Contexte et Justification',
+    blocs: [
+      ...PREAMBULE_INSTITUTIONNEL,
+      {
+        genre: 'sousTitre',
+        texte: 'Contexte et Justification Spécifique de la Mission',
+      },
+      prose(tdr.context),
+      // La justification suit le contexte spécifique DANS la même section,
+      // comme dans les dossiers réels de l'UGPTN. Elle en était séparée, ce
+      // qui invitait à la relire comme un second contexte — le défaut que sa
+      // consigne combat depuis toujours.
+      { genre: 'sousTitre', texte: 'Justification de la Mission' },
+      prose(tdr.justification),
+    ],
   });
 
   sections.push({
     numero: '2',
-    titre: 'Justification',
-    blocs: [prose(tdr.justification)],
-  });
-
-  sections.push({
-    numero: '3',
     titre: 'Bénéficiaires visés',
     blocs: [prose(tdr.beneficiaries)],
   });
@@ -262,7 +285,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   // on lisait une liste, puis une autre, sans savoir que la seconde
   // répondait à une question différente.
   sections.push({
-    numero: '4',
+    numero: '3',
     titre: 'Objectifs et résultats attendus',
     blocs: [
       { genre: 'sousTitre', texte: 'Objectifs' },
@@ -281,7 +304,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   });
 
   sections.push({
-    numero: '5',
+    numero: '4',
     titre: 'Livrables attendus',
     blocs: [
       { genre: 'sousTitre', texte: 'Livrables' },
@@ -325,7 +348,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   // L'approche reste de la prose : elle expose une voie, elle ne s'énumère
   // pas. Les étapes et les contraintes, si.
   sections.push({
-    numero: '6',
+    numero: '5',
     titre: 'Approche et méthodologie',
     blocs: [
       { genre: 'sousTitre', texte: 'Approche retenue' },
@@ -338,7 +361,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   });
 
   sections.push({
-    numero: '7',
+    numero: '6',
     titre: 'Calendrier et expertise',
     blocs: [
       {
@@ -379,7 +402,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   });
 
   sections.push({
-    numero: '8',
+    numero: '7',
     titre: 'Budget',
     blocs: [
       {
@@ -405,7 +428,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   });
 
   sections.push({
-    numero: '9',
+    numero: '8',
     titre: 'Dispositions contractuelles',
     blocs: [
       tdr.clauses.length
@@ -418,7 +441,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   });
 
   sections.push({
-    numero: '10',
+    numero: '9',
     titre: 'Indicateurs de performance',
     blocs: [
       tdr.indicators.length
@@ -433,7 +456,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   });
 
   sections.push({
-    numero: '11',
+    numero: '10',
     titre: 'Risques et atténuation',
     blocs: [
       tdr.risks.length
@@ -449,7 +472,7 @@ export function composerPlan(tdr: DossierComplet): PlanDocument {
   });
 
   sections.push({
-    numero: '12',
+    numero: '11',
     titre: 'Sauvegardes environnementales et sociales',
     blocs: [
       { genre: 'sousTitre', texte: 'Catégorisation' },

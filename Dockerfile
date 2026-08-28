@@ -20,8 +20,17 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_SESSION_IDLE_MINUTES
+# Les valeurs par défaut ne sont pas un confort, elles ferment un piège.
+# Un `ARG` non fourni ne laisse pas la variable absente : il pose une
+# chaîne VIDE. Or une variable présente et vide bat `.env.production`
+# — et elle traverse `?? "http://localhost:3001/api"` sans le déclencher,
+# puisque `??` ne réagit qu'à `undefined`. L'image se construisait alors
+# sans erreur, avec une adresse d'API vide.
+#
+# `docker compose` fournit ces arguments et l'emporte donc sur ces
+# valeurs ; elles ne servent qu'au `docker build` lancé à la main.
+ARG NEXT_PUBLIC_API_URL=https://ugpt-api.urgences-rdc.com/api
+ARG NEXT_PUBLIC_SESSION_IDLE_MINUTES=30
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_SESSION_IDLE_MINUTES=${NEXT_PUBLIC_SESSION_IDLE_MINUTES}
 ENV NEXT_TELEMETRY_DISABLED=1

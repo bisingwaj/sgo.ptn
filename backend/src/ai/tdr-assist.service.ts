@@ -227,7 +227,7 @@ export class TdrAssistService {
 
     const nature = TYPE_NATURE[tdr.tdrTypeCode];
     lines.push(
-      `OBJET DU PRÉSENT TDR — c'est de cela, et de cela seulement, que votre texte doit traiter.`,
+      `OBJET DU PRÉSENT TDR — c’est de cela, et de cela seulement, que votre texte doit traiter.`,
     );
     lines.push(`Intitulé : ${tdr.title}`);
     lines.push(
@@ -241,7 +241,7 @@ export class TdrAssistService {
 
     lines.push('');
     lines.push(
-      `CADRE DE RATTACHEMENT — éléments de situation. Ils situent le dossier, ils n'en sont pas l'objet.`,
+      `CADRE DE RATTACHEMENT — éléments de situation. Ils situent le dossier, ils n’en sont pas l’objet.`,
     );
 
     if (tdr.ptbaActivity) {
@@ -291,17 +291,17 @@ export class TdrAssistService {
     // n'y en a pas : c'est ce vide qu'il comblait en devinant.
     if (tdr.beneficiaryOrganisation) {
       lines.push(
-        `Maîtrise d'ouvrage bénéficiaire, pour laquelle l'activité est conduite : ${tdr.beneficiaryOrganisation.fullName}. Vous pouvez la nommer.`,
+        `Maîtrise d’ouvrage bénéficiaire, pour laquelle l’activité est conduite : ${tdr.beneficiaryOrganisation.fullName}. Vous pouvez la nommer.`,
       );
       grounded.push(`Bénéficiaire — ${tdr.beneficiaryOrganisation.name}`);
     } else {
       lines.push(
-        `AUCUNE maîtrise d'ouvrage bénéficiaire n'est désignée dans ce dossier. N'en devinez pas : désignez l'acteur par sa fonction — « l'entité bénéficiaire », « l'exploitant », « l'administration destinataire » — et laissez le rédacteur y substituer le nom qu'il aura vérifié.`,
+        `AUCUNE maîtrise d’ouvrage bénéficiaire n’est désignée dans ce dossier. N’en devinez pas : désignez l’acteur par sa fonction — « l’entité bénéficiaire », « l’exploitant », « l’administration destinataire » — et laissez le rédacteur y substituer le nom qu’il aura vérifié.`,
       );
     }
 
     lines.push(
-      `Hors ces entités, aucune autre institution n'est connue de ce dossier ; n'en impliquez aucune.`,
+      `Hors ces entités, aucune autre institution n’est connue de ce dossier ; n’en impliquez aucune.`,
     );
 
     if (tdr.durationMonths) {
@@ -315,7 +315,7 @@ export class TdrAssistService {
     }
     if (tdr.beneficiaries?.trim()) {
       lines.push(
-        `Bénéficiaires visés, tels qu'identifiés par le rédacteur — il s'agit des populations servies, non de l'institution maître d'ouvrage : ${tdr.beneficiaries.trim()}`,
+        `Bénéficiaires visés, tels qu’identifiés par le rédacteur — il s’agit des populations servies, non de l’institution maître d’ouvrage : ${tdr.beneficiaries.trim()}`,
       );
       grounded.push('Bénéficiaires visés');
     }
@@ -326,7 +326,7 @@ export class TdrAssistService {
     // Chiffre vérifié : le citer est légitime, le recalculer ne l'est pas.
     if (tdr.budgetTotalUsd) {
       lines.push(
-        `Budget envisagé pour ce TDR : ${(Number(tdr.budgetTotalUsd) / 1e6).toFixed(2)} millions USD. Vous pouvez citer ce chiffre tel quel ; vous ne le décomposez ni ne l'extrapolez.`,
+        `Budget envisagé pour ce TDR : ${(Number(tdr.budgetTotalUsd) / 1e6).toFixed(2)} millions USD. Vous pouvez citer ce chiffre tel quel ; vous ne le décomposez ni ne l’extrapolez.`,
       );
     }
 
@@ -349,7 +349,7 @@ export class TdrAssistService {
       lines.push(
         `Dotation de la composante ${c.code} — ${c.label} : ${Number(c.totalUsdM)} M USD ` +
           `(IDA ${Number(c.idaUsdM)} / AFD ${Number(c.afdUsdM)}). ` +
-          `Enveloppe de l'activité au PTBA : ${(Number(tdr.ptbaActivity.envelopeUsd) / 1e6).toFixed(2)} M USD.`,
+          `Enveloppe de l’activité au PTBA : ${(Number(tdr.ptbaActivity.envelopeUsd) / 1e6).toFixed(2)} M USD.`,
       );
       // Le MEP et le PAD divergent sur plusieurs dotations, et le corpus
       // impose que tout affichage du montant signale la réconciliation. Le
@@ -417,9 +417,9 @@ ${text}${live}
 
 Attendu : deux à trois paragraphes, 180 à 260 mots au total.
 
-Le premier paragraphe situe le besoin dans le cadre du projet. Les suivants traitent de l'objet du présent TDR tel que défini plus haut — pas de l'activité PTBA dans son ensemble, qui le dépasse.
+Le premier paragraphe situe le besoin dans le cadre du projet. Les suivants traitent de l’objet du présent TDR tel que défini plus haut — pas de l’activité PTBA dans son ensemble, qui le dépasse.
 
-N'énumérez ni objectifs ni livrables : ils font l'objet de sections distinctes. Ne concluez pas par une formule d'ouverture. Répondez par le texte seul, sans titre ni commentaire.`,
+N’énumérez ni objectifs ni livrables : ils font l’objet de sections distinctes. Ne concluez pas par une formule d’ouverture. Répondez par le texte seul, sans titre ni commentaire.`,
     });
 
     await this.record(tdrId, 'contexte', result.model, actor, ctx);
@@ -452,15 +452,15 @@ N'énumérez ni objectifs ni livrables : ils font l'objet de sections distinctes
 
     const instruction =
       mode === 'reprise'
-        ? `Reprenez la justification ci-dessous rédigée par l'auteur.
+        ? `Reprenez la justification ci-dessous rédigée par l’auteur.
 
 Justification actuelle :
 ${existing}
 
-Vous en améliorez la structure, la clarté et le registre. Vous n'ajoutez AUCUN fait, chiffre, référence ou affirmation qui n'y figure pas déjà : votre rôle est de mieux dire ce qui est écrit, pas d'en dire davantage. Si un passage vous paraît appeler une donnée manquante, signalez-le par un repère entre crochets plutôt que de la combler. Conservez la longueur à 20 % près.`
+Vous en améliorez la structure, la clarté et le registre. Vous n’ajoutez AUCUN fait, chiffre, référence ou affirmation qui n’y figure pas déjà : votre rôle est de mieux dire ce qui est écrit, pas d’en dire davantage. Si un passage vous paraît appeler une donnée manquante, signalez-le par un repère entre crochets plutôt que de la combler. Conservez la longueur à 20 % près.`
         : `Rédigez la section « Justification » de ce TDR : pourquoi cette action, et pourquoi maintenant. Un à deux paragraphes, 120 à 180 mots.
 
-La section « Contexte » précède celle-ci dans le document et a déjà exposé la situation, le rattachement à la composante et les enjeux. Ne les redites pas. Vous répondez à une autre question : qu'est-ce qui rend cette action nécessaire maintenant, et que coûterait son report ? Ne recitez ni le code de l'activité, ni les montants, ni les indicateurs déjà mentionnés au contexte — le lecteur vient de les lire.`;
+La section « Contexte » précède celle-ci dans le document et a déjà exposé la situation, le rattachement à la composante et les enjeux. Ne les redites pas. Vous répondez à une autre question : qu’est-ce qui rend cette action nécessaire maintenant, et que coûterait son report ? Ne reprenez ni le code de l’activité, ni les montants, ni les indicateurs déjà mentionnés au contexte — le lecteur vient de les lire.`;
 
     const result = await this.ai.generate({
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
@@ -511,7 +511,7 @@ Répondez par le texte seul, sans titre ni commentaire.`,
 
 ${text}${live}${contextBlock}
 
-Attendu : trois à cinq objectifs. Chacun commence par un verbe d'action à l'infinitif et s'accompagne d'un critère de constatation vérifiable — une grandeur mesurable et un horizon. Là où une valeur cible dépendrait d'une donnée que vous n'avez pas, écrivez un repère explicite entre crochets, par exemple « [à fixer] », plutôt qu'un chiffre inventé.
+Attendu : trois à cinq objectifs. Chacun commence par un verbe d’action à l’infinitif et s’accompagne d’un critère de constatation vérifiable — une grandeur mesurable et un horizon. Là où une valeur cible dépendrait d’une donnée que vous n’avez pas, écrivez un repère explicite entre crochets, par exemple « [à fixer] », plutôt qu’un chiffre inventé.
 
 Répondez par un objet JSON de la forme :
 {"objectives":[{"title":"…","criteria":"…"}]}`,
@@ -620,42 +620,109 @@ Répondez par un objet JSON de la forme :
    * chaque champ comme une invitation à tout redire, et les six sections
    * finissent par se répéter.
    */
+  /**
+   * L'attendu de chaque champ de texte.
+   *
+   * ---------------------------------------------------------------------
+   * CE QUI A CHANGÉ, ET POURQUOI
+   *
+   * Mesuré le 28 août 2026 sur quatre TDR réels de l'UGPTN, composante C3 :
+   * les dossiers portent 7 à 12 objectifs spécifiques et 21 à 60 paragraphes
+   * de résultats attendus. Les consignes en demandaient « deux à trois » et
+   * « trois à six ». Un facteur dix sur les résultats.
+   *
+   * Le contexte, lui, ne s'allonge PAS : ses 848 mots de préambule
+   * institutionnel sont désormais composés par `preambule-institutionnel.ts`
+   * et ne se rédigent plus. La consigne ne couvre que la part spécifique.
+   *
+   * ---------------------------------------------------------------------
+   * LA RÈGLE QUI TIENT CES TEXTES
+   *
+   * Une consigne CADRE UN PLAN, elle ne fixe pas une longueur. « 400 mots »
+   * produit du délayage ; « quatre paragraphes, le premier situe X, le
+   * deuxième établit Y » produit de la structure, et la longueur suit.
+   *
+   * Et elle dit surtout ce qu'il ne faut PAS écrire là : c'est cette partie
+   * qui empêche les sections de se recopier, défaut le plus fréquent des
+   * dossiers reçus.
+   *
+   * Une consigne ne porte JAMAIS un fait. Les faits vivent dans
+   * `project-knowledge.ts` et dans `liveGrounding` — sinon les deux dérivent
+   * séparément et finissent par se contredire.
+   */
   private static readonly CONSIGNES: Record<string, string> = {
-    context: `Attendu : deux à trois paragraphes, 180 à 260 mots au total.
+    context: `Attendu : trois à quatre paragraphes denses et articulés, 320 à 450 mots.
 
-Le premier paragraphe situe le besoin dans le cadre du projet. Les suivants traitent de l'objet du PRÉSENT TDR tel que défini plus haut — pas de l'activité du plan dans son ensemble, qui le dépasse.
+LE CONTEXTE GÉNÉRAL EST DÉJÀ ÉCRIT. Le document porte avant votre texte, et sans votre intervention, la présentation du projet, ses composantes et sa portée géographique. Ne les répétez pas, ne les résumez pas, n’y renvoyez pas. Vous traitez de CE marché, et de lui seul.
 
-N'énumérez ni objectifs ni livrables : ils font l'objet de sections distinctes. Ne concluez pas par une formule d'ouverture.`,
+Le plan attendu :
+— Le rattachement : ce que poursuit la composante concernée, et la place qu’y tient l’activité du plan annuel dont relève ce dossier.
+— Le besoin : ce qui existe aujourd’hui, ce qui manque, et à quoi ce manque se constate. C’est le paragraphe qui porte le dossier ; c’est aussi celui qu’on bâcle.
+— L’objet : ce que ce marché doit produire, et pourquoi cette voie plutôt qu’une autre.
+— Facultatif, si l’objet le justifie : l’articulation avec d’autres activités du projet — sans en inventer aucune.
 
-    justification: `Attendu : un à deux paragraphes, 120 à 180 mots.
+N’énumérez ni objectifs ni livrables : ils ont leurs sections. Ne concluez pas par une formule d’ouverture — le dernier paragraphe s’arrête sur sa dernière information.`,
 
-La section « Contexte » précède celle-ci dans le document et a déjà exposé la situation, le rattachement à la composante et les enjeux. Ne les redites pas. Vous répondez à une autre question : qu'est-ce qui rend cette action nécessaire MAINTENANT, et que coûterait son report ?
+    justification: `Attendu : deux à trois paragraphes, 220 à 320 mots.
 
-Ne recitez ni le code de l'activité, ni les montants, ni les indicateurs déjà mentionnés au contexte — le lecteur vient de les lire.`,
+Le contexte précède immédiatement votre texte, dans la même section, et a exposé la situation, le rattachement et l’objet. Ne les redites pas. Vous répondez à une autre question, et à une seule : qu’est-ce qui rend cette action nécessaire MAINTENANT, et que coûterait son report ?
 
-    beneficiaries: `Attendu : un paragraphe, 60 à 110 mots.
+Le plan attendu :
+— Ce qui se dégrade, se bloque ou se perd si l’on attend. Établissez-le, ne l’affirmez pas.
+— Pourquoi le projet est fondé à agir : ce que son mandat prévoit sur ce point.
+— Ce que cette action rend possible ensuite — sans promettre de résultat qui relève d’une décision à venir.
 
-Les POPULATIONS servies, jamais l'institution maître d'ouvrage — c'est la confusion la plus fréquente sur ce champ. Quantifiez lorsque le dossier porte un chiffre ; à défaut, laissez « [nombre à préciser] » plutôt que d'avancer une estimation. Distinguez les bénéficiaires directs des bénéficiaires indirects si la distinction a un sens ici.`,
+Ne reprenez ni le code de l’activité, ni les montants, ni les indicateurs déjà mentionnés au contexte : le lecteur vient de les lire.`,
 
-    expectedResults: `Attendu : trois à six résultats, un par ligne, sans numérotation ni puce.
+    beneficiaries: `Attendu : un à deux paragraphes, 120 à 180 mots.
 
-Chaque ligne énonce ce qui SERA CONSTATÉ à l'issue, avec son horizon. Un résultat n'est ni une action ni un livrable : « le centre de supervision traite les incidents 24 h/24 » est un résultat, « installer les serveurs » n'en est pas un. Les valeurs cibles absentes du dossier restent entre crochets.`,
+Les POPULATIONS servies, jamais l’institution maître d’ouvrage — c’est la confusion la plus fréquente sur ce champ, et elle fausse la lecture du dossier par le bailleur.
 
-    approach: `Attendu : deux paragraphes, 120 à 200 mots.
+Distinguez les bénéficiaires directs des bénéficiaires indirects lorsque la distinction a un sens ici. Précisez, quand le dossier le porte, la répartition géographique et la place des femmes et des jeunes, que le projet suit.
 
-L'approche générale attendue du prestataire : par quelle voie il s'y prend, et pourquoi elle convient à cet objet. Ne détaillez pas les étapes — la méthodologie les porte, dans une section distincte. N'imposez pas d'outil ni de fournisseur nommé.`,
+Quantifiez UNIQUEMENT à partir de ce que le dossier vous donne. À défaut, écrivez « [nombre à préciser] » : une estimation avancée ici sera lue comme une cible.`,
 
-    methodology: `Attendu : les étapes attendues, une par ligne, dans l'ordre.
+    expectedResults: `Attendu : huit à quinze résultats, un par ligne, sans numérotation ni puce.
 
-Chaque ligne nomme une phase et ce qu'elle produit. Restez sur ce que le prestataire doit faire, non sur ce que l'administration fera de son côté. Ne fixez pas de dates : le calendrier fait l'objet d'une section propre.`,
+Les dossiers de l’unité en portent de vingt à soixante paragraphes : trois résultats ne décrivent pas un marché, ils l’esquissent.
 
-    constraints: `Attendu : les contraintes réelles, une par ligne.
+Chaque ligne énonce ce qui SERA CONSTATÉ à l’issue, avec son horizon et, quand le dossier le porte, la valeur qui permettra de le constater. Un résultat n’est ni une action ni un livrable : « le centre de supervision traite les incidents 24 h/24 » est un résultat, « installer les serveurs » n’en est pas un.
 
-Ce qui borne l'exécution : accès aux sites, disponibilité des données, saisonnalité, interopérabilité avec l'existant, sécurité. N'inventez aucune contrainte réglementaire ni aucun texte de loi que le dossier ne mentionne pas. Une contrainte qui n'en est pas une affaiblit celles qui en sont.`,
+Ordonnez-les : d’abord ce qui est acquis à la livraison, ensuite ce qui s’observe à l’usage. Une énumération dont l’ordre ne dit rien se lit comme une liste de souhaits.
 
-    expertise: `Attendu : les profils-clés, un par ligne, avec pour chacun le domaine et l'expérience minimale attendue.
+Les valeurs cibles absentes du dossier restent entre crochets.`,
 
-Restez sur des qualifications vérifiables. Ne nommez aucune personne, aucun cabinet, aucune certification propriétaire qui restreindrait la concurrence — la mise en concurrence ouverte est la règle du projet.`,
+    approach: `Attendu : deux à trois paragraphes, 200 à 300 mots.
+
+L’approche générale attendue du prestataire : par quelle voie il s’y prend, et pourquoi elle convient à cet objet plutôt qu’une autre. C’est le « comment » d’ensemble, pas la suite des étapes — la méthodologie les porte, dans une section distincte.
+
+Dites aussi ce que l’approche exige de l’administration : accès, données, points de validation. Un prestataire qui découvre ces obligations en cours d’exécution les facture.
+
+N’imposez aucun outil, aucune technologie propriétaire ni aucun fournisseur nommé : la mise en concurrence ouverte est la règle du projet.`,
+
+    methodology: `Attendu : six à dix étapes, une par ligne, dans l’ordre d’exécution.
+
+Chaque ligne nomme une phase ET ce qu’elle produit — une phase sans produit n’est pas vérifiable, donc pas exigible.
+
+Restez sur ce que fait le PRESTATAIRE. Ce que l’administration fait de son côté relève de l’approche, et le confondre déplace la responsabilité.
+
+Ne fixez aucune date ni durée : le calendrier fait l’objet d’une section propre, et ces valeurs sont des saisies du rédacteur.`,
+
+    constraints: `Attendu : quatre à huit contraintes réelles, une par ligne.
+
+Chacune énonce la contrainte ET son effet sur l’exécution. « Accès aux sites » ne dit rien ; « l’accès aux sites dépend d’autorisations provinciales, à obtenir avant le démarrage des travaux » borne le calendrier et se vérifie.
+
+Ce qui borne réellement : accès aux sites, disponibilité des données, saisonnalité, interopérabilité avec l’existant, sécurité des systèmes, capacité d’absorption des équipes.
+
+N’inventez aucune contrainte réglementaire ni aucun texte de loi que le dossier ne mentionne pas. Une contrainte qui n’en est pas une affaiblit celles qui en sont.`,
+
+    expertise: `Attendu : trois à six profils-clés, un par ligne.
+
+Pour chacun : l’intitulé du poste, le domaine, le niveau de formation et l’expérience minimale attendue, exprimée en années.
+
+Restez sur des qualifications VÉRIFIABLES par pièce. Ne nommez aucune personne, aucun cabinet, aucune certification propriétaire qui restreindrait la concurrence.
+
+N’exigez pas un niveau que la mission ne justifie pas : une exigence excessive écarte des candidats recevables et se retourne à l’évaluation.`,
   };
 
   /**
@@ -745,7 +812,7 @@ ${
     : ''
 }
 
-Répondez par le texte seul, sans titre ni commentaire, et SANS AUCUN BALISAGE : ni astérisques de gras, ni soulignés d'italique, ni dièses de titre. Le document final ne rend aucune mise en forme — « **Contexte** » y sortirait avec ses astérisques sur une pièce signée. Pour énumérer, un tiret en début de ligne suffit.`;
+Répondez par le texte seul, sans titre ni commentaire, et SANS AUCUN BALISAGE : ni astérisques de gras, ni soulignés d’italique, ni dièses de titre. Le document final ne rend aucune mise en forme — « **Contexte** » y sortirait avec ses astérisques sur une pièce signée. Pour énumérer, un tiret en début de ligne suffit.`;
 
     return {
       system: TdrAssistService.system(tdr.tdrType.requiresPges),
@@ -890,7 +957,7 @@ VOUS REPRENEZ UNE RÉDACTION INTERROMPUE. Voici ce qui a déjà été écrit :
 
 «${amorce}»
 
-Poursuivez EXACTEMENT là où cela s'arrête, sans saluer, sans introduire, et
+Poursuivez EXACTEMENT là où cela s’arrête, sans saluer, sans introduire, et
 SANS RÉPÉTER le moindre mot de ce qui précède — pas même la phrase en cours.
 Votre réponse sera collée bout à bout avec ce texte : commencez donc par le
 caractère qui suit immédiatement, quitte à démarrer en milieu de phrase.

@@ -18,6 +18,7 @@ import { Header } from "./Header";
 import { SideNav } from "./SideNav";
 import { SidePanelDrawer } from "./SidePanelDrawer";
 import { AssistantChatbot } from "@/components/chatbot/AssistantChatbot";
+import { VoileSelonChemin } from "@/components/etat/VoileDeveloppement";
 import { sidePanelStore } from "./side-panel-store";
 import { sideNavStore } from "./sidenav-store";
 import styles from "./Shell.module.scss";
@@ -62,7 +63,20 @@ export function ShellFrame({
       <div className={styles.body}>
         <SideNav collapsed={navCollapsed} />
         <main className={styles.main} id="ptn-main" tabIndex={-1}>
-          <div className={styles.mainInner}>{children}</div>
+          {/*
+            Le voile est posé ICI, à l'intérieur de la coque.
+
+            Sept profils sur huit atterrissent sur un module encore bâti
+            sur des fixtures — cockpit, tableau de bord, partenaire,
+            bailleur, SBP, auditeur, gouvernance. Voiler plus haut
+            emporterait le bandeau et la navigation avec le contenu :
+            ces profils se connecteraient sur un écran flou SANS ISSUE.
+            Ici, seul le contenu est couvert ; les menus restent vivants
+            et conduisent aux modules qui, eux, fonctionnent.
+          */}
+          <div className={styles.mainInner}>
+            <VoileSelonChemin>{children}</VoileSelonChemin>
+          </div>
         </main>
       </div>
 

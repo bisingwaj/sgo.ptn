@@ -167,6 +167,8 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 | **Tokens de composants Carbon** | `@include theme($g100)` ne les émet pas. Les classes de zone `.cds--g100` sont indispensables, sinon les notifications sont illisibles en thème sombre |
 | **`localStorage` dans un effet** | Impose un `setState` en cascade ; dans un initialiseur d'état, il fait diverger l'hydratation. Utiliser `createPersistentStore` (`src/lib/persistent-store.ts`) |
 | **Rotation des jetons** | Une rotation interrompue ressemble à un vol. Résolu côté serveur par un délai de grâce fondé sur l'état du successeur |
+| **Variable d'environnement VIDE** | `??` ne rattrape que l'absence : une chaîne vide traverse. Un `ARG` Docker non fourni pose `""`, qui bat `.env.production`. Adresse d'API vide → appels en relatif ; `Number("")` vaut `0` → session fermée sur-le-champ. Passer par `texteEnv`/`nombreEnv` (`src/lib/env.ts`) |
+| **`CORS_ORIGIN` sans protocole** | La comparaison sépare sur `://`. `//*.vercel.app` ne rate pas des cas, il REFUSE TOUT — et l'interface ne voit qu'un échec réseau |
 | **Latence de compilation** | En mode `dev`, une route froide met 30–60 s. Chauffer les routes avant tout test navigateur, sinon les échecs sont des faux positifs |
 
 ---
@@ -199,10 +201,23 @@ Chacun a coûté du temps. Aucun n'était visible au typecheck.
 
 ### Compétences chargées automatiquement
 
-Deux modules portent leurs propres règles, dans `.claude/skills/` :
-`ptba` (plafonds, cycle de l'exercice, invariants) et `tdr` (architecture du
-parcours, assistance IA et ses interdits, pièges de refactorisation). Les
-charger avant d'intervenir sur ces domaines.
+Sept compétences vivent dans `.claude/skills/`. Les charger avant
+d'intervenir sur leur domaine.
+
+| Compétence | Porte |
+|---|---|
+| `ptba` | Plafonds, cycle de l'exercice, invariants du plan annuel |
+| `tdr` | Architecture du parcours, les 18 étapes, l'assistance et ses interdits |
+| `redaction-assistee` | **La doctrine d'enrichissement.** Densités mesurées, ce qui ne se règle pas par une consigne. À charger en premier sur ce domaine |
+| `preambule-institutionnel` | Les 848 mots fixes des TDR de l'UGPTN, à composer et jamais à engendrer |
+| `consignes-champs` | Les 8 consignes, leurs cibles, leur variation par type d'activité |
+| `registre-institutionnel` | Les marques de machine, le lexique réel, les susceptibilités politiques |
+| `structure-document` | Le plan confronté aux TDR réels, le tableau budgétaire |
+
+Les cinq dernières reposent sur des mesures prises le 28 août 2026 sur quatre
+TDR réels de l'UGPTN. **Le fait à retenir** : le préambule institutionnel est
+identique à 100 % d'un dossier à l'autre — 848 mots que la plateforme ne
+compose pas, et qu'aucun modèle ne doit rédiger.
 
 ### L'assistance rédactionnelle — repris le 25 août 2026
 
@@ -235,6 +250,31 @@ du dossier écrasait alors le texte fraîchement engendré.
 Reste ouvert : la poursuite après coupure (`/assistance/champ/suite`) est
 écrite mais jamais déclenchée en conditions réelles, et les listes n'ont pas
 d'arrêt effectif (routes bloquantes, non des flux).
+
+### Le voile « en développement » — posé le 28 août 2026
+
+Sur 79 routes, une vingtaine de modules tiennent encore sur des fixtures :
+« 78 marchés », « délai moyen 14,2 j », des ANO « délivrés » qui ne l'ont
+jamais été. Ces écrans sont désormais **floutés**, avec au-dessus un panneau
+qui nomme le module et dit qu'il est en développement.
+
+- **Le registre est [src/lib/fonctionnalites.ts](src/lib/fonctionnalites.ts)**,
+  seul point de vérité. **Lever le voile = changer `"en-developpement"` en
+  `"active"`.** Rien d'autre à toucher.
+- **Le voile est posé dans `ShellFrame`**, donc À L'INTÉRIEUR de la coque :
+  sept profils sur huit atterrissent sur un module voilé, et voiler plus haut
+  les laisserait sans navigation — un cul-de-sac au premier écran.
+- **Les parcours plein écran le portent explicitement**, comme `AuthGate` —
+  `/mgp`, `/partenaire/mgp/nouvelle`, `/partenaire/reporting/nouveau`.
+- **Un chemin inconnu est réputé actif.** Le voile est une déclaration, jamais
+  une conséquence de l'oubli.
+- Le contenu voilé est `aria-hidden` **et** `inert` — sans le second, une
+  tabulation traverserait un formulaire invisible. Il ne s'imprime pas : un
+  tableau de chiffres inventés sorti net sur une feuille circulerait comme un
+  état réel.
+
+**Le flou n'est pas une protection** : le contenu reste dans le DOM. Ce sont
+des données d'exemple, mais ne jamais voiler ainsi du confidentiel.
 
 ### Non fait
 

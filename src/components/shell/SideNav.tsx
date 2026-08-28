@@ -28,6 +28,7 @@ import {
   Idea,
   Light,
   Locked,
+  InProgress,
   Money,
   Network_3,
   Notebook,
@@ -43,6 +44,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { useMediaQuery } from "@/lib/use-media-query";
 import styles from "./SideNav.module.scss";
 import type { ReactNode } from "react";
+import { estEnDeveloppement } from "@/lib/fonctionnalites";
 
 interface NavItem {
   label: string;
@@ -405,6 +407,13 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                 // soit, et tout griser ferait croire à une panne.
                 const verrouille =
                   Boolean(user) && Boolean(item.permission) && !can(item.permission as string);
+                // Le module est-il encore en chantier ?
+                //
+                // L'entrée RESTE un lien : l'écran s'ouvre et son voile
+                // explique où en est le module. La griser reviendrait à la
+                // confondre avec un refus d'habilitation, qui est un tout
+                // autre motif et se corrige tout autrement.
+                const enDeveloppement = estEnDeveloppement(item.href);
 
                 return (
                   <li key={item.href + item.label}>
@@ -419,14 +428,16 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                       hint={
                         verrouille
                           ? `Votre habilitation ne donne pas accès à ce module. Demandez-le à un administrateur si vos fonctions le justifient.`
-                          : item.hint
+                          : enDeveloppement
+                            ? `En développement — bientôt disponible. L'écran s'ouvre, mais son contenu n'est pas encore actif.${item.hint ? ` · ${item.hint}` : ""}`
+                            : item.hint
                       }
                       // Repliée, l'infobulle rend l'intitulé — elle est donc
                       // toujours utile. Déployée, l'intitulé est déjà là et
                       // seul le développé du sigle justifie encore la bulle.
                       // Verrouillée, la bulle est la SEULE explication : elle
                       // ne se désactive donc jamais dans ce cas.
-                      disabled={!verrouille && !rail && !item.hint}
+                      disabled={!verrouille && !enDeveloppement && !rail && !item.hint}
                       trailing={
                         item.count && (
                           <span className={`${styles.tipCount} ptn-mono`}>{item.count}</span>
@@ -455,13 +466,34 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                       ) : (
                         <Link
                           href={item.href}
-                          aria-label={rail ? item.label : undefined}
+                          /* Le pictogramme « en cours » est décoratif
+                             (`aria-hidden`) : sans cette mention, un lecteur
+                             d'écran annoncerait un module ordinaire et la
+                             personne découvrirait le voile après le clic. */
+                          aria-label={
+                            enDeveloppement
+                              ? `${item.label} — en développement`
+                              : rail
+                                ? item.label
+                                : undefined
+                          }
                           className={`${styles.item} ${active ? styles.itemActive : ""}`}
                         >
                           <span className={styles.itemIcon} aria-hidden>
                             {item.icon}
                           </span>
                           <span className={styles.itemLabel}>{item.label}</span>
+                          {/* Masqué colonne repliée : le rail ne montre plus
+                              que des pictogrammes, un second symbole y serait
+                              indéchiffrable. L'infobulle porte l'explication
+                              dans ce cas. */}
+                          {enDeveloppement && !rail && (
+                            <InProgress
+                              size={12}
+                              className="ml-auto shrink-0 text-secondary"
+                              aria-hidden
+                            />
+                          )}
                           {item.count && (
                             <span className={`${styles.itemCount} ptn-mono`}>{item.count}</span>
                           )}

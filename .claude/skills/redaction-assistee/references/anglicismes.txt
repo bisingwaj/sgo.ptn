@@ -1,0 +1,56 @@
+# Anglicismes relevés dans le corpus réel de l'UGPTN.
+# PROHIBITIONS proscrit « aucun anglicisme évitable » : le vérificateur
+# les signale au REGISTRE, jamais comme faute d'orthographe — ce sont
+# des mots correctement écrits, dans la mauvaise langue.
+# Un terme sans équivalent français consacré n'a pas sa place ici.
+
+benchmark
+branding
+center
+centers
+cities
+cloud
+coach
+coaching
+coachs
+computing
+deadline
+development
+empowerment
+fablab
+fablabs
+feedback
+feedbacks
+financial
+framework
+frameworks
+good
+iot
+leadership
+lodge
+mainstreaming
+makerspace
+makerspaces
+manufacturing
+mindset
+model
+onboarding
+open
+output
+outputs
+packages
+pitch
+roadmap
+scaling
+smart
+sponsoring
+stakeholder
+stakeholders
+sustainable
+swags
+task
+template
+templates
+testing
+workshop
+workshops
