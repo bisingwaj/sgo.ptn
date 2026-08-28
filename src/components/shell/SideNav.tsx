@@ -20,6 +20,7 @@ import {
   ChartLineSmooth,
   Dashboard,
   Document,
+  DocumentAdd,
   Earth,
   Events,
   Folders,
@@ -312,6 +313,17 @@ export function SideNav({ collapsed = false }: SideNavProps) {
       label: "Référentiel",
       href: "/admin/referentiel",
       icon: <Catalog size={16} />,
+    });
+  }
+  // Le corpus documentaire — ce que l'assistant consulte pour répondre sur
+  // la procédure du projet. Ouvert à la lecture de tous ceux qui portent
+  // `referentiel:read`, c'est-à-dire tout le monde : ce sont les manuels de
+  // l'UGPTN, les cacher à ses propres agents n'aurait aucun sens.
+  if (can("referentiel:read")) {
+    adminItems.push({
+      label: "Documents de référence",
+      href: "/admin/documents",
+      icon: <DocumentAdd size={16} />,
     });
   }
   if (adminItems.length > 0) {

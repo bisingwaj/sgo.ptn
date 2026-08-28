@@ -14,6 +14,7 @@ import { PtbaModule } from './ptba/ptba.module';
 import { TdrModule } from './tdr/tdr.module';
 import { TdrDocumentModule } from './tdr-document/tdr-document.module';
 import { TdrAttachmentModule } from './tdr-attachment/tdr-attachment.module';
+import { DocumentsModule } from './documents/documents.module';
 import { AiModule } from './ai/ai.module';
 import { AssistantModule } from './assistant/assistant.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
@@ -51,6 +52,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
     TdrModule,
     TdrDocumentModule,
     TdrAttachmentModule,
+    DocumentsModule,
     AiModule,
     AssistantModule,
     MarketplaceModule,

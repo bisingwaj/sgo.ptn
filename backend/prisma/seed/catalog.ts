@@ -54,6 +54,20 @@ export const PERMISSIONS: PermissionDef[] = [
     isWrite: true,
   },
 
+  // Le corpus documentaire de l'UGPTN — MEP, PPSD, CGES, plans de
+  // passation. La LECTURE relève de `referentiel:read`, que tout le monde
+  // porte : ce sont les manuels du projet, les cacher à ses propres agents
+  // n'aurait aucun sens. Le DÉPÔT est réservé, car ces pièces font
+  // autorité : l'assistant s'en sert pour répondre, et un document périmé
+  // déposé par inadvertance ferait écrire des règles abrogées.
+  {
+    code: 'referentiel:documents',
+    label: 'Déposer et retirer les documents de référence du projet',
+    category: 'referentiel',
+    isWrite: true,
+    isSensitive: true,
+  },
+
   // --- PTBA ---
   { code: 'ptba:read', label: 'Consulter le PTBA', category: 'passation' },
   { code: 'ptba:write', label: 'Éditer le PTBA', category: 'passation', isWrite: true },
@@ -429,6 +443,7 @@ export const SUBROLES: SubroleDef[] = [
       // Administration du référentiel de passation : c'est son mandat.
       'referentiel:passation',
       'referentiel:clauses',
+      'referentiel:documents',
       'referentiel:modeles',
     ],
   },

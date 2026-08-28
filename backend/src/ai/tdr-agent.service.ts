@@ -10,6 +10,7 @@ import {
   type SourceWeb,
 } from './ai.service';
 import { TdrAttachmentService } from '../tdr-attachment/tdr-attachment.service';
+import { DocumentsService } from '../documents/documents.service';
 import { buildSystemPrompt } from './project-knowledge';
 import {
   FIELDS,
@@ -87,12 +88,14 @@ export class TdrAgentService {
     lire_bibliotheque: 'Consultation du référentiel…',
     lister_organisations: 'Recherche au référentiel des organisations…',
     chercher_sur_internet: 'Recherche sur internet…',
+    lire_document_ugptn: 'Consultation d’un document du projet…',
   };
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly ai: AiService,
     private readonly audit: AuditService,
+    private readonly documents: DocumentsService,
   ) {}
 
   /** Les outils offerts au modèle, engendrés depuis le registre. */
@@ -197,6 +200,30 @@ export class TdrAgentService {
                   'Fragment de nom ou de sigle, pour restreindre la liste.',
               },
             },
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'lire_document_ugptn',
+          description:
+            "Consulte un document de référence du projet — MEP, PPSD, CGES, plan de passation — et rend ce qu'il dit sur une question précise. À PRÉFÉRER À LA RECHERCHE WEB dès que la question porte sur ce que le projet PRESCRIT : ces pièces font autorité, une page trouvée sur internet non. Le catalogue des documents disponibles figure dans votre contexte.",
+          parameters: {
+            type: 'object',
+            properties: {
+              document: {
+                type: 'string',
+                description:
+                  "L'intitulé du document, tel qu'il apparaît au catalogue.",
+              },
+              question: {
+                type: 'string',
+                description:
+                  'Ce que vous cherchez dedans, en une phrase complète. Le document entier est lu, mais la réponse ne porte que sur cette question.',
+              },
+            },
+            required: ['document', 'question'],
           },
         },
       },
@@ -423,7 +450,9 @@ export class TdrAgentService {
       '',
       "Si l'auteur conteste un texte, retouchez-le et réécrivez le champ. Ne recommencez pas de zéro sans qu'il le demande.",
       '',
-      'CHERCHER SUR INTERNET',
+      'LES DOCUMENTS DU PROJET, ET INTERNET',
+      "Deux sources extérieures au dossier s'offrent à vous, et elles ne se valent pas. `lire_document_ugptn` consulte les pièces déposées par l'UGPTN — MEP, PPSD, CGES, plans de passation — qui FONT AUTORITÉ sur la procédure du projet. Commencez toujours par elles quand la question porte sur ce que le projet prescrit : une page trouvée sur internet ne les remplace pas, et peut les contredire.",
+      '',
       "Vous disposez de `chercher_sur_internet`. Employez-le dès que la réponse dépend d'un texte officiel extérieur à la plateforme — règlement de passation d'un bailleur, seuil, document de projet publié — et chaque fois que l'auteur vous le demande. Ne l'employez pas pour ce que le dossier, le plan ou le référentiel portent déjà : ils ont leurs propres outils, plus sûrs.",
       '',
       "Quand vous vous êtes appuyé sur une recherche, DITES-LE et CITEZ VOS SOURCES par leur titre, dans votre réponse à l'auteur. Une information rapportée sans sa provenance ne vaut rien sur un dossier qui part chez un bailleur.",
@@ -633,6 +662,114 @@ export class TdrAgentService {
        * `ecrire_champ`. Le résultat rentre comme une DONNÉE rapportée, que
        * l'agent cite ; il n'entre pas comme une instruction qu'il suivrait.
        */
+      /**
+       * La consultation d'un document de référence du projet.
+       *
+       * MÊME PATRON QUE LA RECHERCHE WEB, pour les mêmes raisons : un appel
+       * ISOLÉ, sans les outils du dossier. Le coût d'abord — un MEP de
+       * cent mille jetons rejoindrait sinon l'invite de CHAQUE tour, alors
+       * qu'on ne le consulte qu'une fois. La sécurité ensuite : ce qui
+       * revient d'un document n'a pas à atterrir dans un contexte qui porte
+       * `ecrire_champ`.
+       *
+       * LE PDF PART TEL QUEL. Le modèle les lit nativement — vérifié,
+       * `fichier: true` au catalogue du fournisseur. Aucune extraction,
+       * donc aucune déformation : sur une pièce qui fait autorité, un
+       * texte mal extrait vaudrait moins que rien.
+       */
+      case 'lire_document_ugptn': {
+        const intitule =
+          typeof args.document === 'string' ? args.document.trim() : '';
+        const question =
+          typeof args.question === 'string' ? args.question.trim() : '';
+        if (!intitule || question.length < 8) {
+          return {
+            resultat:
+              "Indiquez l'intitulé du document ET la question, en une phrase complète.",
+          };
+        }
+
+        const trouve = await this.documents.parIntitule(intitule);
+        if (!trouve) {
+          const catalogue = await this.documents.catalogueAssistant();
+          return {
+            resultat: catalogue
+              ? `Aucun document de ce nom au corpus.${String.fromCharCode(10)}${catalogue}`
+              : "Le corpus documentaire du projet est vide : aucun document n'y a encore été déposé.",
+          };
+        }
+        if (!DocumentsService.estLisible(trouve.mimeType)) {
+          return {
+            resultat: `« ${trouve.titre} » est conservé à l'archive mais son format ne se lit pas. Dites-le à l'auteur.`,
+          };
+        }
+
+        try {
+          const doc = await this.documents.lireContenu(trouve.id);
+          const base64 = Buffer.from(doc.content).toString('base64');
+
+          const reponse = await this.ai.chat({
+            maxTokens: 900,
+            temperature: 0.1,
+            // Rapporter n'est pas délibérer : même raison qu'ailleurs.
+            raisonnement: 'aucun',
+            timeoutMs: 90_000,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  "Vous répondez UNIQUEMENT à partir du document fourni. Citez la section ou l'article quand le document les numérote — c'est ce qui rend la réponse vérifiable. Si le document ne traite pas la question, dites-le en une phrase : sur une pièce qui fait autorité, une réponse inventée est pire que pas de réponse. N'écrivez aucun lien ni aucune adresse.",
+              },
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: `Document : « ${doc.titre} »${doc.version ? ` (${doc.version})` : ''}.`,
+                  },
+                  {
+                    type: 'file',
+                    file: {
+                      filename: doc.filename,
+                      file_data: `data:application/pdf;base64,${base64}`,
+                    },
+                  },
+                  { type: 'text', text: `Question : ${question}` },
+                ],
+              },
+            ],
+          });
+
+          const texte = sansBalisage(reponse.text).trim();
+          if (!texte) {
+            return {
+              resultat: `La lecture de « ${doc.titre} » n'a rien rendu d'exploitable.`,
+            };
+          }
+
+          return {
+            resultat: [
+              texte,
+              '',
+              `Lu dans : ${doc.titre}${doc.version ? ` (${doc.version})` : ''}.`,
+              "RAPPEL : nommez ce document dans votre réponse à l'auteur. Vous POUVEZ le citer dans un champ du dossier comme référence normative — « conformément au Manuel d'Exécution du Projet » — puisqu'il s'agit du texte applicable, non d'une provenance de lecture.",
+            ].join(String.fromCharCode(10)),
+            evenement: {
+              type: 'travail',
+              libelle: `Lu : ${doc.titre}`,
+            },
+          };
+        } catch (error) {
+          this.logger.warn(
+            `Lecture de document impossible : ${(error as Error).message}`,
+          );
+          return {
+            resultat:
+              "La consultation du document n'a pas abouti. Dites-le à l'auteur et poursuivez avec ce que le dossier porte.",
+          };
+        }
+      }
+
       case 'chercher_sur_internet': {
         const question =
           typeof args.question === 'string' ? args.question.trim() : '';
@@ -1022,6 +1159,11 @@ export class TdrAgentService {
     const tdr = await this.charger(tdrId);
 
     const pieces = await this.messagePieces(tdrId);
+    // Le CATALOGUE seulement, jamais les documents : savoir ce qui existe
+    // coûte quelques centaines de jetons, lire le MEP en coûterait cent
+    // mille à chaque tour. L'agent choisit sur cette liste, et consulte par
+    // `lire_document_ugptn` quand il en a besoin.
+    const catalogue = await this.documents.catalogueAssistant();
 
     const messages: ChatMessage[] = [
       {
@@ -1030,6 +1172,7 @@ export class TdrAgentService {
           buildSystemPrompt({ includeSafeguards: tdr.tdrType.requiresPges }),
           '',
           TdrAgentService.instructions(),
+          ...(catalogue ? ['', catalogue] : []),
           '',
           TdrAgentService.etatDuDossier(tdr),
         ].join('\n'),

@@ -1476,3 +1476,91 @@ model Ano {
   @@index([decision])
   @@map("anos")
 }
+
+/// Nature d'un document de référence du projet.
+///
+/// Fermée à dessein : un champ libre aurait produit « MEP », « M.E.P. » et
+/// « manuel d'exécution » pour la même pièce, et l'assistant, qui choisit
+/// ce qu'il consulte, n'aurait plus su lequel prendre.
+enum NatureDocument {
+  /// Manuel d'Exécution du Projet — source de vérité procédurale
+  MEP
+  /// Stratégie de passation (Project Procurement Strategy for Development)
+  PPSD
+  /// Plan de Passation des Marchés
+  PLAN_PASSATION
+  /// Cadre de Gestion Environnementale et Sociale
+  CGES
+  /// Cadre de Politique de Réinstallation
+  CPR
+  /// Plan de Mobilisation des Parties Prenantes
+  PMPP
+  /// Procédures de Gestion de la Main-d'Œuvre
+  PGMO
+  /// Plan d'Engagement Environnemental et Social
+  PEES
+  /// Plan en faveur des Peuples Autochtones
+  PPA
+  /// Règlement ou directive d'un bailleur
+  REGLEMENT_BAILLEUR
+  /// Accord de financement, lettre de décaissement
+  ACCORD_FINANCEMENT
+  /// Manuel de procédures internes
+  MANUEL
+  /// Procès-verbal d'instance — COPIL, CTP
+  PROCES_VERBAL
+  AUTRE
+}
+
+/// Un document de référence de l'UGPTN, opposable et consultable.
+///
+/// POURQUOI CETTE TABLE N'EST PAS `tdr_attachments`. Une pièce jointe
+/// appartient à UN dossier : versée sur le TDR n°14, elle n'existe pas pour
+/// le n°15. Le MEP, lui, vaut pour tous — et pour l'assistant, qui doit
+/// pouvoir le consulter quel que soit le dossier ouvert.
+///
+/// LE CONTENU EST EN BASE, comme pour les pièces jointes : même choix, mêmes
+/// raisons — une sauvegarde de la base emporte les documents avec elle, et
+/// il n'y a pas de fichier orphelin à réconcilier.
+///
+/// LA VERSION SE DIT PAR LES DATES, non par un numéro. `effectiveFrom` et
+/// `supersededAt` disent ce qui s'applique AUJOURD'HUI : un plan de passation
+/// change trois fois par an, et l'assistant doit citer celui en vigueur, non
+/// le dernier déposé.
+model DocumentReference {
+  id     String         @id @default(uuid()) @db.Uuid
+  titre  String
+  nature NatureDocument
+
+  /// Ce que le document apporte, en une phrase.
+  ///
+  /// Lu par l'assistant pour CHOISIR quoi consulter, sans avoir à ouvrir la
+  /// pièce. Sans lui, il faudrait lui soumettre tout le corpus à chaque
+  /// question — ce que le coût interdit.
+  resume String? @db.Text
+
+  /// Millésime lisible : « édition de février 2025 », « v3 ».
+  version String?
+
+  effectiveFrom DateTime?
+  /// Renseigné quand une version postérieure l'a remplacé.
+  supersededAt  DateTime?
+
+  filename  String
+  mimeType  String
+  sizeBytes Int
+  /// Empreinte du contenu : dit si deux dépôts portent la même pièce.
+  sha256    String
+  content   Bytes
+
+  /// Retiré du corpus sans être effacé : ce qu'un assistant a cité un jour
+  /// doit rester retrouvable.
+  isActive Boolean @default(true)
+
+  uploadedById String?  @db.Uuid
+  uploadedAt   DateTime @default(now())
+
+  @@index([nature])
+  @@index([isActive])
+  @@map("documents_reference")
+}

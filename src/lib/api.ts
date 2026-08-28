@@ -1177,6 +1177,96 @@ export interface DossierAInstruire {
  * appelait : un TDR pouvait être transmis, et plus rien après. La chaîne
  * s'arrêtait là.
  */
+/** Nature d'un document de référence, telle que le serveur la connaît. */
+export type NatureDocumentApi =
+  | "MEP" | "PPSD" | "PLAN_PASSATION" | "CGES" | "CPR" | "PMPP" | "PGMO"
+  | "PEES" | "PPA" | "REGLEMENT_BAILLEUR" | "ACCORD_FINANCEMENT" | "MANUEL"
+  | "PROCES_VERBAL" | "AUTRE";
+
+/** Une pièce du corpus documentaire du projet. */
+export interface DocumentReferenceApi {
+  id: string;
+  titre: string;
+  nature: NatureDocumentApi;
+  resume: string | null;
+  version: string | null;
+  effectiveFrom: string | null;
+  supersededAt: string | null;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  isActive: boolean;
+  uploadedAt: string;
+  /** Le format se prête-t-il à une lecture par l'assistant ? */
+  lisibleParAssistant: boolean;
+  formatLisible: string;
+  /** Ni futur, ni remplacé, ni retiré. */
+  enVigueur: boolean;
+}
+
+/**
+ * Le corpus documentaire du projet.
+ *
+ * C'est ce que l'assistant consulte quand une question porte sur ce que le
+ * projet PRESCRIT — le MEP, le PPSD, un plan de passation. Il y va avant
+ * d'aller sur internet : ces pièces font autorité, une page trouvée en
+ * ligne non.
+ */
+export const documentsApi = {
+  lister: (inactifs = false) =>
+    api.get<{ rows: DocumentReferenceApi[] }>(
+      `/documents${inactifs ? "?inactifs=true" : ""}`,
+    ),
+
+  /**
+   * Dépose un document.
+   *
+   * `FormData` sans en-tête de type : le navigateur pose lui-même la
+   * frontière multipart, et la fixer à la main la rendrait fausse.
+   */
+  deposer: async (
+    fichier: File,
+    champs: {
+      titre: string;
+      nature: NatureDocumentApi;
+      resume?: string;
+      version?: string;
+      effectiveFrom?: string;
+    },
+  ): Promise<DocumentReferenceApi> => {
+    const corps = new FormData();
+    corps.append("fichier", fichier);
+    corps.append("titre", champs.titre);
+    corps.append("nature", champs.nature);
+    if (champs.resume) corps.append("resume", champs.resume);
+    if (champs.version) corps.append("version", champs.version);
+    if (champs.effectiveFrom) corps.append("effectiveFrom", champs.effectiveFrom);
+    // `fetch` direct, non le passeur générique : celui-ci sérialise son
+    // corps en JSON et impose l'en-tête correspondant, ce qui détruirait
+    // le multipart. Même raison que pour le versement d'une pièce jointe.
+    const reponse = await fetch(`${API_BASE}/documents`, {
+      method: "POST",
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      body: corps,
+    });
+    if (!reponse.ok) throw await parseError(reponse);
+    return (await reponse.json()) as DocumentReferenceApi;
+  },
+
+  retirer: (id: string) =>
+    api.post<{ id: string; titre: string; retire: boolean }>(
+      `/documents/${id}/retirer`,
+    ),
+
+  /**
+   * Le fichier lui-même.
+   *
+   * En `Blob` plutôt qu'une adresse : le document est derrière une
+   * permission, et un `<a href>` nu ne porte pas d'en-tête `Authorization`.
+   */
+  fichier: (id: string) => requestBlob(`/documents/${id}/fichier`),
+};
+
 export const passationApi = {
   aInstruire: () => api.get<DossierAInstruire[]>("/passation/a-instruire"),
   ouvrirRevue: (id: string) =>
