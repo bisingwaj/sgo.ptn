@@ -86,9 +86,24 @@ export class TdrService {
           select: { code: true, title: true },
         })
       : null;
-    const context = (type.contextTemplate ?? '')
-      .replace(/\{\{ptbaCode\}\}/g, activity?.code ?? '—')
-      .replace(/\{\{ptbaTitle\}\}/g, activity?.title ?? '—');
+    // Sans rattachement, la parenthèse ENTIÈRE disparaît.
+    //
+    // Elle se remplissait de tirets : « (PTBA — — « — ») ». Un trou qui a la
+    // forme d'une donnée est pire qu'une absence — il se lit comme une
+    // référence illisible, et il survit à la relecture parce qu'il ressemble
+    // à quelque chose. Un dossier peut naître hors plan annuel ; son contexte
+    // n'a alors simplement pas de code d'activité à citer.
+    const brut = type.contextTemplate ?? '';
+    const context = activity
+      ? brut
+          .replace(/\{\{ptbaCode\}\}/g, activity.code)
+          .replace(/\{\{ptbaTitle\}\}/g, activity.title)
+      : brut
+          .replace(/\s*\(PTBA\s*\{\{ptbaCode\}\}[^)]*\)/g, '')
+          .replace(/\{\{ptbaCode\}\}/g, '')
+          .replace(/\{\{ptbaTitle\}\}/g, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
 
     const tdr = await this.prisma.tdr.create({
       data: {
