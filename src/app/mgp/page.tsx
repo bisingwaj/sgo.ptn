@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MgpClient } from "./MgpClient";
+import { VoileSelonChemin } from "@/components/etat/VoileDeveloppement";
 
 export const metadata: Metadata = {
   title: "Mécanisme de Gestion des Plaintes (MGP) · PTN-RDC",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function MgpPage() {
-  return <MgpClient />;
+  return (
+    <VoileSelonChemin>
+      <MgpClient />
+    </VoileSelonChemin>
+  );
 }
