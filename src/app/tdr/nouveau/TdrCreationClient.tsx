@@ -346,7 +346,21 @@ function Parcours() {
         }
         const bib = await loadLibrary(tdr.tdrTypeCode);
         if (annule) return;
-        setResume(hydrate(tdr, bib));
+        const etat = hydrate(tdr, bib);
+        setResume(etat);
+        // L'ÉTAT COURANT EST POSÉ ICI AUSSI, non au seul premier changement.
+        //
+        // `etatCourant` n'était alimenté que par `onDraftChange`, que le
+        // parcours déclenche à une saisie ou à un changement d'étape — jamais
+        // au montage. À la REPRISE d'un brouillon il restait donc nul alors
+        // que le dossier existait : le panneau recevait `tdrId={null}` et
+        // refusait la pièce jointe par « Disponible une fois le brouillon
+        // ouvert », sur un brouillon précisément ouvert.
+        //
+        // Le défaut se réparait seul à la première modification, ce qui le
+        // rendait difficile à croire : engendrer des objectifs rendait le
+        // bouton disponible, sans rapport apparent.
+        setEtatCourant(etat);
       } catch (e) {
         if (!annule) setResumeError(e instanceof Error ? e.message : "Reprise impossible.");
       } finally {
